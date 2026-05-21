@@ -1,7 +1,8 @@
 <div class="sidebar">
 
     <div class="logo">
-        K-SYS
+        <img src="assets/img/segmen-su-logo.png" alt="Seğmen Su">
+        <span>Hakediş Hesaplama Modülü</span>
     </div>
 
     <div class="menu">
@@ -24,7 +25,7 @@
             Motorin Fiyatları
         </a>
 
-        <a href="#">Raporlar</a>
+        <a href="raporlar.php">Raporlar</a>
 
         <a href="#">Ayarlar</a>
 

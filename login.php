@@ -42,7 +42,7 @@ if($_SERVER['REQUEST_METHOD'] == 'POST'){
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>Kurumsal Su Yönetim Sistemi</title>
+<title>Seğmen Hakediş Hesaplama Modülü</title>
 
 <style>
 
@@ -157,7 +157,7 @@ button:hover{
 
 <div class="login-box">
 
-    <h1>Kurumsal Su Yönetim Sistemi</h1>
+    <h1>Seğmen Hakediş Hesaplama Modülü</h1>
 
     <?php if($error): ?>
 

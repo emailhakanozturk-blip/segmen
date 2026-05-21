@@ -156,7 +156,8 @@ if($_SERVER['REQUEST_METHOD'] == 'POST'){
 <div class="sidebar">
 
     <div class="logo">
-        K-SYS
+        <img src="assets/img/segmen-su-logo.png" alt="Seğmen Su">
+        <span>Hakediş Hesaplama Modülü</span>
     </div>
 
     <div class="menu">
