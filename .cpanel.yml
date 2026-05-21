@@ -1,0 +1,5 @@
+---
+deployment:
+  tasks:
+    - export DEPLOYPATH=/home/yerelsof/public_html/segmen/
+    - /bin/cp -R * $DEPLOYPATH
