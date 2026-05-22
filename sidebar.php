@@ -1,7 +1,7 @@
 <div class="sidebar">
 
     <div class="logo">
-        <img src="assets/img/segmen-su-logo.png" alt="Seğmen Su">
+        <img src="assets/img/segmen-su-logo.png" alt="Seğmen Su" class="sidebar-logo-img" width="132" style="width:132px;max-width:132px;max-height:96px;height:auto;object-fit:contain;">
         <span>Hakediş Hesaplama Modülü</span>
     </div>
 

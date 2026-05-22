@@ -213,7 +213,7 @@ $maxRoute = max(array_column($routeChart ?: [['adet' => 0]], 'adet'));
 <head>
 <meta charset="UTF-8">
 <title>Dashboard</title>
-<link rel="stylesheet" href="assets/css/style.css">
+<link rel="stylesheet" href="assets/css/style.css?v=20260522-logo-total">
 
 <style>
 .dashboard-hero{
