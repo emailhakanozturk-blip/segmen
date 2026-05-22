@@ -27,7 +27,7 @@
 
         <a href="raporlar.php">Raporlar</a>
 
-        <a href="#">Ayarlar</a>
+        <a href="kullanici-yonetimi.php">Ayarlar</a>
 
     </div>
 
