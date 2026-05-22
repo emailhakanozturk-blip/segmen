@@ -1,21 +1,34 @@
 <?php
 
-define('DB_HOST', 'localhost');
-define('DB_NAME', 'segmen');
-define('DB_USER', 'root');
-define('DB_PASS', '');
+function db_env(string $key, string $default): string
+{
+    $value = getenv($key);
+    return $value === false || $value === '' ? $default : $value;
+}
+
+$httpHost = (string)($_SERVER['HTTP_HOST'] ?? '');
+$isLocalhost = $httpHost === 'localhost'
+    || $httpHost === '127.0.0.1'
+    || str_starts_with($httpHost, 'localhost:')
+    || str_starts_with($httpHost, '127.0.0.1:');
+
+define('DB_HOST', db_env('DB_HOST', 'localhost'));
+define('DB_NAME', db_env('DB_NAME', $isLocalhost ? 'segmen' : 'yerelsof_segmen'));
+define('DB_USER', db_env('DB_USER', $isLocalhost ? 'root' : 'yerelsof_segmen_admin'));
+define('DB_PASS', db_env('DB_PASS', $isLocalhost ? '' : 'Hb9863'));
 
 try {
 
     $db = new PDO(
         "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8mb4",
         DB_USER,
-        DB_PASS
+        DB_PASS,
+        [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            PDO::ATTR_EMULATE_PREPARES => false,
+        ]
     );
-
-    $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
-    $db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
 
     $db->exec("SET NAMES utf8mb4");
     $db->exec("SET CHARACTER SET utf8mb4");
@@ -70,7 +83,7 @@ try {
 
             if((int)$_SESSION['can_edit'] !== 1 && ($_SERVER['REQUEST_METHOD'] === 'POST' || in_array($currentScript, $writePages, true))){
                 http_response_code(403);
-                die('Bu iÅŸlem iÃ§in dÃ¼zeltme yetkiniz yok.');
+                die('Bu işlem için düzeltme yetkiniz yok.');
             }
         }
     }

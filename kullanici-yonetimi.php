@@ -160,40 +160,44 @@ $users = $db->query("SELECT id, name, email, can_view, can_edit, created_at FROM
 
 .settings-grid{
     display:grid;
-    grid-template-columns:minmax(280px, 380px) 1fr;
-    gap:22px;
+    grid-template-columns:minmax(230px, 290px) minmax(0, 1fr);
+    gap:16px;
     align-items:start;
 }
 
 .panel{
     background:white;
-    padding:24px;
-    border-radius:15px;
-    box-shadow:0 5px 15px rgba(0,0,0,.05);
+    padding:18px;
+    border-radius:12px;
+    border:1px solid #e7eaf0;
+    box-shadow:0 8px 24px rgba(15,23,42,.04);
+    overflow:hidden;
 }
 
 .panel h3{
-    margin-bottom:18px;
+    margin-bottom:14px;
     color:#1d3557;
+    font-size:18px;
 }
 
 .form-group{
-    margin-bottom:14px;
+    margin-bottom:11px;
 }
 
 .form-group label{
     display:block;
     font-weight:bold;
-    margin-bottom:6px;
+    margin-bottom:5px;
     color:#374151;
+    font-size:13px;
 }
 
 .form-control{
     width:100%;
-    padding:12px 13px;
+    padding:10px 11px;
     border:1px solid #dcdcdc;
     border-radius:8px;
-    font-size:14px;
+    font-size:13px;
 }
 
 .form-hint{
@@ -204,8 +208,8 @@ $users = $db->query("SELECT id, name, email, can_view, can_edit, created_at FROM
 
 .permission-box{
     display:grid;
-    gap:8px;
-    padding:12px;
+    gap:7px;
+    padding:10px;
     border:1px solid #e5e7eb;
     border-radius:10px;
     background:#f9fafb;
@@ -226,11 +230,11 @@ $users = $db->query("SELECT id, name, email, can_view, can_edit, created_at FROM
 
 .permission-badge{
     display:inline-block;
-    padding:5px 9px;
+    padding:4px 7px;
     border-radius:20px;
     background:#e0f2fe;
     color:#075985;
-    font-size:12px;
+    font-size:11px;
     font-weight:bold;
     margin-right:4px;
     margin-bottom:4px;
@@ -243,21 +247,24 @@ $users = $db->query("SELECT id, name, email, can_view, can_edit, created_at FROM
 
 .actions{
     display:flex;
-    gap:8px;
+    gap:7px;
     flex-wrap:wrap;
-    margin-top:18px;
+    margin-top:14px;
 }
 
 .btn{
     border:0;
     background:#16a34a;
     color:white;
-    padding:11px 16px;
+    padding:8px 11px;
     border-radius:8px;
     text-decoration:none;
     display:inline-block;
     cursor:pointer;
-    font-size:14px;
+    font-size:12px;
+    font-weight:700;
+    line-height:1.2;
+    white-space:nowrap;
 }
 
 .btn-secondary{
@@ -275,19 +282,70 @@ $users = $db->query("SELECT id, name, email, can_view, can_edit, created_at FROM
 table{
     width:100%;
     border-collapse:collapse;
+    table-layout:fixed;
+}
+
+.table-wrap{
+    width:100%;
+    max-width:100%;
+    overflow:auto;
+    border-radius:10px;
+    border:1px solid #e7eaf0;
 }
 
 table th{
     background:#1d3557;
     color:white;
-    padding:13px;
+    padding:9px 10px;
     text-align:left;
+    font-size:11px;
+    white-space:nowrap;
 }
 
 table td{
-    padding:13px;
+    padding:8px 9px;
     border-bottom:1px solid #eee;
     vertical-align:middle;
+    font-size:11px;
+}
+
+th:nth-child(1),
+td:nth-child(1){
+    width:40px;
+}
+
+th:nth-child(2),
+td:nth-child(2){
+    width:16%;
+}
+
+th:nth-child(3),
+td:nth-child(3){
+    width:25%;
+}
+
+th:nth-child(4),
+td:nth-child(4){
+    width:24%;
+}
+
+th:nth-child(5),
+td:nth-child(5){
+    width:17%;
+}
+
+th:nth-child(6),
+td:nth-child(6){
+    width:110px;
+}
+
+td:nth-child(2),
+td:nth-child(3){
+    word-break:break-word;
+}
+
+td:last-child{
+    white-space:nowrap;
 }
 
 .inline-form{
@@ -391,45 +449,47 @@ table td{
         <div class="panel">
             <h3>Kullanıcılar</h3>
 
-            <table>
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Ad Soyad</th>
-                        <th>E-posta</th>
-                        <th>Yetki</th>
-                        <th>Kayıt Tarihi</th>
-                        <th>İşlem</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach($users as $user): ?>
+            <div class="table-wrap">
+                <table>
+                    <thead>
                         <tr>
-                            <td><?php echo (int)$user['id']; ?></td>
-                            <td><?php echo htmlspecialchars((string)$user['name']); ?></td>
-                            <td><?php echo htmlspecialchars((string)$user['email']); ?></td>
-                            <td>
-                                <span class="permission-badge <?php echo (int)$user['can_view'] === 1 ? '' : 'muted'; ?>">Görüntüle: <?php echo (int)$user['can_view'] === 1 ? 'Açık' : 'Kapalı'; ?></span>
-                                <span class="permission-badge <?php echo (int)$user['can_edit'] === 1 ? '' : 'muted'; ?>">Düzelt: <?php echo (int)$user['can_edit'] === 1 ? 'Açık' : 'Kapalı'; ?></span>
-                            </td>
-                            <td><?php echo htmlspecialchars((string)($user['created_at'] ?? '-')); ?></td>
-                            <td>
-                                <?php if($canEditUsers): ?>
-                                    <a href="kullanici-yonetimi.php?edit=<?php echo (int)$user['id']; ?>" class="btn btn-blue">Düzenle</a>
-                                <?php endif; ?>
-
-                                <?php if($canEditUsers && (int)$_SESSION['user_id'] !== (int)$user['id']): ?>
-                                    <form method="POST" class="inline-form" onsubmit="return confirm('Bu kullanıcı silinsin mi?');">
-                                        <input type="hidden" name="action" value="delete">
-                                        <input type="hidden" name="id" value="<?php echo (int)$user['id']; ?>">
-                                        <button type="submit" class="btn btn-red">Sil</button>
-                                    </form>
-                                <?php endif; ?>
-                            </td>
+                            <th>ID</th>
+                            <th>Ad Soyad</th>
+                            <th>E-posta</th>
+                            <th>Yetki</th>
+                            <th>Kayıt Tarihi</th>
+                            <th>İşlem</th>
                         </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        <?php foreach($users as $user): ?>
+                            <tr>
+                                <td><?php echo (int)$user['id']; ?></td>
+                                <td><?php echo htmlspecialchars((string)$user['name']); ?></td>
+                                <td><?php echo htmlspecialchars((string)$user['email']); ?></td>
+                                <td>
+                                    <span class="permission-badge <?php echo (int)$user['can_view'] === 1 ? '' : 'muted'; ?>">Görüntüle: <?php echo (int)$user['can_view'] === 1 ? 'Açık' : 'Kapalı'; ?></span>
+                                    <span class="permission-badge <?php echo (int)$user['can_edit'] === 1 ? '' : 'muted'; ?>">Düzelt: <?php echo (int)$user['can_edit'] === 1 ? 'Açık' : 'Kapalı'; ?></span>
+                                </td>
+                                <td><?php echo htmlspecialchars((string)($user['created_at'] ?? '-')); ?></td>
+                                <td>
+                                    <?php if($canEditUsers): ?>
+                                        <a href="kullanici-yonetimi.php?edit=<?php echo (int)$user['id']; ?>" class="btn btn-blue">Düzenle</a>
+                                    <?php endif; ?>
+
+                                    <?php if($canEditUsers && (int)$_SESSION['user_id'] !== (int)$user['id']): ?>
+                                        <form method="POST" class="inline-form" onsubmit="return confirm('Bu kullanıcı silinsin mi?');">
+                                            <input type="hidden" name="action" value="delete">
+                                            <input type="hidden" name="id" value="<?php echo (int)$user['id']; ?>">
+                                            <button type="submit" class="btn btn-red">Sil</button>
+                                        </form>
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
         </div>
 
     </div>
