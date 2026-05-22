@@ -74,17 +74,25 @@ $summaryQuery = $db->prepare("
         COALESCE(SUM(hakedisler.kdv_tutar), 0) AS toplam_kdv,
         COALESCE(SUM(hakedisler.tevkifat_tutar), 0) AS toplam_tevkifat,
         COALESCE(SUM(hakedisler.net_tutar), 0) AS toplam_net,
-        COUNT(DISTINCT hakedisler.id) AS hakedis_adet,
-        COUNT(hakedis_satirlari.id) AS sevkiyat_adet,
+        COUNT(hakedisler.id) AS hakedis_adet,
         COUNT(DISTINCT hakedisler.cari_id) AS firma_adet,
         COUNT(DISTINCT hakedisler.sozlesme_id) AS sozlesme_adet
+    FROM hakedisler
+    LEFT JOIN cariler ON cariler.id = hakedisler.cari_id
+    $whereSql
+");
+$summaryQuery->execute($params);
+$summary = $summaryQuery->fetch(PDO::FETCH_ASSOC);
+
+$shipmentCountQuery = $db->prepare("
+    SELECT COUNT(hakedis_satirlari.id) AS sevkiyat_adet
     FROM hakedisler
     LEFT JOIN cariler ON cariler.id = hakedisler.cari_id
     LEFT JOIN hakedis_satirlari ON hakedis_satirlari.hakedis_id = hakedisler.id
     $whereSql
 ");
-$summaryQuery->execute($params);
-$summary = $summaryQuery->fetch(PDO::FETCH_ASSOC);
+$shipmentCountQuery->execute($params);
+$summary['sevkiyat_adet'] = (int)($shipmentCountQuery->fetch(PDO::FETCH_ASSOC)['sevkiyat_adet'] ?? 0);
 
 $contractWhere = [];
 $contractParams = [];

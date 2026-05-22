@@ -21,6 +21,7 @@ body{
     color:#18202f;
     padding:24px 16px;
     border-right:1px solid #e7eaf0;
+    overflow:hidden;
 }
 
 .logo{
@@ -30,11 +31,16 @@ body{
     gap:8px;
     margin-bottom:32px;
     color:#18202f;
+    max-width:100%;
+    overflow:hidden;
 }
 
 .logo img{
-    width:168px;
+    width:132px;
+    max-width:100%;
+    max-height:96px;
     height:auto;
+    object-fit:contain;
     display:block;
 }
 
