@@ -30,24 +30,43 @@ $db->exec("
         name VARCHAR(120) NOT NULL,
         email VARCHAR(180) NOT NULL UNIQUE,
         password VARCHAR(180) NOT NULL,
+        can_view TINYINT(1) NOT NULL DEFAULT 1,
+        can_edit TINYINT(1) NOT NULL DEFAULT 1,
         created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 ");
 
 $columns = $db->query("SHOW COLUMNS FROM users")->fetchAll(PDO::FETCH_COLUMN);
+if(!in_array('can_view', $columns, true)){
+    $db->exec("ALTER TABLE users ADD COLUMN can_view TINYINT(1) NOT NULL DEFAULT 1 AFTER password");
+}
+if(!in_array('can_edit', $columns, true)){
+    $db->exec("ALTER TABLE users ADD COLUMN can_edit TINYINT(1) NOT NULL DEFAULT 1 AFTER can_view");
+}
 if(!in_array('created_at', $columns, true)){
     $db->exec("ALTER TABLE users ADD COLUMN created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP");
 }
+
+$currentUserQuery = $db->prepare("SELECT can_edit FROM users WHERE id = ?");
+$currentUserQuery->execute([(int)$_SESSION['user_id']]);
+$currentUser = $currentUserQuery->fetch(PDO::FETCH_ASSOC) ?: ['can_edit' => 1];
+$canEditUsers = (int)($currentUser['can_edit'] ?? 1) === 1;
 
 if($_SERVER['REQUEST_METHOD'] === 'POST'){
     $action = $_POST['action'] ?? '';
 
     try {
         if($action === 'save'){
+            if(!$canEditUsers){
+                throw new Exception('Kullanıcı düzenleme yetkiniz yok.');
+            }
+
             $id = (int)($_POST['id'] ?? 0);
             $name = post_value('name');
             $email = post_value('email');
             $password = post_value('password');
+            $canView = isset($_POST['can_view']) ? 1 : 0;
+            $canEdit = isset($_POST['can_edit']) ? 1 : 0;
 
             if($name === '' || $email === ''){
                 throw new Exception('Ad soyad ve e-posta zorunludur.');
@@ -58,30 +77,40 @@ if($_SERVER['REQUEST_METHOD'] === 'POST'){
             }
 
             if($id > 0){
+                if((int)$_SESSION['user_id'] === $id && $canView === 0){
+                    throw new Exception('Kendi görüntüleme yetkinizi kapatamazsınız.');
+                }
+
                 if($password !== ''){
-                    $query = $db->prepare("UPDATE users SET name = ?, email = ?, password = ? WHERE id = ?");
-                    $query->execute([$name, $email, $password, $id]);
+                    $query = $db->prepare("UPDATE users SET name = ?, email = ?, password = ?, can_view = ?, can_edit = ? WHERE id = ?");
+                    $query->execute([$name, $email, $password, $canView, $canEdit, $id]);
                 }else{
-                    $query = $db->prepare("UPDATE users SET name = ?, email = ? WHERE id = ?");
-                    $query->execute([$name, $email, $id]);
+                    $query = $db->prepare("UPDATE users SET name = ?, email = ?, can_view = ?, can_edit = ? WHERE id = ?");
+                    $query->execute([$name, $email, $canView, $canEdit, $id]);
                 }
 
                 if((int)$_SESSION['user_id'] === $id){
                     $_SESSION['user_name'] = $name;
+                    $_SESSION['can_view'] = $canView;
+                    $_SESSION['can_edit'] = $canEdit;
                 }
             }else{
                 if($password === ''){
                     throw new Exception('Yeni kullanıcı için şifre zorunludur.');
                 }
 
-                $query = $db->prepare("INSERT INTO users (name, email, password) VALUES (?, ?, ?)");
-                $query->execute([$name, $email, $password]);
+                $query = $db->prepare("INSERT INTO users (name, email, password, can_view, can_edit) VALUES (?, ?, ?, ?, ?)");
+                $query->execute([$name, $email, $password, $canView, $canEdit]);
             }
 
             redirect_users();
         }
 
         if($action === 'delete'){
+            if(!$canEditUsers){
+                throw new Exception('Kullanıcı silme yetkiniz yok.');
+            }
+
             $id = (int)($_POST['id'] ?? 0);
 
             if($id <= 0){
@@ -108,12 +137,12 @@ if($_SERVER['REQUEST_METHOD'] === 'POST'){
 
 $editId = (int)($_GET['edit'] ?? 0);
 if($editId > 0){
-    $query = $db->prepare("SELECT id, name, email FROM users WHERE id = ?");
+    $query = $db->prepare("SELECT id, name, email, can_view, can_edit FROM users WHERE id = ?");
     $query->execute([$editId]);
     $editing = $query->fetch(PDO::FETCH_ASSOC) ?: null;
 }
 
-$users = $db->query("SELECT id, name, email, created_at FROM users ORDER BY id DESC")->fetchAll(PDO::FETCH_ASSOC);
+$users = $db->query("SELECT id, name, email, can_view, can_edit, created_at FROM users ORDER BY id DESC")->fetchAll(PDO::FETCH_ASSOC);
 
 ?>
 
@@ -171,6 +200,45 @@ $users = $db->query("SELECT id, name, email, created_at FROM users ORDER BY id D
     color:#6b7280;
     font-size:12px;
     margin-top:5px;
+}
+
+.permission-box{
+    display:grid;
+    gap:8px;
+    padding:12px;
+    border:1px solid #e5e7eb;
+    border-radius:10px;
+    background:#f9fafb;
+}
+
+.permission-box label{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin:0;
+    font-weight:600;
+}
+
+.permission-box input{
+    width:16px;
+    height:16px;
+}
+
+.permission-badge{
+    display:inline-block;
+    padding:5px 9px;
+    border-radius:20px;
+    background:#e0f2fe;
+    color:#075985;
+    font-size:12px;
+    font-weight:bold;
+    margin-right:4px;
+    margin-bottom:4px;
+}
+
+.permission-badge.muted{
+    background:#f3f4f6;
+    color:#6b7280;
 }
 
 .actions{
@@ -261,6 +329,10 @@ table td{
         <div class="notice notice-error"><?php echo htmlspecialchars($error); ?></div>
     <?php endif; ?>
 
+    <?php if(!$canEditUsers): ?>
+        <div class="notice notice-error">Bu kullanıcıyla sadece görüntüleme yapabilirsiniz. Kullanıcı ekleme, düzeltme ve silme kapalıdır.</div>
+    <?php endif; ?>
+
     <div class="settings-grid">
 
         <div class="panel">
@@ -290,8 +362,25 @@ table td{
                     <?php endif; ?>
                 </div>
 
+                <div class="form-group">
+                    <label>Yetkiler</label>
+                    <div class="permission-box">
+                        <label>
+                            <input type="checkbox" name="can_view" value="1" <?php echo (int)($editing['can_view'] ?? 1) === 1 ? 'checked' : ''; ?>>
+                            Görüntüle
+                        </label>
+                        <label>
+                            <input type="checkbox" name="can_edit" value="1" <?php echo (int)($editing['can_edit'] ?? 1) === 1 ? 'checked' : ''; ?>>
+                            Düzelt / Ekle / Sil
+                        </label>
+                    </div>
+                    <div class="form-hint">Görüntüle kapalıysa kullanıcı giriş yapamaz.</div>
+                </div>
+
                 <div class="actions">
-                    <button type="submit" class="btn"><?php echo $editing ? 'Güncelle' : 'Kaydet'; ?></button>
+                    <?php if($canEditUsers): ?>
+                        <button type="submit" class="btn"><?php echo $editing ? 'Güncelle' : 'Kaydet'; ?></button>
+                    <?php endif; ?>
                     <?php if($editing): ?>
                         <a href="kullanici-yonetimi.php" class="btn btn-secondary">Vazgeç</a>
                     <?php endif; ?>
@@ -308,6 +397,7 @@ table td{
                         <th>ID</th>
                         <th>Ad Soyad</th>
                         <th>E-posta</th>
+                        <th>Yetki</th>
                         <th>Kayıt Tarihi</th>
                         <th>İşlem</th>
                     </tr>
@@ -318,11 +408,17 @@ table td{
                             <td><?php echo (int)$user['id']; ?></td>
                             <td><?php echo htmlspecialchars((string)$user['name']); ?></td>
                             <td><?php echo htmlspecialchars((string)$user['email']); ?></td>
+                            <td>
+                                <span class="permission-badge <?php echo (int)$user['can_view'] === 1 ? '' : 'muted'; ?>">Görüntüle: <?php echo (int)$user['can_view'] === 1 ? 'Açık' : 'Kapalı'; ?></span>
+                                <span class="permission-badge <?php echo (int)$user['can_edit'] === 1 ? '' : 'muted'; ?>">Düzelt: <?php echo (int)$user['can_edit'] === 1 ? 'Açık' : 'Kapalı'; ?></span>
+                            </td>
                             <td><?php echo htmlspecialchars((string)($user['created_at'] ?? '-')); ?></td>
                             <td>
-                                <a href="kullanici-yonetimi.php?edit=<?php echo (int)$user['id']; ?>" class="btn btn-blue">Düzenle</a>
+                                <?php if($canEditUsers): ?>
+                                    <a href="kullanici-yonetimi.php?edit=<?php echo (int)$user['id']; ?>" class="btn btn-blue">Düzenle</a>
+                                <?php endif; ?>
 
-                                <?php if((int)$_SESSION['user_id'] !== (int)$user['id']): ?>
+                                <?php if($canEditUsers && (int)$_SESSION['user_id'] !== (int)$user['id']): ?>
                                     <form method="POST" class="inline-form" onsubmit="return confirm('Bu kullanıcı silinsin mi?');">
                                         <input type="hidden" name="action" value="delete">
                                         <input type="hidden" name="id" value="<?php echo (int)$user['id']; ?>">

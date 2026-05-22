@@ -165,7 +165,7 @@ $monthChart = $monthQuery->fetchAll(PDO::FETCH_ASSOC);
 
 $routeQuery = $db->prepare("
     SELECT
-        CONCAT(hakedis_satirlari.cikis_noktasi, ' → ', hakedis_satirlari.varis_noktasi) AS label,
+        CONCAT(hakedis_satirlari.cikis_noktasi, ' - ', hakedis_satirlari.varis_noktasi) AS label,
         COUNT(*) AS adet,
         COALESCE(SUM(hakedis_satirlari.guncel_birim_fiyat), 0) AS toplam
     FROM hakedis_satirlari

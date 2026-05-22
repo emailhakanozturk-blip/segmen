@@ -17,10 +17,12 @@ if($_SERVER['REQUEST_METHOD'] == 'POST'){
     $user = $query->fetch(PDO::FETCH_ASSOC);
 
     // GEÇİCİ TEST GİRİŞİ
-    if($user && trim($password) == trim($user['password'])){
+    if($user && trim($password) == trim($user['password']) && (int)($user['can_view'] ?? 1) === 1){
 
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['user_name'] = $user['name'];
+        $_SESSION['can_view'] = (int)($user['can_view'] ?? 1);
+        $_SESSION['can_edit'] = (int)($user['can_edit'] ?? 1);
 
         header("Location: dashboard.php");
         exit;
