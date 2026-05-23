@@ -44,6 +44,8 @@ if(!$hakedisData){
 
 $sozlesmeNo = trim($hakedisData['sozlesme_no'] ?? '');
 $firmaAdi = trim($hakedisData['firma_adi'] ?? '');
+$hakedisCariId = (int)($hakedisData['cari_id'] ?? 0);
+$hakedisSozlesmeId = (int)($hakedisData['sozlesme_id'] ?? 0);
 
 function tarihCevir($value){
     $value = trim((string)$value);
@@ -279,6 +281,14 @@ if(isset($_POST['aktar'])){
                 FROM tarifeler
                 WHERE TRIM(UPPER(firma_adi)) = ?
                 AND (
+                    sozlesme_id = ?
+                    OR sozlesme_no = ?
+                    OR (
+                        (sozlesme_id IS NULL OR sozlesme_id = 0)
+                        AND (sozlesme_no IS NULL OR sozlesme_no = '')
+                    )
+                )
+                AND (
                     baslangic_tarihi IS NULL
                     OR baslangic_tarihi = '0000-00-00'
                     OR baslangic_tarihi <= ?
@@ -329,6 +339,8 @@ if(isset($_POST['aktar'])){
 
                 $tarifeQuery->execute([
                     temizMetin($firmaAdi),
+                    $hakedisSozlesmeId,
+                    $sozlesmeNo,
                     $tarih,
                     $tarih
                 ]);
@@ -398,8 +410,17 @@ if(isset($_POST['aktar'])){
                         ($item['dosya_kdv'] ?? 0) > 0 &&
                         ($item['dosya_net'] ?? 0) > 0;
 
-                    $birimFiyat = $dosyaTutarlariVar ? $item['dosya_birim_fiyat'] : sayiCevir($tarife['birim_fiyat']);
+                    $sevkiyatKm = sayiCevir($tarife['sevkiyat_km'] ?? 0);
+                    $tarifeBirimFiyat = sayiCevir($tarife['birim_fiyat']);
                     $motorinBaz = ($item['dosya_motorin_baz'] ?? 0) > 0 ? $item['dosya_motorin_baz'] : sayiCevir($tarife['motorin_baz_fiyati']);
+
+                    if($sevkiyatKm <= 0 && $motorinBaz > 0 && $tarifeBirimFiyat > 0){
+                        $sevkiyatKm = $tarifeBirimFiyat / $motorinBaz;
+                    }
+
+                    $birimFiyat = $dosyaTutarlariVar
+                        ? $item['dosya_birim_fiyat']
+                        : ($sevkiyatKm > 0 && $motorinBaz > 0 ? $sevkiyatKm * $motorinBaz : $tarifeBirimFiyat);
 
                     if($birimFiyat <= 0 || $motorinBaz <= 0){
                         $atlan++;
