@@ -467,7 +467,7 @@ if(isset($_GET['sil'])){
     exit;
 }
 
-if(isset($_POST['mukerrer_toplu_sil'])){
+if(isset($_POST['mukerrer_toplu_sil']) || isset($_POST['mukerrer_birlestir'])){
     $silinecekler = array_map('intval', $_POST['sil_id'] ?? []);
     $silinecekler = array_values(array_filter($silinecekler, fn($id) => $id > 0));
 
@@ -477,7 +477,8 @@ if(isset($_POST['mukerrer_toplu_sil'])){
         $delete->execute($silinecekler);
     }
 
-    header("Location: nokta-yonetimi.php");
+    $redirect = 'nokta-yonetimi.php?cari_id=' . (int)($_POST['current_cari_id'] ?? 0) . '&sozlesme_id=' . (int)($_POST['current_sozlesme_id'] ?? 0) . '&revizyon_yili=' . (int)($_POST['current_yil'] ?? date('Y'));
+    header("Location: " . $redirect);
     exit;
 }
 
@@ -753,6 +754,47 @@ $maxDonemSayisi = 1;
 foreach($guzergahlar as $row){
     $maxDonemSayisi = max($maxDonemSayisi, count($row['_fiyat_donemleri'] ?? []));
 }
+
+$mukerrerler = $db->query("
+    SELECT
+        t.*,
+        COALESCE(c.firma_adi, t.firma_adi) AS firma_goster,
+        COALESCE(s.sozlesme_no, t.sozlesme_no) AS sozlesme_goster
+    FROM tarifeler t
+    LEFT JOIN cariler c ON c.id = t.cari_id
+    LEFT JOIN sozlesmeler s ON s.id = t.sozlesme_id
+    INNER JOIN (
+        SELECT
+            MIN(id) AS keep_id,
+            cari_id,
+            sozlesme_id,
+            cikis_noktasi,
+            varis_noktasi,
+            tarife_tipi,
+            COUNT(*) AS adet
+        FROM tarifeler
+        WHERE sozlesme_id IS NOT NULL
+        AND COALESCE(revizyon_no, 1) = 1
+        GROUP BY cari_id, sozlesme_id, cikis_noktasi, varis_noktasi, tarife_tipi
+        HAVING adet > 1
+    ) d ON d.cari_id <=> t.cari_id
+        AND d.sozlesme_id <=> t.sozlesme_id
+        AND d.cikis_noktasi <=> t.cikis_noktasi
+        AND d.varis_noktasi <=> t.varis_noktasi
+        AND d.tarife_tipi <=> t.tarife_tipi
+    WHERE t.id <> d.keep_id
+    ORDER BY firma_goster ASC, sozlesme_goster ASC, t.cikis_noktasi ASC, t.varis_noktasi ASC, t.id ASC
+")->fetchAll(PDO::FETCH_ASSOC);
+
+$mukerrerler = array_values(array_filter($mukerrerler, function($row) use ($cariId, $sozlesmeId){
+    if($cariId > 0 && (int)($row['cari_id'] ?? 0) !== $cariId){
+        return false;
+    }
+    if($sozlesmeId > 0 && (int)($row['sozlesme_id'] ?? 0) !== $sozlesmeId){
+        return false;
+    }
+    return true;
+}));
 
 ?>
 
@@ -1184,12 +1226,46 @@ thead .sticky-col{
             <?php endif; ?>
             <div class="form-grid">
                 <?php if(!$editing): ?>
-
+                <div>
+                    <label>Firma</label>
+                    <select name="cari_id" id="form_cari" required>
+                        <option value="">Seçiniz</option>
+                        <?php foreach($cariler as $cari): ?>
+                            <option value="<?php echo (int)$cari['id']; ?>" <?php echo (int)($editing['cari_id'] ?? $cariId) === (int)$cari['id'] ? 'selected' : ''; ?>><?php echo e($cari['firma_adi']); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div>
+                    <label>Sözleşme</label>
+                    <select name="sozlesme_id" id="form_sozlesme" required>
+                        <option value="">Seçiniz</option>
+                        <?php foreach($sozlesmeler as $sozlesme): ?>
+                            <option value="<?php echo (int)$sozlesme['id']; ?>" data-cari="<?php echo (int)$sozlesme['cari_id']; ?>" <?php echo (int)($editing['sozlesme_id'] ?? $sozlesmeId) === (int)$sozlesme['id'] ? 'selected' : ''; ?>><?php echo e($sozlesme['sozlesme_no']); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div>
+                    <label>Çıkış Yeri</label>
+                    <input list="nokta_listesi" name="cikis_noktasi" value="<?php echo e($editing['cikis_noktasi'] ?? ''); ?>" required>
+                </div>
+                <div>
+                    <label>Sevk Yeri</label>
+                    <input list="nokta_listesi" name="varis_noktasi" value="<?php echo e($editing['varis_noktasi'] ?? ''); ?>" required>
+                </div>
                 <div>
                     <label>KM</label>
                     <input type="text" name="sevkiyat_km" id="sevkiyat_km" value="<?php echo $editing ? e(sayiGoster($editing['sevkiyat_km'], 2)) : ''; ?>" placeholder="144,62">
                 </div>
                 <?php endif; ?>
+                <div>
+                    <label>Ürün Grubu</label>
+                    <?php $seciliUrun = strtoupper((string)($editing['tarife_tipi'] ?? 'DAMACANA')); ?>
+                    <select name="tarife_tipi" required>
+                        <?php foreach(['DAMACANA','PET','MALZEME','PALET'] as $urun): ?>
+                            <option value="<?php echo e($urun); ?>" <?php echo $seciliUrun === $urun ? 'selected' : ''; ?>><?php echo e($urun); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
 
                 <div>
                     <label>Başlangıç Motorin</label>
@@ -1246,6 +1322,49 @@ thead .sticky-col{
             <?php endforeach; ?>
         </datalist>
     </div>
+
+    <?php if(!empty($mukerrerler)): ?>
+    <div class="panel">
+        <div class="section-title">Mükerrer Noktalar</div>
+        <form method="POST" onsubmit="return confirm('Seçili mükerrer kayıtlar silinsin mi?');">
+            <input type="hidden" name="current_cari_id" value="<?php echo (int)$cariId; ?>">
+            <input type="hidden" name="current_sozlesme_id" value="<?php echo (int)$sozlesmeId; ?>">
+            <input type="hidden" name="current_yil" value="<?php echo (int)$revizyonYili; ?>">
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width:42px;">Seç</th>
+                            <th>Güzergah</th>
+                            <th>Firma</th>
+                            <th>Sözleşme</th>
+                            <th>Ürün</th>
+                            <th class="right">Birim</th>
+                            <th>İşlem</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach($mukerrerler as $mukerrer): ?>
+                            <tr>
+                                <td><input type="checkbox" name="sil_id[]" value="<?php echo (int)$mukerrer['id']; ?>" checked></td>
+                                <td><?php echo e(gorunenNokta($mukerrer['cikis_noktasi'])); ?> → <?php echo e(gorunenNokta($mukerrer['varis_noktasi'])); ?></td>
+                                <td><?php echo e($mukerrer['firma_goster'] ?: '-'); ?></td>
+                                <td><?php echo e($mukerrer['sozlesme_goster'] ?: '-'); ?></td>
+                                <td><?php echo e($mukerrer['tarife_tipi'] ?: 'DAMACANA'); ?></td>
+                                <td class="right"><?php echo paraGoster($mukerrer['birim_fiyat'], 2); ?></td>
+                                <td><a class="btn btn-red" href="nokta-yonetimi.php?sil=<?php echo (int)$mukerrer['id']; ?>" onclick="return confirm('Bu mükerrer kayıt silinsin mi?');">Sil</a></td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+            <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
+                <button type="submit" name="mukerrer_birlestir" value="1" class="btn">Seçilenleri Birleştir</button>
+                <button type="submit" name="mukerrer_toplu_sil" value="1" class="btn btn-red">Seçilenleri Sil</button>
+            </div>
+        </form>
+    </div>
+    <?php endif; ?>
 
     <div class="panel">
         <div class="section-title">Noktalar</div>

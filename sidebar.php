@@ -27,6 +27,8 @@
 
         <a href="kullanici-yonetimi.php">Ayarlar</a>
 
+        <a href="logout.php" onclick="return confirm('Çıkış yapılsın mı?');">Çıkış</a>
+
     </div>
 
 </div>

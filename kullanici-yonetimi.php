@@ -24,6 +24,42 @@ function redirect_users(): void
     exit;
 }
 
+$pageOptions = [
+    'dashboard.php' => 'Dashboard',
+    'cariler.php' => 'Cariler',
+    'sozlesmeler.php' => 'Sözleşmeler',
+    'nokta-yonetimi.php' => 'Nokta Yönetimi',
+    'hakedisler.php' => 'Hakedişler',
+    'motorin-yukle.php' => 'Motorin Fiyatları',
+    'raporlar.php' => 'Raporlar',
+    'kullanici-yonetimi.php' => 'Ayarlar',
+];
+
+$writePageMap = [
+    'cariler.php' => ['cariler.php', 'cari-ekle.php', 'cari-duzenle.php', 'cari-sil.php'],
+    'sozlesmeler.php' => ['sozlesmeler.php', 'sozlesme-ekle.php', 'sozlesme-duzenle.php', 'sozlesme-sil.php'],
+    'nokta-yonetimi.php' => ['nokta-yonetimi.php', 'noktalar.php', 'tarifeler.php', 'tarife-ekle.php', 'tarife-yukle.php'],
+    'hakedisler.php' => ['hakedisler.php', 'hakedis-ekle.php', 'hakedis-olustur.php', 'hakedis-onayla.php', 'hakedis-sil.php', 'excel-eslestir.php', 'excel-yukle.php'],
+    'motorin-yukle.php' => ['motorin-yukle.php'],
+    'kullanici-yonetimi.php' => ['kullanici-yonetimi.php'],
+];
+
+function selected_pages(array $source, array $allowed): array
+{
+    return array_values(array_intersect(array_keys($allowed), $source));
+}
+
+function expand_edit_pages(array $selected, array $map): array
+{
+    $pages = [];
+    foreach($selected as $page){
+        foreach(($map[$page] ?? [$page]) as $mappedPage){
+            $pages[] = $mappedPage;
+        }
+    }
+    return array_values(array_unique($pages));
+}
+
 $db->exec("
     CREATE TABLE IF NOT EXISTS users (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -43,14 +79,22 @@ if(!in_array('can_view', $columns, true)){
 if(!in_array('can_edit', $columns, true)){
     $db->exec("ALTER TABLE users ADD COLUMN can_edit TINYINT(1) NOT NULL DEFAULT 1 AFTER can_view");
 }
+if(!in_array('allowed_pages', $columns, true)){
+    $db->exec("ALTER TABLE users ADD COLUMN allowed_pages TEXT NULL AFTER can_edit");
+}
+if(!in_array('editable_pages', $columns, true)){
+    $db->exec("ALTER TABLE users ADD COLUMN editable_pages TEXT NULL AFTER allowed_pages");
+}
 if(!in_array('created_at', $columns, true)){
     $db->exec("ALTER TABLE users ADD COLUMN created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP");
 }
 
-$currentUserQuery = $db->prepare("SELECT can_edit FROM users WHERE id = ?");
+$currentUserQuery = $db->prepare("SELECT can_edit, editable_pages FROM users WHERE id = ?");
 $currentUserQuery->execute([(int)$_SESSION['user_id']]);
-$currentUser = $currentUserQuery->fetch(PDO::FETCH_ASSOC) ?: ['can_edit' => 1];
-$canEditUsers = (int)($currentUser['can_edit'] ?? 1) === 1;
+$currentUser = $currentUserQuery->fetch(PDO::FETCH_ASSOC) ?: ['can_edit' => 1, 'editable_pages' => ''];
+$currentEditPages = json_decode((string)($currentUser['editable_pages'] ?? ''), true);
+$currentEditPages = is_array($currentEditPages) ? $currentEditPages : [];
+$canEditUsers = (int)($currentUser['can_edit'] ?? 1) === 1 || in_array('kullanici-yonetimi.php', $currentEditPages, true);
 
 if($_SERVER['REQUEST_METHOD'] === 'POST'){
     $action = $_POST['action'] ?? '';

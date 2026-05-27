@@ -54,6 +54,14 @@ try {
         if (!in_array('can_edit', $userColumns, true)) {
             $db->exec("ALTER TABLE users ADD COLUMN can_edit TINYINT(1) NOT NULL DEFAULT 1 AFTER can_view");
         }
+
+        if (!in_array('allowed_pages', $userColumns, true)) {
+            $db->exec("ALTER TABLE users ADD COLUMN allowed_pages TEXT NULL AFTER can_edit");
+        }
+
+        if (!in_array('editable_pages', $userColumns, true)) {
+            $db->exec("ALTER TABLE users ADD COLUMN editable_pages TEXT NULL AFTER allowed_pages");
+        }
     }
 
     $tarifelerTable = $db->query("SHOW TABLES LIKE 'tarifeler'")->fetchColumn();
@@ -130,13 +138,15 @@ try {
     }
 
     if (session_status() === PHP_SESSION_ACTIVE && isset($_SESSION['user_id']) && $usersTable) {
-        $permissionQuery = $db->prepare("SELECT can_view, can_edit FROM users WHERE id = ?");
+        $permissionQuery = $db->prepare("SELECT can_view, can_edit, allowed_pages, editable_pages FROM users WHERE id = ?");
         $permissionQuery->execute([(int)$_SESSION['user_id']]);
         $permissionUser = $permissionQuery->fetch(PDO::FETCH_ASSOC);
 
         if ($permissionUser) {
             $_SESSION['can_view'] = (int)($permissionUser['can_view'] ?? 1);
             $_SESSION['can_edit'] = (int)($permissionUser['can_edit'] ?? 1);
+            $_SESSION['allowed_pages'] = (string)($permissionUser['allowed_pages'] ?? '');
+            $_SESSION['editable_pages'] = (string)($permissionUser['editable_pages'] ?? '');
 
             if ((int)$_SESSION['can_view'] !== 1) {
                 session_destroy();
@@ -145,6 +155,15 @@ try {
             }
 
             $currentScript = basename((string)($_SERVER['PHP_SELF'] ?? ''));
+            $allowedPages = json_decode((string)($permissionUser['allowed_pages'] ?? ''), true);
+            $editablePages = json_decode((string)($permissionUser['editable_pages'] ?? ''), true);
+            $allowedPages = is_array($allowedPages) ? $allowedPages : [];
+            $editablePages = is_array($editablePages) ? $editablePages : [];
+
+            if (!empty($allowedPages) && !in_array($currentScript, $allowedPages, true) && !in_array($currentScript, ['dashboard.php', 'index.php', 'logout.php', 'login.php'], true)) {
+                http_response_code(403);
+                die('Bu sayfayı görüntüleme yetkiniz yok.');
+            }
 
             $writePages = [
                 'cari-ekle.php',

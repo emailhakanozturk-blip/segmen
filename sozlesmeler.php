@@ -37,48 +37,78 @@ $sozlesmeler = $query->fetchAll(PDO::FETCH_ASSOC);
 
 .table-area{
     background:white;
-    padding:25px;
-    border-radius:15px;
-    box-shadow:0 5px 15px rgba(0,0,0,.05);
+    padding:16px;
+    border-radius:10px;
+    border:1px solid #e5e7eb;
+    box-shadow:0 8px 22px rgba(15,23,42,.04);
+    overflow:auto;
 }
 
 .top-actions{
-    margin-bottom:20px;
+    margin-bottom:12px;
     display:flex;
     justify-content:space-between;
     align-items:center;
+    gap:10px;
+}
+
+.top-actions h3{
+    margin:0;
+    font-size:15px;
+    color:#0f172a;
 }
 
 .btn{
     background:#16a34a;
     color:white;
-    padding:12px 18px;
-    border-radius:8px;
+    padding:8px 12px;
+    border-radius:7px;
     text-decoration:none;
+    font-size:12px;
+    font-weight:700;
+    white-space:nowrap;
 }
 
 table{
     width:100%;
-    border-collapse:collapse;
+    border-collapse:separate;
+    border-spacing:0;
+    table-layout:fixed;
 }
 
 table th{
-    background:#1d3557;
-    color:white;
-    padding:14px;
+    background:#0f172a;
+    color:#f8fafc;
+    padding:9px 8px;
     text-align:left;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:0;
+    border-bottom:1px solid #e5e7eb;
 }
 
 table td{
-    padding:14px;
-    border-bottom:1px solid #eee;
+    padding:9px 8px;
+    border-bottom:1px solid #eef2f7;
+    font-size:12px;
+    color:#111827;
+    vertical-align:middle;
+    overflow-wrap:anywhere;
+}
+
+table tr:hover td{
+    background:#f8fafc;
 }
 
 .badge{
-    padding:6px 10px;
-    border-radius:20px;
+    padding:4px 8px;
+    border-radius:999px;
     color:white;
-    font-size:12px;
+    font-size:10px;
+    font-weight:800;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
 }
 
 .active{
@@ -91,12 +121,13 @@ table td{
 
 .action-btn{
     color:white;
-    padding:7px 10px;
+    padding:6px 8px;
     border-radius:6px;
     text-decoration:none;
-    font-size:12px;
-    margin-right:5px;
+    font-size:10px;
+    margin:2px;
     display:inline-block;
+    font-weight:800;
 }
 
 .edit-btn{
@@ -105,6 +136,16 @@ table td{
 
 .delete-btn{
     background:#dc2626;
+}
+
+.actions-cell{
+    white-space:normal;
+    min-width:92px;
+}
+
+@media(max-width:900px){
+    .top-actions{align-items:flex-start;flex-direction:column;}
+    table{min-width:760px;}
 }
 
 </style>
@@ -171,7 +212,7 @@ table td{
 
                     <td><?php echo $sozlesme['bitis_tarihi']; ?></td>
 
-                    <td>
+                    <td class="actions-cell">
                         ₺<?php echo number_format($sozlesme['sozlesme_tutari'],2,',','.'); ?>
                     </td>
 
