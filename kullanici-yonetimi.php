@@ -111,6 +111,11 @@ if($_SERVER['REQUEST_METHOD'] === 'POST'){
             $password = post_value('password');
             $canView = isset($_POST['can_view']) ? 1 : 0;
             $canEdit = isset($_POST['can_edit']) ? 1 : 0;
+            $viewPages = selected_pages($_POST['allowed_pages'] ?? [], $pageOptions);
+            $editGroups = selected_pages($_POST['editable_groups'] ?? [], $pageOptions);
+            $editablePages = expand_edit_pages($editGroups, $writePageMap);
+            $allowedPagesJson = empty($viewPages) ? null : json_encode($viewPages, JSON_UNESCAPED_UNICODE);
+            $editablePagesJson = empty($editablePages) ? null : json_encode($editablePages, JSON_UNESCAPED_UNICODE);
 
             if($name === '' || $email === ''){
                 throw new Exception('Ad soyad ve e-posta zorunludur.');
@@ -126,25 +131,27 @@ if($_SERVER['REQUEST_METHOD'] === 'POST'){
                 }
 
                 if($password !== ''){
-                    $query = $db->prepare("UPDATE users SET name = ?, email = ?, password = ?, can_view = ?, can_edit = ? WHERE id = ?");
-                    $query->execute([$name, $email, $password, $canView, $canEdit, $id]);
+                    $query = $db->prepare("UPDATE users SET name = ?, email = ?, password = ?, can_view = ?, can_edit = ?, allowed_pages = ?, editable_pages = ? WHERE id = ?");
+                    $query->execute([$name, $email, $password, $canView, $canEdit, $allowedPagesJson, $editablePagesJson, $id]);
                 }else{
-                    $query = $db->prepare("UPDATE users SET name = ?, email = ?, can_view = ?, can_edit = ? WHERE id = ?");
-                    $query->execute([$name, $email, $canView, $canEdit, $id]);
+                    $query = $db->prepare("UPDATE users SET name = ?, email = ?, can_view = ?, can_edit = ?, allowed_pages = ?, editable_pages = ? WHERE id = ?");
+                    $query->execute([$name, $email, $canView, $canEdit, $allowedPagesJson, $editablePagesJson, $id]);
                 }
 
                 if((int)$_SESSION['user_id'] === $id){
                     $_SESSION['user_name'] = $name;
                     $_SESSION['can_view'] = $canView;
                     $_SESSION['can_edit'] = $canEdit;
+                    $_SESSION['allowed_pages'] = (string)$allowedPagesJson;
+                    $_SESSION['editable_pages'] = (string)$editablePagesJson;
                 }
             }else{
                 if($password === ''){
                     throw new Exception('Yeni kullanıcı için şifre zorunludur.');
                 }
 
-                $query = $db->prepare("INSERT INTO users (name, email, password, can_view, can_edit) VALUES (?, ?, ?, ?, ?)");
-                $query->execute([$name, $email, $password, $canView, $canEdit]);
+                $query = $db->prepare("INSERT INTO users (name, email, password, can_view, can_edit, allowed_pages, editable_pages) VALUES (?, ?, ?, ?, ?, ?, ?)");
+                $query->execute([$name, $email, $password, $canView, $canEdit, $allowedPagesJson, $editablePagesJson]);
             }
 
             redirect_users();
@@ -181,12 +188,16 @@ if($_SERVER['REQUEST_METHOD'] === 'POST'){
 
 $editId = (int)($_GET['edit'] ?? 0);
 if($editId > 0){
-    $query = $db->prepare("SELECT id, name, email, can_view, can_edit FROM users WHERE id = ?");
+    $query = $db->prepare("SELECT id, name, email, can_view, can_edit, allowed_pages, editable_pages FROM users WHERE id = ?");
     $query->execute([$editId]);
     $editing = $query->fetch(PDO::FETCH_ASSOC) ?: null;
 }
 
-$users = $db->query("SELECT id, name, email, can_view, can_edit, created_at FROM users ORDER BY id DESC")->fetchAll(PDO::FETCH_ASSOC);
+$users = $db->query("SELECT id, name, email, can_view, can_edit, allowed_pages, editable_pages, created_at FROM users ORDER BY id DESC")->fetchAll(PDO::FETCH_ASSOC);
+$editingAllowedPages = json_decode((string)($editing['allowed_pages'] ?? ''), true);
+$editingEditablePages = json_decode((string)($editing['editable_pages'] ?? ''), true);
+$editingAllowedPages = is_array($editingAllowedPages) ? $editingAllowedPages : [];
+$editingEditablePages = is_array($editingEditablePages) ? $editingEditablePages : [];
 
 ?>
 
@@ -270,6 +281,21 @@ $users = $db->query("SELECT id, name, email, can_view, can_edit, created_at FROM
 .permission-box input{
     width:16px;
     height:16px;
+}
+
+.page-permissions{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+}
+
+.page-permissions label{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    font-size:12px;
+    margin:0;
+    font-weight:600;
 }
 
 .permission-badge{
