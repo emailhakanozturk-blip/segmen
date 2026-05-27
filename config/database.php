@@ -22,10 +22,10 @@ if ($isLocalhost) {
     define('DB_USER', 'root');
     define('DB_PASS', '');
 } else {
-    define('DB_HOST', db_env('DB_HOST', 'localhost'));
-    define('DB_NAME', db_env('DB_NAME', 'yerelsof_segmen'));
-    define('DB_USER', db_env('DB_USER', 'yerelsof_segmen_admin'));
-    define('DB_PASS', db_env('DB_PASS', 'BURAYA_CANLI_VERITABANI_SIFRESI'));
+    define('DB_HOST', 'localhost');
+    define('DB_NAME', 'yerelsof_segmen');
+    define('DB_USER', 'yerelsof_segmen2');
+    define('DB_PASS', 'Segmen2026!');
 }
 
 try {
@@ -134,66 +134,6 @@ try {
             AND birim_fiyat > 0
             AND motorin_baz_fiyati > 0
         ");
-
-    }
-
-    if (session_status() === PHP_SESSION_ACTIVE && isset($_SESSION['user_id']) && $usersTable) {
-        $permissionQuery = $db->prepare("SELECT can_view, can_edit, allowed_pages, editable_pages FROM users WHERE id = ?");
-        $permissionQuery->execute([(int)$_SESSION['user_id']]);
-        $permissionUser = $permissionQuery->fetch(PDO::FETCH_ASSOC);
-
-        if ($permissionUser) {
-            $_SESSION['can_view'] = (int)($permissionUser['can_view'] ?? 1);
-            $_SESSION['can_edit'] = (int)($permissionUser['can_edit'] ?? 1);
-            $_SESSION['allowed_pages'] = (string)($permissionUser['allowed_pages'] ?? '');
-            $_SESSION['editable_pages'] = (string)($permissionUser['editable_pages'] ?? '');
-
-            if ((int)$_SESSION['can_view'] !== 1) {
-                session_destroy();
-                header("Location: login.php");
-                exit;
-            }
-
-            $currentScript = basename((string)($_SERVER['PHP_SELF'] ?? ''));
-            $allowedPages = json_decode((string)($permissionUser['allowed_pages'] ?? ''), true);
-            $editablePages = json_decode((string)($permissionUser['editable_pages'] ?? ''), true);
-            $allowedPages = is_array($allowedPages) ? $allowedPages : [];
-            $editablePages = is_array($editablePages) ? $editablePages : [];
-
-            if (!empty($allowedPages) && !in_array($currentScript, $allowedPages, true) && !in_array($currentScript, ['dashboard.php', 'index.php', 'logout.php', 'login.php'], true)) {
-                http_response_code(403);
-                die('Bu sayfayı görüntüleme yetkiniz yok.');
-            }
-
-            $writePages = [
-                'cari-ekle.php',
-                'cari-duzenle.php',
-                'cari-sil.php',
-                'excel-eslestir.php',
-                'excel-yukle.php',
-                'hakedis-ekle.php',
-                'hakedis-olustur.php',
-                'hakedis-onayla.php',
-                'hakedis-sil.php',
-                'motorin-yukle.php',
-                'nokta-yonetimi.php',
-                'noktalar.php',
-                'sozlesme-ekle.php',
-                'sozlesme-duzenle.php',
-                'sozlesme-sil.php',
-                'tarife-ekle.php',
-                'tarife-yukle.php',
-                'tarifeler.php',
-            ];
-
-            if (
-                (int)$_SESSION['can_edit'] !== 1 &&
-                ($_SERVER['REQUEST_METHOD'] === 'POST' || in_array($currentScript, $writePages, true))
-            ) {
-                http_response_code(403);
-                die('Bu işlem için düzeltme yetkiniz yok.');
-            }
-        }
     }
 
 } catch (PDOException $e) {
