@@ -60,16 +60,19 @@ $ozet = $satirQuery->fetch(PDO::FETCH_ASSOC);
 
 $sevkiyatQuery = $db->prepare("
     SELECT
-        tasima_tarihi,
-        irsaliye_no,
         cikis_noktasi,
-        varis_noktasi
+        varis_noktasi,
+        COUNT(*) AS sefer_sayisi,
+        COUNT(DISTINCT REGEXP_REPLACE(irsaliye_no, '-[0-9]+$', '')) AS irsaliye_sayisi,
+        MIN(tasima_tarihi) AS ilk_tarih,
+        MAX(tasima_tarihi) AS son_tarih
     FROM hakedis_satirlari
     WHERE hakedis_id = ?
-    ORDER BY tasima_tarihi ASC, id ASC
+    GROUP BY cikis_noktasi, varis_noktasi
+    ORDER BY cikis_noktasi ASC, varis_noktasi ASC
 ");
 $sevkiyatQuery->execute([$hakedisId]);
-$sevkiyatlar = $sevkiyatQuery->fetchAll(PDO::FETCH_ASSOC);
+$sevkiyatOzetleri = $sevkiyatQuery->fetchAll(PDO::FETCH_ASSOC);
 
 $donemBaslangic = $ozet['ilk_sevkiyat_tarihi'] ?: $hakedis['baslangic_tarihi'];
 $donemBitis = $ozet['son_sevkiyat_tarihi'] ?: $hakedis['bitis_tarihi'];
@@ -188,6 +191,11 @@ body{
     text-align:left;
 }
 
+.pivot-total td{
+    background:#f8fafc;
+    font-weight:700;
+}
+
 .section-title{
     font-weight:700;
     margin:18px 0 8px;
@@ -291,27 +299,38 @@ body{
                 </tr>
             </table>
 
-            <div class="section-title">Sevkiyat Detayı</div>
+            <div class="section-title">Sevkiyat Özeti</div>
             <table class="shipment-table">
                 <thead>
                     <tr>
                         <th>No</th>
-                        <th>Tarih</th>
-                        <th>İrsaliye</th>
                         <th>Yükleme Noktası</th>
                         <th>Boşaltma Noktası</th>
+                        <th>Sefer Sayısı</th>
+                        <th>İrsaliye Adedi</th>
+                        <th>İlk Sevkiyat</th>
+                        <th>Son Sevkiyat</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <?php foreach($sevkiyatlar as $index => $satir): ?>
+                    <?php foreach($sevkiyatOzetleri as $index => $satir): ?>
                         <tr>
                             <td><?php echo $index + 1; ?></td>
-                            <td><?php echo tarih($satir['tasima_tarihi']); ?></td>
-                            <td><?php echo htmlspecialchars(preg_replace('/-\d+$/', '', $satir['irsaliye_no'])); ?></td>
                             <td><?php echo htmlspecialchars($satir['cikis_noktasi']); ?></td>
                             <td><?php echo htmlspecialchars($satir['varis_noktasi']); ?></td>
+                            <td><?php echo (int)$satir['sefer_sayisi']; ?></td>
+                            <td><?php echo (int)$satir['irsaliye_sayisi']; ?></td>
+                            <td><?php echo tarih($satir['ilk_tarih']); ?></td>
+                            <td><?php echo tarih($satir['son_tarih']); ?></td>
                         </tr>
                     <?php endforeach; ?>
+                    <tr class="pivot-total">
+                        <td colspan="3">TOPLAM</td>
+                        <td><?php echo (int)$ozet['sevkiyat_sayisi']; ?></td>
+                        <td><?php echo array_sum(array_map(fn($row) => (int)$row['irsaliye_sayisi'], $sevkiyatOzetleri)); ?></td>
+                        <td><?php echo tarih($donemBaslangic); ?></td>
+                        <td><?php echo tarih($donemBitis); ?></td>
+                    </tr>
                 </tbody>
             </table>
 

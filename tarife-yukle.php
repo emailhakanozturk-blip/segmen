@@ -1,4 +1,6 @@
 <?php
+header('Location: nokta-yonetimi.php?revizyon_yili=' . date('Y') . '&revize=1');
+exit;
 
 session_start();
 

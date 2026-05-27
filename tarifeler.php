@@ -1,4 +1,6 @@
 <?php
+header('Location: nokta-yonetimi.php?revizyon_yili=' . date('Y') . '&revize=1');
+exit;
 
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
@@ -62,7 +64,7 @@ function tarifeHesapla(array $row): array
     }
     $gunlukMotorin = (float)($row['motorin_fiyati'] ?? 0);
     $farkTutar = $gunlukMotorin - $bazMotorin;
-    $farkYuzde = $bazMotorin > 0 ? ($farkTutar / $bazMotorin) * 100 : 0;
+    $farkYuzde = $bazMotorin > 0 ? round(($farkTutar / $bazMotorin) * 100, 2) : 0;
     $zamIndirim = abs($farkYuzde) >= 7 ? (($bazBirim * 40) / 100) * ($farkYuzde / 100) : 0;
     $onerilenBirim = $bazBirim + $zamIndirim;
     $guncellenecek = $aktif && (int)($row['motorin_revize'] ?? 1) === 1 && abs($farkYuzde) >= 7;
@@ -127,7 +129,7 @@ if(isset($_POST['motorin_guncelle'])){
                 continue;
             }
 
-            $farkYuzde = (($gunlukMotorin - $motorinBaz) / $motorinBaz) * 100;
+            $farkYuzde = round((($gunlukMotorin - $motorinBaz) / $motorinBaz) * 100, 2);
 
             if(abs($farkYuzde) < 7){
                 $degismeyen++;

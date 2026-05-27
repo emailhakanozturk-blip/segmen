@@ -13,8 +13,6 @@
 
         <a href="sozlesmeler.php">Sözleşmeler</a>
 
-        <a href="tarifeler.php">Tarifeler</a>
-
         <a href="nokta-yonetimi.php">
             Nokta Yönetimi
         </a>
