@@ -505,6 +505,34 @@ td:last-child{
                     <div class="form-hint">Görüntüle kapalıysa kullanıcı giriş yapamaz.</div>
                 </div>
 
+                <div class="form-group">
+                    <label>Görüntüleyebileceği Sayfalar</label>
+                    <div class="permission-box page-permissions">
+                        <?php foreach($pageOptions as $page => $label): ?>
+                            <label>
+                                <input type="checkbox" name="allowed_pages[]" value="<?php echo htmlspecialchars($page); ?>" <?php echo empty($editingAllowedPages) || in_array($page, $editingAllowedPages, true) ? 'checked' : ''; ?>>
+                                <?php echo htmlspecialchars($label); ?>
+                            </label>
+                        <?php endforeach; ?>
+                    </div>
+                    <div class="form-hint">Seçili sayfaları görüntüler. Hepsi seçiliyse tüm sayfalar açıktır.</div>
+                </div>
+
+                <div class="form-group">
+                    <label>İşlem Yapabileceği Alanlar</label>
+                    <div class="permission-box page-permissions">
+                        <?php foreach($pageOptions as $page => $label): ?>
+                            <?php if($page === 'dashboard.php' || $page === 'raporlar.php'){ continue; } ?>
+                            <?php $groupPages = $writePageMap[$page] ?? [$page]; ?>
+                            <label>
+                                <input type="checkbox" name="editable_groups[]" value="<?php echo htmlspecialchars($page); ?>" <?php echo count(array_intersect($groupPages, $editingEditablePages)) > 0 ? 'checked' : ''; ?>>
+                                <?php echo htmlspecialchars($label); ?>
+                            </label>
+                        <?php endforeach; ?>
+                    </div>
+                    <div class="form-hint">Genel düzeltme kapalı olsa bile seçili alanlarda ekle, düzelt ve sil çalışır.</div>
+                </div>
+
                 <div class="actions">
                     <?php if($canEditUsers): ?>
                         <button type="submit" class="btn"><?php echo $editing ? 'Güncelle' : 'Kaydet'; ?></button>

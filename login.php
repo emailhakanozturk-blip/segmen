@@ -23,6 +23,8 @@ if($_SERVER['REQUEST_METHOD'] == 'POST'){
         $_SESSION['user_name'] = $user['name'];
         $_SESSION['can_view'] = (int)($user['can_view'] ?? 1);
         $_SESSION['can_edit'] = (int)($user['can_edit'] ?? 1);
+        $_SESSION['allowed_pages'] = (string)($user['allowed_pages'] ?? '');
+        $_SESSION['editable_pages'] = (string)($user['editable_pages'] ?? '');
 
         header("Location: dashboard.php");
         exit;

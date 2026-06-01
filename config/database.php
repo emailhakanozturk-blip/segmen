@@ -136,6 +136,51 @@ try {
         ");
     }
 
+    if (session_status() === PHP_SESSION_ACTIVE && isset($_SESSION['user_id'])) {
+        $currentScript = basename((string)($_SERVER['SCRIPT_NAME'] ?? ''));
+
+        if ($currentScript !== 'login.php' && $currentScript !== 'logout.php') {
+            $permissionQuery = $db->prepare("SELECT can_view, can_edit, allowed_pages, editable_pages FROM users WHERE id = ?");
+            $permissionQuery->execute([(int)$_SESSION['user_id']]);
+            $permissionUser = $permissionQuery->fetch(PDO::FETCH_ASSOC);
+
+            if (!$permissionUser || (int)($permissionUser['can_view'] ?? 0) !== 1) {
+                http_response_code(403);
+                die('Bu sayfayı görüntüleme yetkiniz yok.');
+            }
+
+            $_SESSION['can_view'] = (int)($permissionUser['can_view'] ?? 1);
+            $_SESSION['can_edit'] = (int)($permissionUser['can_edit'] ?? 1);
+            $_SESSION['allowed_pages'] = (string)($permissionUser['allowed_pages'] ?? '');
+            $_SESSION['editable_pages'] = (string)($permissionUser['editable_pages'] ?? '');
+
+            $allowedPages = json_decode((string)($permissionUser['allowed_pages'] ?? ''), true);
+            $editablePages = json_decode((string)($permissionUser['editable_pages'] ?? ''), true);
+            $allowedPages = is_array($allowedPages) ? $allowedPages : [];
+            $editablePages = is_array($editablePages) ? $editablePages : [];
+
+            $alwaysAllowedPages = ['dashboard.php', 'index.php', 'login.php', 'logout.php'];
+            if (!empty($allowedPages) && !in_array($currentScript, $allowedPages, true) && !in_array($currentScript, $alwaysAllowedPages, true)) {
+                http_response_code(403);
+                die('Bu sayfayı görüntüleme yetkiniz yok.');
+            }
+
+            $destructiveGetPages = [
+                'cari-sil.php',
+                'sozlesme-sil.php',
+                'hakedis-sil.php',
+                'hakedis-onayla.php',
+            ];
+            $canWriteCurrentPage = (int)$_SESSION['can_edit'] === 1 || in_array($currentScript, $editablePages, true);
+            $isWriteRequest = ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' || in_array($currentScript, $destructiveGetPages, true);
+
+            if (!$canWriteCurrentPage && $isWriteRequest) {
+                http_response_code(403);
+                die('Bu işlem için düzeltme yetkiniz yok.');
+            }
+        }
+    }
+
 } catch (PDOException $e) {
     die("Veritabanı bağlantı hatası: " . $e->getMessage());
 }
