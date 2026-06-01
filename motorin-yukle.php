@@ -9,6 +9,24 @@ require_once __DIR__ . '/config/database.php';
 
 if(file_exists(__DIR__ . '/vendor/autoload.php')){
     require_once __DIR__ . '/vendor/autoload.php';
+}else{
+    if(!interface_exists('Psr\\SimpleCache\\CacheInterface')){
+        eval('namespace Psr\\SimpleCache; interface CacheInterface { public function get(string $key, mixed $default = null): mixed; public function set(string $key, mixed $value, null|int|\\DateInterval $ttl = null): bool; public function delete(string $key): bool; public function clear(): bool; public function getMultiple(iterable $keys, mixed $default = null): iterable; public function setMultiple(iterable $values, null|int|\\DateInterval $ttl = null): bool; public function deleteMultiple(iterable $keys): bool; public function has(string $key): bool; }');
+    }
+
+    spl_autoload_register(function($class){
+        $prefix = 'PhpOffice\\PhpSpreadsheet\\';
+        if(strpos($class, $prefix) !== 0){
+            return;
+        }
+
+        $relative = substr($class, strlen($prefix));
+        $file = __DIR__ . '/vendor/PhpSpreadsheet-5.7.0/src/PhpSpreadsheet/' . str_replace('\\', '/', $relative) . '.php';
+
+        if(file_exists($file)){
+            require_once $file;
+        }
+    });
 }
 
 use PhpOffice\PhpSpreadsheet\IOFactory;
@@ -120,11 +138,16 @@ if(isset($_FILES['csv'])){
     /* XLSX */
     if(in_array($ext, ['xlsx','xls'])){
 
-        $spreadsheet = IOFactory::load($tmp);
+        if(!class_exists('ZipArchive')){
+            $message = 'Excel okumak için PHP zip eklentisi aktif olmalıdır. Apache yeniden başlatıldıktan sonra tekrar deneyin.';
+            $satirlar = [];
+        }else{
+            $spreadsheet = IOFactory::load($tmp);
 
-        $sheet = $spreadsheet->getActiveSheet();
+            $sheet = $spreadsheet->getActiveSheet();
 
-        $satirlar = $sheet->toArray();
+            $satirlar = $sheet->toArray();
+        }
 
     }else{
 
