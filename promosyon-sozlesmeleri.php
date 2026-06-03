@@ -88,7 +88,7 @@ try {
             ");
             $insert->execute([$cariId, $baslangic, $bitis, $urun, $adet, $aciklama, $durum]);
 
-            $message = 'Promosyon sözleşmesi oluşturuldu.';
+            $message = 'Sponsorluk sözleşmesi oluşturuldu.';
         }
 
         if($action === 'cikis_ekle'){
@@ -112,7 +112,7 @@ try {
             $sozlesme = $sozlesmeQuery->fetch(PDO::FETCH_ASSOC);
 
             if(!$sozlesme){
-                throw new Exception('Promosyon sözleşmesi bulunamadı.');
+                throw new Exception('Sponsorluk sözleşmesi bulunamadı.');
             }
 
             $kalan = (int)$sozlesme['sozlesme_adedi'] - (int)$sozlesme['toplam_cikis'];
@@ -128,7 +128,7 @@ try {
             ");
             $insert->execute([$sozlesmeId, $cikisTarihi, $cikisAdedi, $aciklama]);
 
-            $message = 'Promosyon çıkışı kaydedildi.';
+            $message = 'Sponsorluk çıkışı kaydedildi.';
         }
     }
 } catch (Exception $e) {
@@ -139,6 +139,14 @@ $cariler = $db->query("
     SELECT id, firma_adi
     FROM cariler
     ORDER BY firma_adi ASC
+")->fetchAll(PDO::FETCH_ASSOC);
+
+$urunTanimlari = $db->query("
+    SELECT tanim_adi, kategori
+    FROM tanimlar
+    WHERE durum = 1
+    AND kategori IN ('Ürün', 'Malzeme', 'Palet')
+    ORDER BY kategori ASC, tanim_adi ASC
 ")->fetchAll(PDO::FETCH_ASSOC);
 
 $sozlesmeler = $db->query("
@@ -164,7 +172,7 @@ $aktifSozlesmeler = array_filter($sozlesmeler, function($row){
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
-<title>Promosyon Sözleşmeleri</title>
+<title>Sponsorluk Sözleşmeleri</title>
 <link rel="stylesheet" href="assets/css/style.css">
 
 <style>
@@ -295,8 +303,8 @@ td{
 
 <div class="main">
     <div class="topbar">
-        <h2>Promosyon Sözleşmeleri</h2>
-        <p>Carilere bağlı promosyon sözleşmeleri ve ürün çıkış takip ekranı</p>
+        <h2>Sponsorluk Sözleşmeleri</h2>
+        <p>Carilere bağlı sponsorluk sözleşmeleri ve ürün çıkış takip ekranı</p>
     </div>
 
     <?php if($message): ?>
@@ -309,7 +317,7 @@ td{
 
     <div class="grid">
         <div class="panel">
-            <h3>Promosyon Sözleşmesi Oluştur</h3>
+            <h3>Sponsorluk Sözleşmesi Oluştur</h3>
 
             <form method="POST">
                 <input type="hidden" name="action" value="sozlesme_ekle">
@@ -340,7 +348,14 @@ td{
                 <div class="form-row">
                     <div class="form-group">
                         <label>Ürün tanımı</label>
-                        <input type="text" name="urun_tanimi" required>
+                        <select name="urun_tanimi" required>
+                            <option value="">Ürün / malzeme seçiniz</option>
+                            <?php foreach($urunTanimlari as $urun): ?>
+                                <option value="<?php echo htmlspecialchars((string)$urun['tanim_adi']); ?>">
+                                    <?php echo htmlspecialchars((string)$urun['kategori'] . ' - ' . (string)$urun['tanim_adi']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
                     <div class="form-group">
                         <label>Sözleşme adedi</label>
@@ -367,7 +382,7 @@ td{
         </div>
 
         <div class="panel">
-            <h3>Promosyon Çıkışı Ekle</h3>
+            <h3>Sponsorluk Çıkışı Ekle</h3>
 
             <form method="POST">
                 <input type="hidden" name="action" value="cikis_ekle">
@@ -445,7 +460,7 @@ td{
 
                 <?php if(empty($sozlesmeler)): ?>
                     <tr>
-                        <td colspan="8">Henüz promosyon sözleşmesi yok.</td>
+                        <td colspan="8">Henüz sponsorluk sözleşmesi yok.</td>
                     </tr>
                 <?php endif; ?>
             </tbody>

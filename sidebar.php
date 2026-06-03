@@ -13,7 +13,7 @@
 
         <a href="sozlesmeler.php">Sözleşmeler</a>
 
-        <a href="promosyon-sozlesmeleri.php">Promosyon Sözleşmeleri</a>
+        <a href="promosyon-sozlesmeleri.php">Sponsorluk Sözleşmeleri</a>
 
         <a href="tanimlar.php">Tanımlar</a>
 
