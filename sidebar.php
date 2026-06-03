@@ -15,6 +15,8 @@
 
         <a href="promosyon-sozlesmeleri.php">Promosyon Sözleşmeleri</a>
 
+        <a href="tanimlar.php">Tanımlar</a>
+
         <a href="nokta-yonetimi.php">
             Nokta Yönetimi
         </a>
