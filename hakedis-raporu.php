@@ -12,7 +12,7 @@ if(!isset($_SESSION['user_id'])){
 $hakedisId = (int)($_GET['hakedis_id'] ?? 0);
 
 if(!$hakedisId){
-    die('HakediÅŸ bulunamadÄ±.');
+    die('Hakediş bulunamadı.');
 }
 
 function para($value){
@@ -40,7 +40,7 @@ $query->execute([$hakedisId]);
 $hakedis = $query->fetch(PDO::FETCH_ASSOC);
 
 if(!$hakedis){
-    die('HakediÅŸ bulunamadÄ±.');
+    die('Hakediş bulunamadı.');
 }
 
 $previousQuery = $db->prepare("
@@ -81,7 +81,7 @@ $hakedisNo = ((int)$onceki['onceki_adet']) + 1;
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
-<title>HakediÅŸ Raporu</title>
+<title>Hakediş Raporu</title>
 <link rel="stylesheet" href="assets/css/style.css">
 
 <style>
@@ -299,50 +299,50 @@ body{
     <div class="print-page-line" aria-hidden="true"></div>
     <div class="report-shell">
         <div class="topbar">
-            <h2>HakediÅŸ Raporu</h2>
+            <h2>Hakediş Raporu</h2>
             <p><?php echo htmlspecialchars($hakedis['firma_adi']); ?> - <?php echo htmlspecialchars($hakedis['donem']); ?></p>
         </div>
 
         <div class="actions">
-            <a class="btn" href="raporlar.php">Raporlara DÃ¶n</a>
-            <button class="btn" type="button" onclick="window.print()">YazdÄ±r</button>
+            <a class="btn" href="raporlar.php">Raporlara Dön</a>
+            <button class="btn" type="button" onclick="window.print()">Yazdır</button>
         </div>
 
         <div class="sheet">
-            <h1>HAKEDÄ°Å RAPORU</h1>
+            <h1>HAKEDİŞ RAPORU</h1>
             <table class="report-table">
                 <tr>
                     <td colspan="2" class="company">
-                        SEÄMEN SU MADENCÄ°LÄ°K MAKÄ°NE GIDA Ä°NÅAAT TURÄ°ZM Ä°THALAT<br>
-                        Ä°HRACAT SANAYÄ° VE TÄ°CARET ANONÄ°M ÅÄ°RKETÄ°
+                        SEĞMEN SU MADENCİLİK MAKİNE GIDA İNŞAAT TURİZM İTHALAT<br>
+                        İHRACAT SANAYİ VE TİCARET ANONİM ŞİRKETİ
                     </td>
-                    <td class="center amount">HakediÅŸ No : <?php echo $hakedisNo; ?></td>
+                    <td class="center amount">Hakediş No : <?php echo $hakedisNo; ?></td>
                 </tr>
                 <tr>
                     <td colspan="3" class="center">
-                        <?php echo tarih($hakedis['baslangic_tarihi']); ?>-<?php echo tarih($hakedis['bitis_tarihi']); ?> TARÄ°HÄ°NE KADAR YAPILAN HÄ°ZMETÄ°N
+                        <?php echo tarih($hakedis['baslangic_tarihi']); ?>-<?php echo tarih($hakedis['bitis_tarihi']); ?> TARİHİNE KADAR YAPILAN HİZMETİN
                     </td>
                 </tr>
                 <tr class="meta-row">
-                    <td colspan="2">SÃ¶zleÅŸme No: <?php echo htmlspecialchars($hakedis['sozlesme_no']); ?></td>
-                    <td class="right">SÃ¶zleÅŸme TutarÄ±: <?php echo para($hakedis['sozlesme_tutari']); ?></td>
+                    <td colspan="2">Sözleşme No: <?php echo htmlspecialchars($hakedis['sozlesme_no']); ?></td>
+                    <td class="right">Sözleşme Tutarı: <?php echo para($hakedis['sozlesme_tutari']); ?></td>
                 </tr>
                 <tr class="meta-row">
-                    <td colspan="2">KÃ¼mÃ¼latif GerÃ§ekleÅŸen</td>
+                    <td colspan="2">Kümülatif Gerçekleşen</td>
                     <td class="right"><?php echo para($cumulativeTotal); ?></td>
                 </tr>
                 <tr class="meta-row">
-                    <td colspan="2">Kalan SÃ¶zleÅŸme TutarÄ±</td>
+                    <td colspan="2">Kalan Sözleşme Tutarı</td>
                     <td class="right"><?php echo para($kalanSozlesme); ?></td>
                 </tr>
                 <tr>
                     <td class="code">A</td>
-                    <td>SÃ¶zleÅŸme FiyatlarÄ± Ä°le YapÄ±lan Hizmet TutarÄ±</td>
+                    <td>Sözleşme Fiyatları İle Yapılan Hizmet Tutarı</td>
                     <td class="right"><?php echo para($cumulativeTotal); ?></td>
                 </tr>
                 <tr>
                     <td class="code">B</td>
-                    <td>Fiyat FarkÄ± TutarÄ±</td>
+                    <td>Fiyat Farkı Tutarı</td>
                     <td class="right"><?php echo para($priceDiff); ?></td>
                 </tr>
                 <tr>
@@ -353,12 +353,12 @@ body{
                 <tr class="spacer"><td colspan="3"></td></tr>
                 <tr>
                     <td class="code">D</td>
-                    <td>Bir Ã–nceki HakediÅŸin Toplam TutarÄ±</td>
+                    <td>Bir Önceki Hakedişin Toplam Tutarı</td>
                     <td class="right"><?php echo para($previousTotal); ?></td>
                 </tr>
                 <tr>
                     <td class="code">E</td>
-                    <td>Bu HakediÅŸin TutarÄ± ( C - D )</td>
+                    <td>Bu Hakedişin Tutarı ( C - D )</td>
                     <td class="right bold"><?php echo para($currentBase); ?></td>
                 </tr>
                 <tr>
@@ -368,11 +368,11 @@ body{
                 </tr>
                 <tr>
                     <td class="code">G</td>
-                    <td class="bold">Tahakkuk TutarÄ±</td>
+                    <td class="bold">Tahakkuk Tutarı</td>
                     <td class="right bold"><?php echo para($tahakkuk); ?></td>
                 </tr>
                 <tr>
-                    <td class="code vertical" rowspan="8">KESÄ°NTÄ°LER VE MAHSUPLAR</td>
+                    <td class="code vertical" rowspan="8">KESİNTİLER VE MAHSUPLAR</td>
                     <td>a) Gelir / Kurumlar Vergisi ( E x % ... )</td>
                     <td class="right"></td>
                 </tr>
@@ -381,7 +381,7 @@ body{
                     <td class="right"></td>
                 </tr>
                 <tr>
-                    <td>c) KDV TevkifatÄ± ( F x ... )</td>
+                    <td>c) KDV Tevkifatı ( F x ... )</td>
                     <td class="right"><?php echo para($kdvTevkifat); ?></td>
                 </tr>
                 <tr>
@@ -389,11 +389,11 @@ body{
                     <td class="right"></td>
                 </tr>
                 <tr>
-                    <td>e) Ä°dare Makinesi KiralarÄ±</td>
+                    <td>e) İdare Makinesi Kiraları</td>
                     <td class="right"></td>
                 </tr>
                 <tr>
-                    <td>f) Gecikme CezasÄ±</td>
+                    <td>f) Gecikme Cezası</td>
                     <td class="right"></td>
                 </tr>
                 <tr>
@@ -406,24 +406,24 @@ body{
                 </tr>
                 <tr>
                     <td class="code">H</td>
-                    <td class="bold">Kesintiler ve Mahsuplar ToplamÄ±</td>
+                    <td class="bold">Kesintiler ve Mahsuplar Toplamı</td>
                     <td class="right"><?php echo para($kesintiToplam); ?></td>
                 </tr>
                 <tr>
                     <td></td>
-                    <td class="bold">YÃ¼kleniciye Ã–denecek Tutar ( G - H )</td>
+                    <td class="bold">Yükleniciye Ödenecek Tutar ( G - H )</td>
                     <td class="right bold"><?php echo para($odenecek); ?></td>
                 </tr>
             </table>
 
             <div class="signature">
                 <div>
-                    <strong>YÃ¼klenici</strong><br>
+                    <strong>Yüklenici</strong><br>
                     <?php echo htmlspecialchars($hakedis['firma_adi']); ?><br>
                     <?php echo htmlspecialchars($hakedis['yetkili'] ?: ''); ?>
                 </div>
                 <div>
-                    <strong>DÃ¼zenleyen</strong><br>
+                    <strong>Düzenleyen</strong><br>
                     ................................
                 </div>
             </div>
