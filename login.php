@@ -26,6 +26,10 @@ if($_SERVER['REQUEST_METHOD'] == 'POST'){
         $_SESSION['allowed_pages'] = (string)($user['allowed_pages'] ?? '');
         $_SESSION['editable_pages'] = (string)($user['editable_pages'] ?? '');
 
+        if(function_exists('segmen_kullanici_logla')){
+            segmen_kullanici_logla($db, 'Giriş yaptı', 'Sisteme giriş yaptı', (int)$user['id'], (string)$user['name']);
+        }
+
         header("Location: dashboard.php");
         exit;
 

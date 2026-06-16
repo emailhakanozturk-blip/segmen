@@ -17,17 +17,17 @@
 
         <a href="tanimlar.php">Tanımlar</a>
 
-        <a href="nokta-yonetimi.php">
-            Nokta Yönetimi
-        </a>
+        <a href="nokta-yonetimi.php">Nokta Yönetimi</a>
 
         <a href="hakedisler.php">Hakedişler</a>
 
-        <a href="motorin-yukle.php">
-            Motorin Fiyatları
-        </a>
+        <a href="motorin-yukle.php">Motorin Fiyatları</a>
 
         <a href="raporlar.php">Raporlar</a>
+
+        <a href="demirbas-takip.php">Demirbaş Takip</a>
+
+        <a href="log-kayitlari.php">Log Kayıtları</a>
 
         <a href="kullanici-yonetimi.php">Ayarlar</a>
 

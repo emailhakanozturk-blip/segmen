@@ -42,6 +42,45 @@ try {
 
     $db->exec("SET NAMES utf8mb4 COLLATE utf8mb4_turkish_ci");
 
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS kullanici_loglari (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NULL,
+            user_name VARCHAR(180) NULL,
+            islem VARCHAR(120) NOT NULL,
+            sayfa VARCHAR(180) NULL,
+            detay TEXT NULL,
+            ip_adresi VARCHAR(80) NULL,
+            user_agent VARCHAR(255) NULL,
+            created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_user_log_date (created_at),
+            INDEX idx_user_log_user (user_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci
+    ");
+
+    if (!function_exists('segmen_kullanici_logla')) {
+        function segmen_kullanici_logla(PDO $db, string $islem, string $detay = '', ?int $userId = null, ?string $userName = null): void
+        {
+            try {
+                $query = $db->prepare("
+                    INSERT INTO kullanici_loglari
+                        (user_id, user_name, islem, sayfa, detay, ip_adresi, user_agent)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                ");
+                $query->execute([
+                    $userId ?? (isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : null),
+                    $userName ?? (string)($_SESSION['user_name'] ?? ''),
+                    $islem,
+                    basename((string)($_SERVER['SCRIPT_NAME'] ?? '')),
+                    $detay,
+                    (string)($_SERVER['REMOTE_ADDR'] ?? ''),
+                    substr((string)($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 255),
+                ]);
+            } catch (Throwable $e) {
+            }
+        }
+    }
+
     $usersTable = $db->query("SHOW TABLES LIKE 'users'")->fetchColumn();
 
     if ($usersTable) {
@@ -144,9 +183,11 @@ try {
             $permissionQuery->execute([(int)$_SESSION['user_id']]);
             $permissionUser = $permissionQuery->fetch(PDO::FETCH_ASSOC);
 
-            if (!$permissionUser || (int)($permissionUser['can_view'] ?? 0) !== 1) {
-                http_response_code(403);
-                die('Bu sayfayı görüntüleme yetkiniz yok.');
+            if (!$permissionUser) {
+                session_unset();
+                session_destroy();
+                header('Location: login.php');
+                exit;
             }
 
             $_SESSION['can_view'] = (int)($permissionUser['can_view'] ?? 1);
@@ -160,6 +201,16 @@ try {
             $editablePages = is_array($editablePages) ? $editablePages : [];
 
             $alwaysAllowedPages = ['dashboard.php', 'index.php', 'login.php', 'logout.php'];
+            $canViewCurrentPage =
+                (int)($permissionUser['can_view'] ?? 0) === 1 ||
+                in_array($currentScript, $allowedPages, true) ||
+                in_array($currentScript, $alwaysAllowedPages, true);
+
+            if (!$canViewCurrentPage) {
+                http_response_code(403);
+                die('Bu sayfayı görüntüleme yetkiniz yok.');
+            }
+
             if (!empty($allowedPages) && !in_array($currentScript, $allowedPages, true) && !in_array($currentScript, $alwaysAllowedPages, true)) {
                 http_response_code(403);
                 die('Bu sayfayı görüntüleme yetkiniz yok.');
@@ -177,6 +228,25 @@ try {
             if (!$canWriteCurrentPage && $isWriteRequest) {
                 http_response_code(403);
                 die('Bu işlem için düzeltme yetkiniz yok.');
+            }
+        }
+    }
+
+    if (session_status() === PHP_SESSION_ACTIVE && isset($_SESSION['user_id'])) {
+        $logScript = basename((string)($_SERVER['SCRIPT_NAME'] ?? ''));
+        $logMethod = (string)($_SERVER['REQUEST_METHOD'] ?? 'GET');
+        $logExcluded = ['login.php', 'logout.php', 'log-kayitlari.php'];
+        $logDestructivePages = ['cari-sil.php', 'sozlesme-sil.php', 'hakedis-sil.php', 'hakedis-onayla.php'];
+
+        if (!in_array($logScript, $logExcluded, true)) {
+            if ($logMethod === 'POST') {
+                $action = trim((string)($_POST['action'] ?? ''));
+                $id = trim((string)($_POST['id'] ?? ''));
+                $detay = trim('Form işlemi' . ($action !== '' ? ': ' . $action : '') . ($id !== '' ? ' | ID: ' . $id : ''));
+                segmen_kullanici_logla($db, 'İşlem yaptı', $detay);
+            } elseif (in_array($logScript, $logDestructivePages, true)) {
+                $id = trim((string)($_GET['id'] ?? $_GET['sil'] ?? ''));
+                segmen_kullanici_logla($db, 'Kayıt işlemi', $id !== '' ? 'ID: ' . $id : '');
             }
         }
     }

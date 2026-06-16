@@ -12,7 +12,7 @@ if(!isset($_SESSION['user_id'])){
 $hakedisId = (int)($_GET['hakedis_id'] ?? 0);
 
 if(!$hakedisId){
-    die('Hakediş bulunamadı.');
+    die('HakediÅŸ bulunamadÄ±.');
 }
 
 function tarih($value){
@@ -42,7 +42,7 @@ $query->execute([$hakedisId]);
 $hakedis = $query->fetch(PDO::FETCH_ASSOC);
 
 if(!$hakedis){
-    die('Hakediş bulunamadı.');
+    die('HakediÅŸ bulunamadÄ±.');
 }
 
 $satirQuery = $db->prepare("
@@ -83,7 +83,7 @@ $donemBitis = $ozet['son_sevkiyat_tarihi'] ?: $hakedis['bitis_tarihi'];
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
-<title>Muayene ve Kabul Tutanağı</title>
+<title>Muayene ve Kabul TutanaÄŸÄ±</title>
 <link rel="stylesheet" href="assets/css/style.css">
 
 <style>
@@ -214,7 +214,16 @@ body{
     height:66px;
 }
 
+.print-page-line{
+    display:none;
+}
+
 @media print{
+    @page{
+        size:A4 portrait;
+        margin:12mm 10mm 16mm;
+    }
+
     .sidebar,
     .topbar,
     .actions,
@@ -222,8 +231,13 @@ body{
         display:none !important;
     }
 
+    html,
     body{
+        width:auto;
+        min-height:0;
         background:#fff;
+        -webkit-print-color-adjust:exact;
+        print-color-adjust:exact;
     }
 
     .main{
@@ -231,9 +245,68 @@ body{
         padding:0;
     }
 
+    .report-shell{
+        max-width:none;
+        margin:0;
+    }
+
     .document{
         border:0;
         padding:0;
+    }
+
+    .document h1{
+        margin:0 0 16px;
+        font-size:20px;
+    }
+
+    .info-table,
+    .shipment-table,
+    .commission-table{
+        margin-bottom:12px;
+        page-break-inside:auto;
+    }
+
+    .info-table tr,
+    .shipment-table tr,
+    .commission-table tr,
+    .decision,
+    .section-title{
+        break-inside:avoid;
+        page-break-inside:avoid;
+    }
+
+    .info-table th,
+    .info-table td,
+    .shipment-table th,
+    .shipment-table td,
+    .commission-table th,
+    .commission-table td{
+        padding:7px 8px;
+        font-size:11px;
+    }
+
+    .section-title{
+        margin:13px 0 6px;
+    }
+
+    .decision{
+        min-height:56px;
+        margin-bottom:12px;
+    }
+
+    .sign-cell{
+        height:54px;
+    }
+
+    .print-page-line{
+        display:block;
+        position:fixed;
+        left:0;
+        right:0;
+        bottom:0;
+        border-top:1px solid #111827;
+        height:0;
     }
 }
 </style>
@@ -243,72 +316,73 @@ body{
 <?php require_once __DIR__ . '/sidebar.php'; ?>
 
 <div class="main">
+    <div class="print-page-line" aria-hidden="true"></div>
     <div class="report-shell">
         <div class="topbar">
-            <h2>Muayene Kabul Tutanağı</h2>
+            <h2>Muayene Kabul TutanaÄŸÄ±</h2>
             <p><?php echo htmlspecialchars($hakedis['firma_adi']); ?> - <?php echo htmlspecialchars(donemGoster($hakedis['donem'])); ?></p>
         </div>
 
         <div class="member-editor">
             <div>
-                <label>Başkan Ad Soyad</label>
+                <label>BaÅŸkan Ad Soyad</label>
                 <input type="text" data-member-name="0" placeholder="Ad Soyad">
             </div>
             <div>
-                <label>1. Üye Ad Soyad</label>
+                <label>1. Ãœye Ad Soyad</label>
                 <input type="text" data-member-name="1" placeholder="Ad Soyad">
             </div>
             <div>
-                <label>2. Üye Ad Soyad</label>
+                <label>2. Ãœye Ad Soyad</label>
                 <input type="text" data-member-name="2" placeholder="Ad Soyad">
             </div>
         </div>
 
         <div class="actions">
-            <a class="btn" href="raporlar.php">Raporlara Dön</a>
-            <button class="btn" type="button" onclick="window.print()">Yazdır</button>
+            <a class="btn" href="raporlar.php">Raporlara DÃ¶n</a>
+            <button class="btn" type="button" onclick="window.print()">YazdÄ±r</button>
         </div>
 
         <div class="document">
-            <h1>MUAYENE VE KABUL TUTANAĞI</h1>
+            <h1>MUAYENE VE KABUL TUTANAÄI</h1>
 
             <table class="info-table">
                 <tr>
-                    <th>Yüklenici</th>
+                    <th>YÃ¼klenici</th>
                     <td colspan="3"><?php echo htmlspecialchars($hakedis['firma_adi']); ?></td>
                 </tr>
                 <tr>
-                    <th>Dönem Başlangıç</th>
+                    <th>DÃ¶nem BaÅŸlangÄ±Ã§</th>
                     <td><?php echo tarih($donemBaslangic); ?></td>
-                    <th>Dönem Bitiş</th>
+                    <th>DÃ¶nem BitiÅŸ</th>
                     <td><?php echo tarih($donemBitis); ?></td>
                 </tr>
                 <tr>
                     <th>Toplam Sevkiyat</th>
                     <td><?php echo (int)$ozet['sevkiyat_sayisi']; ?></td>
-                    <th>Hakediş Kaydı</th>
-                    <td>Hakediş <?php echo htmlspecialchars(donemGoster($hakedis['donem'])); ?></td>
+                    <th>HakediÅŸ KaydÄ±</th>
+                    <td>HakediÅŸ <?php echo htmlspecialchars(donemGoster($hakedis['donem'])); ?></td>
                 </tr>
                 <tr>
-                    <th>Yükleme Noktaları</th>
+                    <th>YÃ¼kleme NoktalarÄ±</th>
                     <td colspan="3"><?php echo htmlspecialchars($ozet['yukleme_noktalari'] ?: '-'); ?></td>
                 </tr>
                 <tr>
-                    <th>Boşaltma Noktaları</th>
+                    <th>BoÅŸaltma NoktalarÄ±</th>
                     <td colspan="3"><?php echo htmlspecialchars($ozet['bosaltma_noktalari'] ?: '-'); ?></td>
                 </tr>
             </table>
 
-            <div class="section-title">Sevkiyat Özeti</div>
+            <div class="section-title">Sevkiyat Ã–zeti</div>
             <table class="shipment-table">
                 <thead>
                     <tr>
                         <th>No</th>
-                        <th>Yükleme Noktası</th>
-                        <th>Boşaltma Noktası</th>
-                        <th>Sefer Sayısı</th>
-                        <th>İrsaliye Adedi</th>
-                        <th>İlk Sevkiyat</th>
+                        <th>YÃ¼kleme NoktasÄ±</th>
+                        <th>BoÅŸaltma NoktasÄ±</th>
+                        <th>Sefer SayÄ±sÄ±</th>
+                        <th>Ä°rsaliye Adedi</th>
+                        <th>Ä°lk Sevkiyat</th>
                         <th>Son Sevkiyat</th>
                     </tr>
                 </thead>
@@ -336,7 +410,7 @@ body{
 
             <div class="section-title">Karar</div>
             <div class="decision">
-                Yapılan inceleme sonucunda söz konusu hizmetin şartname ve sözleşme hükümlerine uygun olarak yerine getirildiği görülmüş ve kabulüne karar verilmiştir.
+                YapÄ±lan inceleme sonucunda sÃ¶z konusu hizmetin ÅŸartname ve sÃ¶zleÅŸme hÃ¼kÃ¼mlerine uygun olarak yerine getirildiÄŸi gÃ¶rÃ¼lmÃ¼ÅŸ ve kabulÃ¼ne karar verilmiÅŸtir.
             </div>
 
             <div class="section-title">Not</div>
@@ -348,23 +422,23 @@ body{
                     <tr>
                         <th>Ad Soyad</th>
                         <th>Unvan</th>
-                        <th>İmza</th>
+                        <th>Ä°mza</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr>
                         <td class="sign-cell member-name" data-member-output="0"></td>
-                        <td>Başkan</td>
+                        <td>BaÅŸkan</td>
                         <td></td>
                     </tr>
                     <tr>
                         <td class="sign-cell member-name" data-member-output="1"></td>
-                        <td>Üye</td>
+                        <td>Ãœye</td>
                         <td></td>
                     </tr>
                     <tr>
                         <td class="sign-cell member-name" data-member-output="2"></td>
-                        <td>Üye</td>
+                        <td>Ãœye</td>
                         <td></td>
                     </tr>
                 </tbody>

@@ -34,6 +34,8 @@ $pageOptions = [
     'hakedisler.php' => 'Hakedişler',
     'motorin-yukle.php' => 'Motorin Fiyatları',
     'raporlar.php' => 'Raporlar',
+    'demirbas-takip.php' => 'Demirbaş Takip',
+    'log-kayitlari.php' => 'Log Kayıtları',
     'kullanici-yonetimi.php' => 'Ayarlar',
 ];
 
@@ -45,6 +47,7 @@ $writePageMap = [
     'nokta-yonetimi.php' => ['nokta-yonetimi.php', 'noktalar.php', 'tarifeler.php', 'tarife-ekle.php', 'tarife-yukle.php'],
     'hakedisler.php' => ['hakedisler.php', 'hakedis-ekle.php', 'hakedis-olustur.php', 'hakedis-onayla.php', 'hakedis-sil.php', 'excel-eslestir.php', 'excel-yukle.php'],
     'motorin-yukle.php' => ['motorin-yukle.php'],
+    'demirbas-takip.php' => ['demirbas-takip.php'],
     'kullanici-yonetimi.php' => ['kullanici-yonetimi.php'],
 ];
 
