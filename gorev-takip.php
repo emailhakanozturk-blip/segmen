@@ -53,6 +53,26 @@ function task_short(string $value, int $limit = 180): string
     return strlen($value) > $limit ? substr($value, 0, $limit) . '...' : $value;
 }
 
+function task_progress(array $task): int
+{
+    if(($task['durum'] ?? '') === 'tamamlandi'){
+        return 100;
+    }
+    $start = !empty($task['baslangic_tarihi']) ? strtotime((string)$task['baslangic_tarihi']) : false;
+    $end = !empty($task['bitis_tarihi']) ? strtotime((string)$task['bitis_tarihi']) : false;
+    if(!$start || !$end || $end <= $start){
+        return 0;
+    }
+    $today = strtotime(date('Y-m-d'));
+    if($today <= $start){
+        return 0;
+    }
+    if($today >= $end){
+        return 100;
+    }
+    return max(0, min(100, (int)round((($today - $start) / ($end - $start)) * 100)));
+}
+
 $db->exec("
 CREATE TABLE IF NOT EXISTS gorev_personelleri (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -304,6 +324,7 @@ $summary = $db->query("
 <link rel="stylesheet" href="assets/css/style.css">
 <style>
 .task-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}.task-tab{padding:10px 13px;border:1px solid #d8e0ea;border-radius:8px;background:#fff;color:#334155;text-decoration:none;font-size:12px;font-weight:800}.task-tab.active{background:#17233b;color:#fff;border-color:#17233b}.panel{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:16px;margin-bottom:16px;box-shadow:0 8px 24px rgba(15,23,42,.04)}.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.field label{display:block;font-size:12px;font-weight:800;color:#334155;margin-bottom:6px}.field input,.field select,.field textarea{width:100%;border:1px solid #d1d5db;border-radius:8px;padding:9px 10px;font-size:13px;box-sizing:border-box;background:#fff}.field textarea{min-height:86px;resize:vertical}.span-2{grid-column:span 2}.span-4{grid-column:span 4}.btn{border:0;border-radius:8px;padding:9px 12px;background:#2563eb;color:#fff;text-decoration:none;font-size:12px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}.btn-green{background:#16a34a}.btn-red{background:#dc2626}.btn-gray{background:#64748b}.btn-dark{background:#0f172a}.actions{display:flex;gap:6px;flex-wrap:wrap}.notice{padding:12px 14px;border-radius:9px;margin-bottom:14px;font-size:13px;font-weight:800}.ok{background:#dcfce7;color:#166534}.err{background:#fee2e2;color:#991b1b}.summary{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:16px}.summary-card{background:#fff;border:1px solid #e5e7eb;border-radius:11px;padding:13px}.summary-card span{display:block;font-size:11px;color:#64748b;font-weight:800}.summary-card strong{display:block;font-size:22px;margin-top:5px}.filters{display:grid;grid-template-columns:1fr 1fr auto auto;gap:10px;align-items:end;margin-bottom:14px}.layout{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:16px}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;font-size:12px;min-width:900px}th{background:#0f172a;color:#fff;text-align:left;padding:9px 8px;white-space:nowrap}td{border-bottom:1px solid #edf2f7;padding:8px;vertical-align:top}.muted{color:#64748b}.badge{display:inline-flex;border-radius:999px;padding:5px 8px;font-size:11px;font-weight:800}.badge.wait{background:#e2e8f0;color:#334155}.badge.work{background:#dbeafe;color:#1d4ed8}.badge.done{background:#dcfce7;color:#166534}.badge.late{background:#fee2e2;color:#991b1b}.timeline{position:sticky;top:18px}.timeline-list{display:flex;flex-direction:column;gap:9px}.time-item{border-left:4px solid #cbd5e1;background:#f8fafc;border-radius:8px;padding:9px 10px}.time-item.work{border-color:#2563eb}.time-item.done{border-color:#16a34a}.time-item.late{border-color:#dc2626}.time-item b{display:block;font-size:12px}.time-item span{display:block;color:#64748b;font-size:11px;margin-top:3px}.empty{padding:16px;background:#f8fafc;border-radius:9px;color:#64748b}.checkbox-line{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:700}.checkbox-line input{width:auto}@media(max-width:1150px){.layout{grid-template-columns:1fr}.timeline{position:static}.summary{grid-template-columns:repeat(2,1fr)}}@media(max-width:750px){.grid,.filters{grid-template-columns:1fr}.span-2,.span-4{grid-column:span 1}.summary{grid-template-columns:1fr}}
+.progress{height:7px;background:#e5e7eb;border-radius:999px;overflow:hidden;margin-top:7px}.progress-fill{display:block;height:100%;background:#2563eb;border-radius:999px}.progress-fill.done{background:#16a34a}.minute-list{display:grid;gap:8px}.minute-row{display:flex;gap:10px;align-items:flex-start;justify-content:space-between;background:#f8fafc;border:1px solid #e5e7eb;border-radius:9px;padding:10px}.minute-row span{font-size:13px;line-height:1.4}.report-layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:16px}@media(max-width:1150px){.report-layout{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -333,7 +354,7 @@ $summary = $db->query("
                 <input type="hidden" name="id" value="<?php echo (int)($editingToplanti['id'] ?? 0); ?>">
                 <div class="field"><label>Toplantı Günü</label><input type="date" name="toplanti_tarihi" required value="<?php echo task_e($editingToplanti['toplanti_tarihi'] ?? date('Y-m-d')); ?>"></div>
                 <div class="field span-2"><label>Toplantı Başlığı</label><input name="baslik" required value="<?php echo task_e($editingToplanti['baslik'] ?? ''); ?>" placeholder="Haftalık operasyon toplantısı"></div>
-                <div class="field span-4"><label>Toplantı Tutanağı</label><textarea name="tutanak" placeholder="Alınan kararları ve notları yazın."><?php echo task_e($editingToplanti['tutanak'] ?? ''); ?></textarea></div>
+                <div class="field span-4"><label>Toplantı Tutanağı</label><textarea name="tutanak" placeholder="Her maddeyi ayrı satıra yazın."><?php echo task_e($editingToplanti['tutanak'] ?? ''); ?></textarea></div>
                 <div class="span-4 actions"><button class="btn btn-green"><?php echo $editingToplanti ? 'Güncelle' : 'Tutanak Oluştur'; ?></button><?php if($editingToplanti): ?><a class="btn btn-gray" href="?tab=toplanti">Vazgeç</a><?php endif; ?></div>
             </form>
         </div>
@@ -367,6 +388,13 @@ $summary = $db->query("
             }
         }
         $defaultStartDate = $editingTask['baslangic_tarihi'] ?? ($selectedToplanti['toplanti_tarihi'] ?? date('Y-m-d'));
+        $selectedMadde = trim((string)($_GET['madde'] ?? ''));
+        $toplantiMaddeleri = [];
+        if($selectedToplanti && trim((string)($selectedToplanti['tutanak'] ?? '')) !== ''){
+            $toplantiMaddeleri = array_values(array_filter(array_map('trim', preg_split('/\R+/', (string)$selectedToplanti['tutanak']))));
+        }
+        $defaultTitle = $editingTask['baslik'] ?? $selectedMadde;
+        $defaultDescription = $editingTask['aciklama'] ?? $selectedMadde;
     ?>
     <div class="summary">
         <div class="summary-card"><span>Toplam</span><strong><?php echo (int)($summary['toplam'] ?? 0); ?></strong></div>
@@ -376,6 +404,18 @@ $summary = $db->query("
         <div class="summary-card"><span>Geciken</span><strong><?php echo (int)($summary['geciken'] ?? 0); ?></strong></div>
     </div>
 
+    <?php if($selectedToplanti): ?>
+    <div class="panel">
+        <h3><?php echo task_date($selectedToplanti['toplanti_tarihi']); ?> Toplantı Maddeleri</h3>
+        <?php if(!$toplantiMaddeleri): ?><div class="empty">Bu tutanakta madde yok. Tutanak metnini her madde ayrı satır olacak şekilde yazabilirsiniz.</div><?php endif; ?>
+        <div class="minute-list">
+            <?php foreach($toplantiMaddeleri as $madde): ?>
+                <div class="minute-row"><span><?php echo task_e($madde); ?></span><a class="btn btn-green" href="?tab=gorev&toplanti_id=<?php echo (int)$selectedToplanti['id']; ?>&madde=<?php echo urlencode($madde); ?>">Bu Maddeden Görev Ata</a></div>
+            <?php endforeach; ?>
+        </div>
+    </div>
+    <?php endif; ?>
+
     <div class="panel">
         <h3><?php echo $editingTask ? 'Görev Düzenle' : 'Yeni Görev'; ?></h3>
         <form method="POST" class="grid">
@@ -383,11 +423,11 @@ $summary = $db->query("
             <input type="hidden" name="id" value="<?php echo (int)($editingTask['id'] ?? 0); ?>">
             <div class="field span-2"><label>Toplantı Tutanağı</label><select name="toplanti_id"><option value="">Bağımsız görev</option><?php foreach($toplantilar as $t): ?><option value="<?php echo (int)$t['id']; ?>" <?php echo $selectedToplantiId===(int)$t['id']?'selected':''; ?>><?php echo task_date($t['toplanti_tarihi']); ?> - <?php echo task_e($t['baslik']); ?></option><?php endforeach; ?></select></div>
             <div class="field span-2"><label>Personel</label><select name="personel_id" required><option value="">Seçiniz</option><?php foreach($aktifPersoneller as $p): ?><option value="<?php echo (int)$p['id']; ?>" <?php echo (int)($editingTask['personel_id'] ?? 0)===(int)$p['id']?'selected':''; ?>><?php echo task_e($p['ad_soyad']); ?><?php echo $p['unvan'] ? ' - ' . task_e($p['unvan']) : ''; ?></option><?php endforeach; ?></select></div>
-            <div class="field span-2"><label>Görev Başlığı</label><input name="baslik" required value="<?php echo task_e($editingTask['baslik'] ?? ''); ?>"></div>
+            <div class="field span-2"><label>Görev Başlığı</label><input name="baslik" required value="<?php echo task_e($defaultTitle); ?>"></div>
             <div class="field"><label>Görev Günü</label><input type="date" name="baslangic_tarihi" value="<?php echo task_e($defaultStartDate); ?>"></div>
             <div class="field"><label>Bitiş / Süre</label><input type="date" name="bitis_tarihi" value="<?php echo task_e($editingTask['bitis_tarihi'] ?? $defaultStartDate); ?>"></div>
             <div class="field"><label>Durum</label><select name="durum"><?php foreach(['baslamadi','devam','tamamlandi'] as $d): ?><option value="<?php echo $d; ?>" <?php echo ($editingTask['durum'] ?? 'baslamadi')===$d?'selected':''; ?>><?php echo task_status_label($d); ?></option><?php endforeach; ?></select></div>
-            <div class="field span-4"><label>Açıklama</label><textarea name="aciklama"><?php echo task_e($editingTask['aciklama'] ?? ''); ?></textarea></div>
+            <div class="field span-4"><label>Açıklama</label><textarea name="aciklama"><?php echo task_e($defaultDescription); ?></textarea></div>
             <div class="span-4 actions"><button class="btn btn-green"><?php echo $editingTask ? 'Güncelle' : 'Görev Oluştur'; ?></button><?php if($editingTask): ?><a class="btn btn-gray" href="?tab=gorev">Vazgeç</a><?php endif; ?></div>
         </form>
     </div>
@@ -407,7 +447,7 @@ $summary = $db->query("
                 <td><?php echo $g['toplanti_baslik'] ? '<strong>'.task_e($g['toplanti_baslik']).'</strong><br><small>'.task_date($g['toplanti_tarihi']).'</small>' : '<span class="muted">Bağımsız</span>'; ?></td>
                 <td><strong><?php echo task_e($g['baslik']); ?></strong><br><small><?php echo task_e($g['aciklama']); ?></small></td>
                 <td><?php echo task_e($g['ad_soyad']); ?><br><small><?php echo task_e($g['email']); ?></small></td>
-                <td><?php echo task_date($g['baslangic_tarihi']); ?> - <?php echo task_date($g['bitis_tarihi']); ?></td>
+                <td><?php echo task_date($g['baslangic_tarihi']); ?> - <?php echo task_date($g['bitis_tarihi']); ?><div class="progress"><span class="progress-fill <?php echo $g['durum']==='tamamlandi'?'done':''; ?>" style="width:<?php echo task_progress($g); ?>%"></span></div></td>
                 <td><span class="badge <?php echo $cls; ?>"><?php echo $cls==='late' ? 'Gecikti' : task_status_label($g['durum']); ?></span></td>
                 <td><a class="btn btn-dark" target="_blank" href="<?php echo task_e($link); ?>">HTML Link</a><form method="POST" style="display:inline"><input type="hidden" name="action" value="email_gonder"><input type="hidden" name="id" value="<?php echo (int)$g['id']; ?>"><button class="btn btn-green">E-posta</button></form></td>
                 <td><div class="actions"><a class="btn" href="?tab=gorev&edit=<?php echo (int)$g['id']; ?>">Düzelt</a><form method="POST" onsubmit="return confirm('Görev silinsin mi?');"><input type="hidden" name="action" value="gorev_sil"><input type="hidden" name="id" value="<?php echo (int)$g['id']; ?>"><button class="btn btn-red">Sil</button></form></div></td>
@@ -418,7 +458,7 @@ $summary = $db->query("
             <h3>Zaman Çizelgesi</h3>
             <div class="timeline-list">
                 <?php foreach(array_slice($gorevler,0,12) as $g): $cls=task_status_class($g); ?>
-                    <div class="time-item <?php echo $cls; ?>"><b><?php echo task_e($g['baslik']); ?></b><span><?php echo task_e($g['ad_soyad']); ?> | <?php echo task_date($g['bitis_tarihi']); ?></span></div>
+                    <div class="time-item <?php echo $cls; ?>"><b><?php echo task_e($g['baslik']); ?></b><span><?php echo task_e($g['ad_soyad']); ?> | <?php echo task_date($g['baslangic_tarihi']); ?> - <?php echo task_date($g['bitis_tarihi']); ?></span><div class="progress"><span class="progress-fill <?php echo $g['durum']==='tamamlandi'?'done':''; ?>" style="width:<?php echo task_progress($g); ?>%"></span></div></div>
                 <?php endforeach; ?>
                 <?php if(!$gorevler): ?><div class="empty">Çizelgede gösterilecek görev yok.</div><?php endif; ?>
             </div>
@@ -427,8 +467,7 @@ $summary = $db->query("
     <?php endif; ?>
 
     <?php if($tab==='personel'): ?>
-    <div class="layout">
-        <div class="panel">
+    <div class="panel">
             <h3><?php echo $editingPersonel ? 'Personel Düzenle' : 'Personel Ekle'; ?></h3>
             <form method="POST" class="grid">
                 <input type="hidden" name="action" value="personel_kaydet"><input type="hidden" name="id" value="<?php echo (int)($editingPersonel['id'] ?? 0); ?>">
@@ -438,22 +477,46 @@ $summary = $db->query("
                 <label class="checkbox-line"><input type="checkbox" name="aktif" value="1" <?php echo !isset($editingPersonel['aktif']) || (int)$editingPersonel['aktif']===1?'checked':''; ?>> Aktif</label>
                 <div class="span-4 actions"><button class="btn btn-green"><?php echo $editingPersonel ? 'Güncelle' : 'Kaydet'; ?></button><?php if($editingPersonel): ?><a class="btn btn-gray" href="?tab=personel">Vazgeç</a><?php endif; ?></div>
             </form>
-        </div>
-        <div class="panel">
+    </div>
+    <div class="panel">
             <h3>Personel Listesi</h3>
             <div class="table-wrap"><table><thead><tr><th>Ad Soyad</th><th>E-posta</th><th>Durum</th><th>İşlem</th></tr></thead><tbody>
             <?php foreach($personeller as $p): ?><tr><td><strong><?php echo task_e($p['ad_soyad']); ?></strong><br><small><?php echo task_e($p['unvan']); ?></small></td><td><?php echo task_e($p['email']); ?></td><td><span class="badge <?php echo (int)$p['aktif']===1?'done':'wait'; ?>"><?php echo (int)$p['aktif']===1?'Aktif':'Pasif'; ?></span></td><td><div class="actions"><a class="btn" href="?tab=personel&personel_edit=<?php echo (int)$p['id']; ?>">Düzelt</a><form method="POST" onsubmit="return confirm('Personel silinsin mi?');"><input type="hidden" name="action" value="personel_sil"><input type="hidden" name="id" value="<?php echo (int)$p['id']; ?>"><button class="btn btn-red">Sil</button></form></div></td></tr><?php endforeach; ?>
             <?php if(!$personeller): ?><tr><td colspan="4">Henüz personel yok.</td></tr><?php endif; ?></tbody></table></div>
-        </div>
     </div>
     <?php endif; ?>
 
     <?php if($tab==='rapor'): ?>
-    <div class="panel"><h3>Personel Bazlı Görev Özeti</h3><div class="table-wrap"><table><thead><tr><th>Personel</th><th>Toplam</th><th>Hiç Başlamadı</th><th>Devam</th><th>Tamamlanan</th><th>Geciken</th></tr></thead><tbody>
     <?php
-    $raporlar = $db->query("SELECT p.ad_soyad, COUNT(g.id) toplam, SUM(g.durum='baslamadi') baslamadi, SUM(g.durum='devam') devam, SUM(g.durum='tamamlandi') tamamlandi, SUM(g.durum<>'tamamlandi' AND g.bitis_tarihi IS NOT NULL AND g.bitis_tarihi < CURDATE()) geciken FROM gorev_personelleri p LEFT JOIN gorevler g ON g.personel_id=p.id GROUP BY p.id,p.ad_soyad ORDER BY p.ad_soyad")->fetchAll(PDO::FETCH_ASSOC);
-    foreach($raporlar as $r): ?><tr><td><strong><?php echo task_e($r['ad_soyad']); ?></strong></td><td><?php echo (int)$r['toplam']; ?></td><td><?php echo (int)$r['baslamadi']; ?></td><td><?php echo (int)$r['devam']; ?></td><td><?php echo (int)$r['tamamlandi']; ?></td><td><?php echo (int)$r['geciken']; ?></td></tr><?php endforeach; ?>
-    </tbody></table></div></div>
+    $raporlar = $db->query("
+        SELECT p.ad_soyad,
+            MIN(g.baslangic_tarihi) baslangic,
+            MAX(g.bitis_tarihi) bitis,
+            COUNT(g.id) toplam,
+            COALESCE(SUM(g.durum='baslamadi'),0) baslamadi,
+            COALESCE(SUM(g.durum='devam'),0) devam,
+            COALESCE(SUM(g.durum='tamamlandi'),0) tamamlandi,
+            COALESCE(SUM(g.durum<>'tamamlandi' AND g.bitis_tarihi IS NOT NULL AND g.bitis_tarihi < CURDATE()),0) geciken
+        FROM gorev_personelleri p
+        LEFT JOIN gorevler g ON g.personel_id=p.id
+        GROUP BY p.id,p.ad_soyad
+        ORDER BY p.ad_soyad
+    ")->fetchAll(PDO::FETCH_ASSOC);
+    ?>
+    <div class="report-layout">
+        <div class="panel"><h3>Personel Bazlı Görev Özeti</h3><div class="table-wrap"><table><thead><tr><th>Personel</th><th>Başlangıç</th><th>Bitiş</th><th>Toplam</th><th>Hiç Başlamadı</th><th>Devam</th><th>Tamamlanan</th><th>Geciken</th></tr></thead><tbody>
+        <?php foreach($raporlar as $r): ?><tr><td><strong><?php echo task_e($r['ad_soyad']); ?></strong></td><td><?php echo task_date($r['baslangic']); ?></td><td><?php echo task_date($r['bitis']); ?></td><td><?php echo (int)$r['toplam']; ?></td><td><?php echo (int)$r['baslamadi']; ?></td><td><?php echo (int)$r['devam']; ?></td><td><?php echo (int)$r['tamamlandi']; ?></td><td><?php echo (int)$r['geciken']; ?></td></tr><?php endforeach; ?>
+        </tbody></table></div></div>
+        <aside class="panel timeline">
+            <h3>Zaman Çizelgesi</h3>
+            <div class="timeline-list">
+                <?php foreach(array_slice($gorevler,0,18) as $g): $cls=task_status_class($g); ?>
+                    <div class="time-item <?php echo $cls; ?>"><b><?php echo task_e($g['ad_soyad']); ?></b><span><?php echo task_e($g['baslik']); ?></span><span><?php echo task_date($g['baslangic_tarihi']); ?> - <?php echo task_date($g['bitis_tarihi']); ?></span><div class="progress"><span class="progress-fill <?php echo $g['durum']==='tamamlandi'?'done':''; ?>" style="width:<?php echo task_progress($g); ?>%"></span></div></div>
+                <?php endforeach; ?>
+                <?php if(!$gorevler): ?><div class="empty">Çizelgede gösterilecek görev yok.</div><?php endif; ?>
+            </div>
+        </aside>
+    </div>
     <?php endif; ?>
 </div>
 </body>
