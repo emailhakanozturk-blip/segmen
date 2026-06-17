@@ -314,6 +314,65 @@ $summary = $db->query("
     FROM gorevler
 ")->fetch(PDO::FETCH_ASSOC) ?: [];
 
+if(isset($_GET['toplanti_export'])){
+    $exportId = (int)($_GET['toplanti_export'] ?? 0);
+    $format = (string)($_GET['format'] ?? 'pdf');
+    $q = $db->prepare("SELECT * FROM gorev_toplantilari WHERE id=?");
+    $q->execute([$exportId]);
+    $exportToplanti = $q->fetch(PDO::FETCH_ASSOC);
+    if(!$exportToplanti){
+        http_response_code(404);
+        exit('Toplantı tutanağı bulunamadı.');
+    }
+    $q = $db->prepare("SELECT g.*, p.ad_soyad FROM gorevler g LEFT JOIN gorev_personelleri p ON p.id=g.personel_id WHERE g.toplanti_id=? ORDER BY g.id ASC");
+    $q->execute([$exportId]);
+    $exportGorevler = $q->fetchAll(PDO::FETCH_ASSOC);
+    $items = array_values(array_filter(array_map('trim', preg_split('/\R+/', (string)($exportToplanti['tutanak'] ?? '')))));
+    $fileBase = 'toplanti-tutanagi-' . date('Ymd', strtotime((string)$exportToplanti['toplanti_tarihi']));
+    if($format === 'word'){
+        header('Content-Type: application/msword; charset=UTF-8');
+        header('Content-Disposition: attachment; filename="'.$fileBase.'.doc"');
+        echo "\xEF\xBB\xBF";
+    }else{
+        header('Content-Type: text/html; charset=UTF-8');
+    }
+    ?>
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<title>Toplantı Tutanağı</title>
+<style>
+body{font-family:Arial,Helvetica,sans-serif;color:#111827;margin:36px;font-size:13px}.doc{max-width:820px;margin:auto}.head{border-bottom:2px solid #111827;padding-bottom:12px;margin-bottom:18px}h1{font-size:22px;margin:0 0 8px}h2{font-size:16px;margin:22px 0 10px}.meta{display:grid;grid-template-columns:160px 1fr;gap:7px}.meta b{color:#334155}ol{padding-left:22px}li{margin:7px 0;line-height:1.45}table{width:100%;border-collapse:collapse;margin-top:8px}th,td{border:1px solid #d1d5db;padding:8px;text-align:left;vertical-align:top}th{background:#f1f5f9}.print{position:fixed;right:24px;top:18px;background:#2563eb;color:#fff;border:0;border-radius:8px;padding:10px 14px;font-weight:700;cursor:pointer}@media print{.print{display:none}body{margin:18px}}
+</style>
+</head>
+<body>
+<?php if($format !== 'word'): ?><button class="print" onclick="window.print()">PDF Olarak Kaydet / Yazdır</button><?php endif; ?>
+<div class="doc">
+    <div class="head">
+        <h1>Toplantı Tutanağı</h1>
+        <div class="meta">
+            <b>Tarih</b><span><?php echo task_date($exportToplanti['toplanti_tarihi']); ?></span>
+            <b>Başlık</b><span><?php echo task_e($exportToplanti['baslik']); ?></span>
+        </div>
+    </div>
+    <h2>Tutanak Maddeleri</h2>
+    <?php if($items): ?><ol><?php foreach($items as $item): ?><li><?php echo task_e($item); ?></li><?php endforeach; ?></ol><?php else: ?><p>Madde girilmemiş.</p><?php endif; ?>
+    <h2>Atanan Görevler</h2>
+    <table>
+        <thead><tr><th>Görev</th><th>Personel</th><th>Başlangıç</th><th>Bitiş</th><th>Durum</th></tr></thead>
+        <tbody>
+        <?php if(!$exportGorevler): ?><tr><td colspan="5">Bu tutanağa bağlı görev yok.</td></tr><?php endif; ?>
+        <?php foreach($exportGorevler as $g): ?><tr><td><?php echo task_e($g['baslik']); ?></td><td><?php echo task_e($g['ad_soyad']); ?></td><td><?php echo task_date($g['baslangic_tarihi']); ?></td><td><?php echo task_date($g['bitis_tarihi']); ?></td><td><?php echo task_status_label((string)$g['durum']); ?></td></tr><?php endforeach; ?>
+        </tbody>
+    </table>
+</div>
+</body>
+</html>
+<?php
+    exit;
+}
+
 ?>
 <!DOCTYPE html>
 <html lang="tr">
@@ -372,7 +431,7 @@ $summary = $db->query("
             <td><strong><?php echo task_e($t['baslik']); ?></strong></td>
             <td><?php echo nl2br(task_e(task_short((string)$t['tutanak']))); ?></td>
             <td><span class="badge work"><?php echo (int)$t['gorev_adet']; ?> görev</span></td>
-            <td><div class="actions"><a class="btn btn-green" href="?tab=gorev&toplanti_id=<?php echo (int)$t['id']; ?>">Görev Ata</a><a class="btn" href="?tab=toplanti&toplanti_edit=<?php echo (int)$t['id']; ?>">Düzelt</a><form method="POST" onsubmit="return confirm('Toplantı tutanağı silinsin mi? Görevler silinmez, toplantı bağlantısı kaldırılır.');"><input type="hidden" name="action" value="toplanti_sil"><input type="hidden" name="id" value="<?php echo (int)$t['id']; ?>"><button class="btn btn-red">Sil</button></form></div></td>
+            <td><div class="actions"><a class="btn btn-green" href="?tab=gorev&toplanti_id=<?php echo (int)$t['id']; ?>">Görev Ata</a><a class="btn btn-dark" target="_blank" href="?toplanti_export=<?php echo (int)$t['id']; ?>&format=pdf">PDF</a><a class="btn btn-gray" href="?toplanti_export=<?php echo (int)$t['id']; ?>&format=word">Word</a><a class="btn" href="?tab=toplanti&toplanti_edit=<?php echo (int)$t['id']; ?>">Düzelt</a><form method="POST" onsubmit="return confirm('Toplantı tutanağı silinsin mi? Görevler silinmez, toplantı bağlantısı kaldırılır.');"><input type="hidden" name="action" value="toplanti_sil"><input type="hidden" name="id" value="<?php echo (int)$t['id']; ?>"><button class="btn btn-red">Sil</button></form></div></td>
         </tr><?php endforeach; ?></tbody></table></div>
     </div>
     <?php endif; ?>
