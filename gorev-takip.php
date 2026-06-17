@@ -159,11 +159,35 @@ try {
             if($id > 0){
                 $q = $db->prepare("UPDATE gorev_toplantilari SET toplanti_tarihi=?, baslik=?, tutanak=? WHERE id=?");
                 $q->execute([$tarih, $baslik, $tutanak, $id]);
+                $savedToplantiId = $id;
                 $message = 'Toplantı tutanağı güncellendi.';
             }else{
                 $q = $db->prepare("INSERT INTO gorev_toplantilari (toplanti_tarihi,baslik,tutanak,created_by) VALUES (?,?,?,?)");
                 $q->execute([$tarih, $baslik, $tutanak, (int)$_SESSION['user_id']]);
+                $savedToplantiId = (int)$db->lastInsertId();
                 $message = 'Toplantı tutanağı oluşturuldu. Şimdi bu toplantıdan görev atayabilirsiniz.';
+            }
+            $maddePersoneller = is_array($_POST['madde_personel'] ?? null) ? $_POST['madde_personel'] : [];
+            $maddeBitisleri = is_array($_POST['madde_bitis'] ?? null) ? $_POST['madde_bitis'] : [];
+            $maddeler = array_values(array_filter(array_map('trim', preg_split('/\R+/', $tutanak))));
+            $atanan = 0;
+            foreach($maddeler as $i => $madde){
+                $personelId = (int)($maddePersoneller[$i] ?? 0);
+                if($personelId <= 0 || $madde === ''){
+                    continue;
+                }
+                $bitis = trim((string)($maddeBitisleri[$i] ?? '')) ?: $tarih;
+                $exists = $db->prepare("SELECT COUNT(*) FROM gorevler WHERE toplanti_id=? AND personel_id=? AND baslik=?");
+                $exists->execute([$savedToplantiId, $personelId, $madde]);
+                if((int)$exists->fetchColumn() > 0){
+                    continue;
+                }
+                $q = $db->prepare("INSERT INTO gorevler (toplanti_id,personel_id,baslik,aciklama,baslangic_tarihi,bitis_tarihi,durum,link_token,created_by) VALUES (?,?,?,?,?,?,?,?,?)");
+                $q->execute([$savedToplantiId, $personelId, $madde, $madde, $tarih, $bitis, 'baslamadi', task_token(), (int)$_SESSION['user_id']]);
+                $atanan++;
+            }
+            if($atanan > 0){
+                $message .= ' ' . $atanan . ' görev atandı.';
             }
             $tab = 'toplanti';
         }
@@ -445,7 +469,7 @@ body{font-family:Arial,Helvetica,sans-serif;color:#111827;margin:36px;font-size:
 <link rel="stylesheet" href="assets/css/style.css">
 <style>
 .task-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}.task-tab{padding:10px 13px;border:1px solid #d8e0ea;border-radius:8px;background:#fff;color:#334155;text-decoration:none;font-size:12px;font-weight:800}.task-tab.active{background:#17233b;color:#fff;border-color:#17233b}.panel{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:16px;margin-bottom:16px;box-shadow:0 8px 24px rgba(15,23,42,.04)}.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.field label{display:block;font-size:12px;font-weight:800;color:#334155;margin-bottom:6px}.field input,.field select,.field textarea{width:100%;border:1px solid #d1d5db;border-radius:8px;padding:9px 10px;font-size:13px;box-sizing:border-box;background:#fff}.field textarea{min-height:86px;resize:vertical}.span-2{grid-column:span 2}.span-4{grid-column:span 4}.btn{border:0;border-radius:8px;padding:9px 12px;background:#2563eb;color:#fff;text-decoration:none;font-size:12px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}.btn-green{background:#16a34a}.btn-red{background:#dc2626}.btn-gray{background:#64748b}.btn-dark{background:#0f172a}.actions{display:flex;gap:6px;flex-wrap:wrap}.notice{padding:12px 14px;border-radius:9px;margin-bottom:14px;font-size:13px;font-weight:800}.ok{background:#dcfce7;color:#166534}.err{background:#fee2e2;color:#991b1b}.summary{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:16px}.summary-card{background:#fff;border:1px solid #e5e7eb;border-radius:11px;padding:13px}.summary-card span{display:block;font-size:11px;color:#64748b;font-weight:800}.summary-card strong{display:block;font-size:22px;margin-top:5px}.filters{display:grid;grid-template-columns:1fr 1fr auto auto;gap:10px;align-items:end;margin-bottom:14px}.layout{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:16px}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;font-size:12px;min-width:900px}th{background:#0f172a;color:#fff;text-align:left;padding:9px 8px;white-space:nowrap}td{border-bottom:1px solid #edf2f7;padding:8px;vertical-align:top}.muted{color:#64748b}.badge{display:inline-flex;border-radius:999px;padding:5px 8px;font-size:11px;font-weight:800}.badge.wait{background:#e2e8f0;color:#334155}.badge.work{background:#dbeafe;color:#1d4ed8}.badge.done{background:#dcfce7;color:#166534}.badge.late{background:#fee2e2;color:#991b1b}.timeline{position:sticky;top:18px}.timeline-list{display:flex;flex-direction:column;gap:9px}.time-item{border-left:4px solid #cbd5e1;background:#f8fafc;border-radius:8px;padding:9px 10px}.time-item.work{border-color:#2563eb}.time-item.done{border-color:#16a34a}.time-item.late{border-color:#dc2626}.time-item b{display:block;font-size:12px}.time-item span{display:block;color:#64748b;font-size:11px;margin-top:3px}.empty{padding:16px;background:#f8fafc;border-radius:9px;color:#64748b}.checkbox-line{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:700}.checkbox-line input{width:auto}@media(max-width:1150px){.layout{grid-template-columns:1fr}.timeline{position:static}.summary{grid-template-columns:repeat(2,1fr)}}@media(max-width:750px){.grid,.filters{grid-template-columns:1fr}.span-2,.span-4{grid-column:span 1}.summary{grid-template-columns:1fr}}
-.progress{height:7px;background:#e5e7eb;border-radius:999px;overflow:hidden;margin-top:7px}.progress-fill{display:block;height:100%;background:#2563eb;border-radius:999px}.progress-fill.done{background:#16a34a}.minute-list{display:grid;gap:8px}.minute-row{display:flex;gap:10px;align-items:flex-start;justify-content:space-between;background:#f8fafc;border:1px solid #e5e7eb;border-radius:9px;padding:10px}.minute-row span{font-size:13px;line-height:1.4}.report-layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:16px}@media(max-width:1150px){.report-layout{grid-template-columns:1fr}}
+.progress{height:7px;background:#e5e7eb;border-radius:999px;overflow:hidden;margin-top:7px}.progress-fill{display:block;height:100%;background:#2563eb;border-radius:999px}.progress-fill.done{background:#16a34a}.minute-list{display:grid;gap:8px}.minute-row{display:flex;gap:10px;align-items:flex-start;justify-content:space-between;background:#f8fafc;border:1px solid #e5e7eb;border-radius:9px;padding:10px}.minute-row span{font-size:13px;line-height:1.4}.minute-assign-box{background:#f8fafc;border:1px solid #dbeafe;border-radius:10px;padding:12px}.assign-row{display:grid;grid-template-columns:minmax(0,1fr) 220px 150px;gap:10px;align-items:center;border-top:1px solid #e5e7eb;padding:9px 0}.assign-row:first-child{border-top:0}.assign-row b{font-size:13px}.assign-row select,.assign-row input{border:1px solid #d1d5db;border-radius:8px;padding:8px;font-size:12px}.report-layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:16px}@media(max-width:1150px){.report-layout{grid-template-columns:1fr}.assign-row{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -476,7 +500,13 @@ body{font-family:Arial,Helvetica,sans-serif;color:#111827;margin:36px;font-size:
                 <input type="hidden" name="id" value="<?php echo (int)($editingToplanti['id'] ?? 0); ?>">
                 <div class="field"><label>Toplantı Günü</label><input type="date" name="toplanti_tarihi" required value="<?php echo task_e($editingToplanti['toplanti_tarihi'] ?? date('Y-m-d')); ?>"></div>
                 <div class="field span-2"><label>Toplantı Başlığı</label><input name="baslik" required value="<?php echo task_e($editingToplanti['baslik'] ?? ''); ?>" placeholder="Haftalık operasyon toplantısı"></div>
-                <div class="field span-4"><label>Toplantı Tutanağı</label><textarea name="tutanak" placeholder="Her maddeyi ayrı satıra yazın."><?php echo task_e($editingToplanti['tutanak'] ?? ''); ?></textarea></div>
+                <div class="field span-4"><label>Toplantı Tutanağı</label><textarea id="meetingNotes" name="tutanak" placeholder="Her maddeyi ayrı satıra yazın."><?php echo task_e($editingToplanti['tutanak'] ?? ''); ?></textarea></div>
+                <div class="span-4 minute-assign-box">
+                    <b>Tutanak İçinden Görev Ata</b>
+                    <p class="muted">Her satır ayrı görev maddesi olur. Personel seçerseniz toplantı kaydıyla birlikte görev açılır.</p>
+                    <select id="personelOptionsSource" style="display:none"><option value="">Görev atama</option><?php foreach($aktifPersoneller as $p): ?><option value="<?php echo (int)$p['id']; ?>"><?php echo task_e($p['ad_soyad']); ?><?php echo $p['unvan'] ? ' - ' . task_e($p['unvan']) : ''; ?></option><?php endforeach; ?></select>
+                    <div id="minuteAssignList"></div>
+                </div>
                 <div class="span-4 actions"><button class="btn btn-green"><?php echo $editingToplanti ? 'Güncelle' : 'Tutanak Oluştur'; ?></button><?php if($editingToplanti): ?><a class="btn btn-gray" href="?tab=toplanti">Vazgeç</a><?php endif; ?></div>
             </form>
         </div>
@@ -495,7 +525,7 @@ body{font-family:Arial,Helvetica,sans-serif;color:#111827;margin:36px;font-size:
             <td><strong><?php echo task_e($t['baslik']); ?></strong></td>
             <td><?php echo nl2br(task_e(task_short((string)$t['tutanak']))); ?></td>
             <td><span class="badge work"><?php echo (int)$t['gorev_adet']; ?> görev</span></td>
-            <td><div class="actions"><a class="btn btn-green" href="?tab=gorev&toplanti_id=<?php echo (int)$t['id']; ?>">Görev Ata</a><a class="btn btn-dark" target="_blank" href="?toplanti_export=<?php echo (int)$t['id']; ?>&format=pdf">PDF</a><a class="btn btn-gray" href="?toplanti_export=<?php echo (int)$t['id']; ?>&format=word">Word</a><a class="btn" href="?tab=toplanti&toplanti_edit=<?php echo (int)$t['id']; ?>">Düzelt</a><form method="POST" onsubmit="return confirm('Toplantı tutanağı silinsin mi? Görevler silinmez, toplantı bağlantısı kaldırılır.');"><input type="hidden" name="action" value="toplanti_sil"><input type="hidden" name="id" value="<?php echo (int)$t['id']; ?>"><button class="btn btn-red">Sil</button></form></div></td>
+            <td><div class="actions"><?php if($canManageTasks): ?><a class="btn btn-green" href="?tab=gorev&toplanti_id=<?php echo (int)$t['id']; ?>">Görev Ata</a><?php endif; ?><a class="btn btn-dark" target="_blank" href="?toplanti_export=<?php echo (int)$t['id']; ?>&format=pdf">PDF</a><a class="btn btn-gray" href="?toplanti_export=<?php echo (int)$t['id']; ?>&format=word">Word</a><?php if($canManageTasks): ?><a class="btn" href="?tab=toplanti&toplanti_edit=<?php echo (int)$t['id']; ?>">Düzelt</a><form method="POST" onsubmit="return confirm('Toplantı tutanağı silinsin mi? Görevler silinmez, toplantı bağlantısı kaldırılır.');"><input type="hidden" name="action" value="toplanti_sil"><input type="hidden" name="id" value="<?php echo (int)$t['id']; ?>"><button class="btn btn-red">Sil</button></form><?php endif; ?></div></td>
         </tr><?php endforeach; ?></tbody></table></div>
     </div>
     <?php endif; ?>
@@ -539,6 +569,7 @@ body{font-family:Arial,Helvetica,sans-serif;color:#111827;margin:36px;font-size:
     </div>
     <?php endif; ?>
 
+    <?php if($canManageTasks): ?>
     <div class="panel">
         <h3><?php echo $editingTask ? 'Görev Düzenle' : 'Yeni Görev'; ?></h3>
         <form method="POST" class="grid">
@@ -554,6 +585,7 @@ body{font-family:Arial,Helvetica,sans-serif;color:#111827;margin:36px;font-size:
             <div class="span-4 actions"><button class="btn btn-green"><?php echo $editingTask ? 'Güncelle' : 'Görev Oluştur'; ?></button><?php if($editingTask): ?><a class="btn btn-gray" href="?tab=gorev">Vazgeç</a><?php endif; ?></div>
         </form>
     </div>
+    <?php endif; ?>
 
     <div class="layout">
         <div class="panel">
@@ -572,8 +604,8 @@ body{font-family:Arial,Helvetica,sans-serif;color:#111827;margin:36px;font-size:
                 <td><?php echo task_e($g['ad_soyad']); ?><br><small><?php echo task_e($g['email']); ?></small></td>
                 <td><?php echo task_date($g['baslangic_tarihi']); ?> - <?php echo task_date($g['bitis_tarihi']); ?><div class="progress"><span class="progress-fill <?php echo $g['durum']==='tamamlandi'?'done':''; ?>" style="width:<?php echo task_progress($g); ?>%"></span></div></td>
                 <td><span class="badge <?php echo $cls; ?>"><?php echo $cls==='late' ? 'Gecikti' : task_status_label($g['durum']); ?></span></td>
-                <td><a class="btn btn-dark" target="_blank" href="<?php echo task_e($link); ?>">HTML Link</a><form method="POST" style="display:inline"><input type="hidden" name="action" value="email_gonder"><input type="hidden" name="id" value="<?php echo (int)$g['id']; ?>"><button class="btn btn-green">E-posta</button></form></td>
-                <td><div class="actions"><a class="btn" href="?tab=gorev&edit=<?php echo (int)$g['id']; ?>">Düzelt</a><form method="POST" onsubmit="return confirm('Görev silinsin mi?');"><input type="hidden" name="action" value="gorev_sil"><input type="hidden" name="id" value="<?php echo (int)$g['id']; ?>"><button class="btn btn-red">Sil</button></form></div></td>
+                <td><a class="btn btn-dark" target="_blank" href="<?php echo task_e($link); ?>">HTML Link</a><?php if($canManageTasks): ?><form method="POST" style="display:inline"><input type="hidden" name="action" value="email_gonder"><input type="hidden" name="id" value="<?php echo (int)$g['id']; ?>"><button class="btn btn-green">E-posta</button></form><?php endif; ?></td>
+                <td><div class="actions"><?php if($canManageTasks): ?><a class="btn" href="?tab=gorev&edit=<?php echo (int)$g['id']; ?>">Düzelt</a><form method="POST" onsubmit="return confirm('Görev silinsin mi?');"><input type="hidden" name="action" value="gorev_sil"><input type="hidden" name="id" value="<?php echo (int)$g['id']; ?>"><button class="btn btn-red">Sil</button></form><?php else: ?><span class="muted">Sadece görüntüleme</span><?php endif; ?></div></td>
             </tr>
             <?php endforeach; ?></tbody></table></div>
         </div>
@@ -590,28 +622,29 @@ body{font-family:Arial,Helvetica,sans-serif;color:#111827;margin:36px;font-size:
     <?php endif; ?>
 
     <?php if($tab==='personel'): ?>
+    <?php if($canManageTasks): ?>
     <div class="panel">
             <h3><?php echo $editingPersonel ? 'Personel Düzenle' : 'Personel Ekle'; ?></h3>
             <form method="POST" class="grid">
                 <input type="hidden" name="action" value="personel_kaydet"><input type="hidden" name="id" value="<?php echo (int)($editingPersonel['id'] ?? 0); ?>">
-                <div class="field span-2"><label>Ad Soyad</label><input name="ad_soyad" required value="<?php echo task_e($editingPersonel['ad_soyad'] ?? ''); ?>"></div>
-                <div class="field span-2"><label>E-posta</label><input type="email" name="email" value="<?php echo task_e($editingPersonel['email'] ?? ''); ?>"></div>
+                <div class="field span-2"><label>Kullanıcı</label><select name="user_id" required><option value="">Seçiniz</option><?php foreach($usersForTask as $u): ?><option value="<?php echo (int)$u['id']; ?>" <?php echo (int)($editingPersonel['user_id'] ?? 0)===(int)$u['id']?'selected':''; ?>><?php echo task_e($u['name']); ?> - <?php echo task_e($u['email']); ?></option><?php endforeach; ?></select></div>
                 <div class="field span-2"><label>Unvan</label><input name="unvan" value="<?php echo task_e($editingPersonel['unvan'] ?? ''); ?>"></div>
                 <label class="checkbox-line"><input type="checkbox" name="aktif" value="1" <?php echo !isset($editingPersonel['aktif']) || (int)$editingPersonel['aktif']===1?'checked':''; ?>> Aktif</label>
                 <div class="span-4 actions"><button class="btn btn-green"><?php echo $editingPersonel ? 'Güncelle' : 'Kaydet'; ?></button><?php if($editingPersonel): ?><a class="btn btn-gray" href="?tab=personel">Vazgeç</a><?php endif; ?></div>
             </form>
     </div>
+    <?php endif; ?>
     <div class="panel">
             <h3>Personel Listesi</h3>
-            <div class="table-wrap"><table><thead><tr><th>Ad Soyad</th><th>E-posta</th><th>Durum</th><th>İşlem</th></tr></thead><tbody>
-            <?php foreach($personeller as $p): ?><tr><td><strong><?php echo task_e($p['ad_soyad']); ?></strong><br><small><?php echo task_e($p['unvan']); ?></small></td><td><?php echo task_e($p['email']); ?></td><td><span class="badge <?php echo (int)$p['aktif']===1?'done':'wait'; ?>"><?php echo (int)$p['aktif']===1?'Aktif':'Pasif'; ?></span></td><td><div class="actions"><a class="btn" href="?tab=personel&personel_edit=<?php echo (int)$p['id']; ?>">Düzelt</a><form method="POST" onsubmit="return confirm('Personel silinsin mi?');"><input type="hidden" name="action" value="personel_sil"><input type="hidden" name="id" value="<?php echo (int)$p['id']; ?>"><button class="btn btn-red">Sil</button></form></div></td></tr><?php endforeach; ?>
-            <?php if(!$personeller): ?><tr><td colspan="4">Henüz personel yok.</td></tr><?php endif; ?></tbody></table></div>
+            <div class="table-wrap"><table><thead><tr><th>Ad Soyad</th><th>Kullanıcı</th><th>E-posta</th><th>Durum</th><th>İşlem</th></tr></thead><tbody>
+            <?php foreach($personeller as $p): ?><tr><td><strong><?php echo task_e($p['ad_soyad']); ?></strong><br><small><?php echo task_e($p['unvan']); ?></small></td><td><?php echo task_e($p['user_name'] ?? '-'); ?></td><td><?php echo task_e($p['email']); ?></td><td><span class="badge <?php echo (int)$p['aktif']===1?'done':'wait'; ?>"><?php echo (int)$p['aktif']===1?'Aktif':'Pasif'; ?></span></td><td><div class="actions"><?php if($canManageTasks): ?><a class="btn" href="?tab=personel&personel_edit=<?php echo (int)$p['id']; ?>">Düzelt</a><form method="POST" onsubmit="return confirm('Personel silinsin mi?');"><input type="hidden" name="action" value="personel_sil"><input type="hidden" name="id" value="<?php echo (int)$p['id']; ?>"><button class="btn btn-red">Sil</button></form><?php else: ?><span class="muted">Sadece görüntüleme</span><?php endif; ?></div></td></tr><?php endforeach; ?>
+            <?php if(!$personeller): ?><tr><td colspan="5">Henüz personel yok.</td></tr><?php endif; ?></tbody></table></div>
     </div>
     <?php endif; ?>
 
     <?php if($tab==='rapor'): ?>
     <?php
-    $raporlar = $db->query("
+    $raporSql = "
         SELECT p.ad_soyad,
             MIN(g.baslangic_tarihi) baslangic,
             MAX(g.bitis_tarihi) bitis,
@@ -622,9 +655,16 @@ body{font-family:Arial,Helvetica,sans-serif;color:#111827;margin:36px;font-size:
             COALESCE(SUM(g.durum<>'tamamlandi' AND g.bitis_tarihi IS NOT NULL AND g.bitis_tarihi < CURDATE()),0) geciken
         FROM gorev_personelleri p
         LEFT JOIN gorevler g ON g.personel_id=p.id
-        GROUP BY p.id,p.ad_soyad
-        ORDER BY p.ad_soyad
-    ")->fetchAll(PDO::FETCH_ASSOC);
+    ";
+    $raporParams = [];
+    if(!$canManageTasks){
+        $raporSql .= " WHERE p.user_id=?";
+        $raporParams[] = $currentUserId;
+    }
+    $raporSql .= " GROUP BY p.id,p.ad_soyad ORDER BY p.ad_soyad";
+    $raporStmt = $db->prepare($raporSql);
+    $raporStmt->execute($raporParams);
+    $raporlar = $raporStmt->fetchAll(PDO::FETCH_ASSOC);
     ?>
     <div class="report-layout">
         <div class="panel"><h3>Personel Bazlı Görev Özeti</h3><div class="table-wrap"><table><thead><tr><th>Personel</th><th>Başlangıç</th><th>Bitiş</th><th>Toplam</th><th>Hiç Başlamadı</th><th>Devam</th><th>Tamamlanan</th><th>Geciken</th></tr></thead><tbody>
@@ -642,5 +682,36 @@ body{font-family:Arial,Helvetica,sans-serif;color:#111827;margin:36px;font-size:
     </div>
     <?php endif; ?>
 </div>
+<script>
+(function(){
+    var notes = document.getElementById('meetingNotes');
+    var list = document.getElementById('minuteAssignList');
+    var source = document.getElementById('personelOptionsSource');
+    if(!notes || !list || !source){ return; }
+    function renderAssignments(){
+        var rows = notes.value.split(/\r?\n/).map(function(v){ return v.trim(); }).filter(Boolean);
+        var oldSelects = list.querySelectorAll('select');
+        var oldDates = list.querySelectorAll('input[type="date"]');
+        var selected = Array.prototype.map.call(oldSelects, function(s){ return s.value; });
+        var dates = Array.prototype.map.call(oldDates, function(i){ return i.value; });
+        list.innerHTML = '';
+        if(!rows.length){
+            list.innerHTML = '<div class="empty">Tutanak satırı yazınca burada görev atama alanları görünür.</div>';
+            return;
+        }
+        rows.forEach(function(text, i){
+            var row = document.createElement('div');
+            row.className = 'assign-row';
+            row.innerHTML = '<b></b><select name="madde_personel[]">' + source.innerHTML + '</select><input type="date" name="madde_bitis[]">';
+            row.querySelector('b').textContent = text;
+            row.querySelector('select').value = selected[i] || '';
+            row.querySelector('input').value = dates[i] || '';
+            list.appendChild(row);
+        });
+    }
+    notes.addEventListener('input', renderAssignments);
+    renderAssignments();
+})();
+</script>
 </body>
 </html>
