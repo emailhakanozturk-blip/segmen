@@ -123,12 +123,25 @@ $gorevColumns = $db->query("SHOW COLUMNS FROM gorevler")->fetchAll(PDO::FETCH_CO
 if(!in_array('toplanti_id', $gorevColumns, true)){
     $db->exec("ALTER TABLE gorevler ADD COLUMN toplanti_id INT NULL AFTER id");
 }
+$personelColumns = $db->query("SHOW COLUMNS FROM gorev_personelleri")->fetchAll(PDO::FETCH_COLUMN);
+if(!in_array('user_id', $personelColumns, true)){
+    $db->exec("ALTER TABLE gorev_personelleri ADD COLUMN user_id INT NULL AFTER id, ADD INDEX idx_gorev_personel_user (user_id)");
+}
 
 $message = '';
 $error = '';
 $tab = (string)($_GET['tab'] ?? 'toplanti');
 if(!in_array($tab, ['toplanti','gorev','personel','rapor'], true)){
     $tab = 'gorev';
+}
+$editablePages = json_decode((string)($_SESSION['editable_pages'] ?? ''), true);
+$editablePages = is_array($editablePages) ? $editablePages : [];
+$canManageTasks = (int)($_SESSION['can_edit'] ?? 1) === 1 || in_array('gorev-takip.php', $editablePages, true);
+$currentUserId = (int)($_SESSION['user_id'] ?? 0);
+
+if(!$canManageTasks && (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' || isset($_GET['edit']) || isset($_GET['personel_edit']) || isset($_GET['toplanti_edit']))){
+    http_response_code(403);
+    exit('Bu işlem için yetkiniz yok.');
 }
 
 try {
@@ -165,23 +178,30 @@ try {
 
         if($action === 'personel_kaydet'){
             $id = (int)($_POST['id'] ?? 0);
-            $ad = trim((string)($_POST['ad_soyad'] ?? ''));
-            $email = trim((string)($_POST['email'] ?? ''));
+            $userId = (int)($_POST['user_id'] ?? 0);
             $unvan = trim((string)($_POST['unvan'] ?? ''));
             $aktif = isset($_POST['aktif']) ? 1 : 0;
-            if($ad === ''){
+            if($userId <= 0){
                 throw new Exception('Personel adı zorunludur.');
             }
-            if($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)){
+            $userQuery = $db->prepare("SELECT id, name, email FROM users WHERE id=? LIMIT 1");
+            $userQuery->execute([$userId]);
+            $selectedUser = $userQuery->fetch(PDO::FETCH_ASSOC);
+            if(!$selectedUser){
+                throw new Exception('SeÃ§ilen kullanÄ±cÄ± bulunamadÄ±.');
+            }
+            $ad = trim((string)$selectedUser['name']);
+            $email = trim((string)$selectedUser['email']);
+            if(false){
                 throw new Exception('Geçerli bir e-posta adresi girin.');
             }
             if($id > 0){
-                $q = $db->prepare("UPDATE gorev_personelleri SET ad_soyad=?, email=?, unvan=?, aktif=? WHERE id=?");
-                $q->execute([$ad, $email, $unvan, $aktif, $id]);
+                $q = $db->prepare("UPDATE gorev_personelleri SET user_id=?, ad_soyad=?, email=?, unvan=?, aktif=? WHERE id=?");
+                $q->execute([$userId, $ad, $email, $unvan, $aktif, $id]);
                 $message = 'Personel güncellendi.';
             }else{
-                $q = $db->prepare("INSERT INTO gorev_personelleri (ad_soyad,email,unvan,aktif) VALUES (?,?,?,?)");
-                $q->execute([$ad, $email, $unvan, $aktif]);
+                $q = $db->prepare("INSERT INTO gorev_personelleri (user_id,ad_soyad,email,unvan,aktif) VALUES (?,?,?,?,?)");
+                $q->execute([$userId, $ad, $email, $unvan, $aktif]);
                 $message = 'Personel eklendi.';
             }
             $tab = 'personel';
@@ -276,9 +296,28 @@ if($toplantiEditId > 0){
     $tab = 'toplanti';
 }
 
-$personeller = $db->query("SELECT * FROM gorev_personelleri ORDER BY aktif DESC, ad_soyad ASC")->fetchAll(PDO::FETCH_ASSOC);
+$usersForTask = $db->query("SELECT id, name, email FROM users ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);
+$personelSql = "SELECT p.*, u.name AS user_name FROM gorev_personelleri p LEFT JOIN users u ON u.id=p.user_id";
+$personelParams = [];
+if(!$canManageTasks){
+    $personelSql .= " WHERE p.user_id=?";
+    $personelParams[] = $currentUserId;
+}
+$personelSql .= " ORDER BY p.aktif DESC, p.ad_soyad ASC";
+$personelStmt = $db->prepare($personelSql);
+$personelStmt->execute($personelParams);
+$personeller = $personelStmt->fetchAll(PDO::FETCH_ASSOC);
 $aktifPersoneller = array_values(array_filter($personeller, fn($p) => (int)$p['aktif'] === 1));
-$toplantilar = $db->query("SELECT t.*, COUNT(g.id) AS gorev_adet FROM gorev_toplantilari t LEFT JOIN gorevler g ON g.toplanti_id=t.id GROUP BY t.id ORDER BY t.toplanti_tarihi DESC, t.id DESC")->fetchAll(PDO::FETCH_ASSOC);
+$toplantiSql = "SELECT t.*, COUNT(g.id) AS gorev_adet FROM gorev_toplantilari t LEFT JOIN gorevler g ON g.toplanti_id=t.id";
+$toplantiParams = [];
+if(!$canManageTasks){
+    $toplantiSql .= " LEFT JOIN gorev_personelleri p ON p.id=g.personel_id WHERE p.user_id=?";
+    $toplantiParams[] = $currentUserId;
+}
+$toplantiSql .= " GROUP BY t.id ORDER BY t.toplanti_tarihi DESC, t.id DESC";
+$toplantiStmt = $db->prepare($toplantiSql);
+$toplantiStmt->execute($toplantiParams);
+$toplantilar = $toplantiStmt->fetchAll(PDO::FETCH_ASSOC);
 
 $personelFiltre = (int)($_GET['personel'] ?? 0);
 $durumFiltre = trim((string)($_GET['durum'] ?? ''));
@@ -287,6 +326,10 @@ $params = [];
 if($personelFiltre > 0){
     $where[] = 'g.personel_id=?';
     $params[] = $personelFiltre;
+}
+if(!$canManageTasks){
+    $where[] = 'p.user_id=?';
+    $params[] = $currentUserId;
 }
 if($durumFiltre !== ''){
     $where[] = 'g.durum=?';
@@ -304,15 +347,24 @@ $q = $db->prepare("
 $q->execute($params);
 $gorevler = $q->fetchAll(PDO::FETCH_ASSOC);
 
-$summary = $db->query("
+$summarySql = "
     SELECT
-        COUNT(*) toplam,
-        SUM(durum='baslamadi') baslamadi,
-        SUM(durum='devam') devam,
-        SUM(durum='tamamlandi') tamamlandi,
-        SUM(durum<>'tamamlandi' AND bitis_tarihi IS NOT NULL AND bitis_tarihi < CURDATE()) geciken
-    FROM gorevler
-")->fetch(PDO::FETCH_ASSOC) ?: [];
+        COUNT(g.id) toplam,
+        COALESCE(SUM(g.durum='baslamadi'),0) baslamadi,
+        COALESCE(SUM(g.durum='devam'),0) devam,
+        COALESCE(SUM(g.durum='tamamlandi'),0) tamamlandi,
+        COALESCE(SUM(g.durum<>'tamamlandi' AND g.bitis_tarihi IS NOT NULL AND g.bitis_tarihi < CURDATE()),0) geciken
+    FROM gorevler g
+    INNER JOIN gorev_personelleri p ON p.id=g.personel_id
+";
+$summaryParams = [];
+if(!$canManageTasks){
+    $summarySql .= " WHERE p.user_id=?";
+    $summaryParams[] = $currentUserId;
+}
+$summaryStmt = $db->prepare($summarySql);
+$summaryStmt->execute($summaryParams);
+$summary = $summaryStmt->fetch(PDO::FETCH_ASSOC) ?: [];
 
 if(isset($_GET['toplanti_export'])){
     $exportId = (int)($_GET['toplanti_export'] ?? 0);
@@ -324,9 +376,19 @@ if(isset($_GET['toplanti_export'])){
         http_response_code(404);
         exit('Toplantı tutanağı bulunamadı.');
     }
-    $q = $db->prepare("SELECT g.*, p.ad_soyad FROM gorevler g LEFT JOIN gorev_personelleri p ON p.id=g.personel_id WHERE g.toplanti_id=? ORDER BY g.id ASC");
-    $q->execute([$exportId]);
+    $exportWhere = "g.toplanti_id=?";
+    $exportParams = [$exportId];
+    if(!$canManageTasks){
+        $exportWhere .= " AND p.user_id=?";
+        $exportParams[] = $currentUserId;
+    }
+    $q = $db->prepare("SELECT g.*, p.ad_soyad FROM gorevler g LEFT JOIN gorev_personelleri p ON p.id=g.personel_id WHERE {$exportWhere} ORDER BY g.id ASC");
+    $q->execute($exportParams);
     $exportGorevler = $q->fetchAll(PDO::FETCH_ASSOC);
+    if(!$canManageTasks && !$exportGorevler){
+        http_response_code(403);
+        exit('Bu toplantÄ± tutanaÄŸÄ±nÄ± gÃ¶rÃ¼ntÃ¼leme yetkiniz yok.');
+    }
     $items = array_values(array_filter(array_map('trim', preg_split('/\R+/', (string)($exportToplanti['tutanak'] ?? '')))));
     $fileBase = 'toplanti-tutanagi-' . date('Ymd', strtotime((string)$exportToplanti['toplanti_tarihi']));
     if($format === 'word'){
@@ -405,6 +467,7 @@ body{font-family:Arial,Helvetica,sans-serif;color:#111827;margin:36px;font-size:
     </nav>
 
     <?php if($tab==='toplanti'): ?>
+    <?php if($canManageTasks): ?>
     <div class="layout">
         <div class="panel">
             <h3><?php echo $editingToplanti ? 'Toplantı Tutanağı Düzenle' : 'Toplantı Tutanağı Oluştur'; ?></h3>
@@ -422,6 +485,7 @@ body{font-family:Arial,Helvetica,sans-serif;color:#111827;margin:36px;font-size:
             <p class="empty">Bir tutanak oluşturduktan sonra listeden “Görev Ata” seçin. Görev formunda toplantı ve gün otomatik gelir.</p>
         </aside>
     </div>
+    <?php endif; ?>
     <div class="panel">
         <h3>Toplantı Tutanakları</h3>
         <div class="table-wrap"><table><thead><tr><th>Gün</th><th>Toplantı</th><th>Tutanak</th><th>Görev</th><th>İşlem</th></tr></thead><tbody>
