@@ -15,10 +15,21 @@ function view_date($value): string
 function view_status_label(string $status): string
 {
     return [
-        'baslamadi' => 'Hiç Başlamadı',
+        'baslamadi' => 'Başlamadı',
+        'baslatildi' => 'Başlatıldı',
         'devam' => 'Devam Ediyor',
         'tamamlandi' => 'Tamamlandı',
-    ][$status] ?? 'Hiç Başlamadı';
+    ][$status] ?? 'Başlamadı';
+}
+
+function view_status_step(string $status): int
+{
+    return [
+        'baslamadi' => 0,
+        'baslatildi' => 1,
+        'devam' => 2,
+        'tamamlandi' => 3,
+    ][$status] ?? 0;
 }
 
 $token = trim((string)($_GET['token'] ?? ''));
@@ -45,7 +56,7 @@ if(!$gorev){
 $message = '';
 if(($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST'){
     $durum = (string)($_POST['durum'] ?? $gorev['durum']);
-    if(in_array($durum, ['baslamadi','devam','tamamlandi'], true)){
+    if(in_array($durum, ['baslamadi','baslatildi','devam','tamamlandi'], true)){
         $tamamlanma = $durum === 'tamamlandi' ? date('Y-m-d') : null;
         $update = $db->prepare("UPDATE gorevler SET durum=?, tamamlanma_tarihi=? WHERE id=?");
         $update->execute([$durum, $tamamlanma, (int)$gorev['id']]);
@@ -56,6 +67,7 @@ if(($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST'){
 }
 
 $late = $gorev['durum'] !== 'tamamlandi' && !empty($gorev['bitis_tarihi']) && strtotime((string)$gorev['bitis_tarihi']) < strtotime(date('Y-m-d'));
+$currentStep = view_status_step((string)$gorev['durum']);
 ?>
 <!DOCTYPE html>
 <html lang="tr">
@@ -64,7 +76,7 @@ $late = $gorev['durum'] !== 'tamamlandi' && !empty($gorev['bitis_tarihi']) && st
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Görev Detayı</title>
 <style>
-body{margin:0;background:#f4f7fb;font-family:Arial,Helvetica,sans-serif;color:#111827}.wrap{max-width:820px;margin:36px auto;padding:0 18px}.card{background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:26px;box-shadow:0 14px 34px rgba(15,23,42,.07)}h1{margin:0 0 8px;font-size:30px}.muted{color:#64748b}.meta{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:22px 0}.box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:13px}.box span{display:block;font-size:12px;color:#64748b;font-weight:800}.box strong{display:block;margin-top:5px;font-size:16px}.desc{white-space:pre-wrap;line-height:1.55;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:16px}.badge{display:inline-flex;border-radius:999px;padding:6px 10px;font-size:12px;font-weight:800;background:#dbeafe;color:#1d4ed8}.badge.late{background:#fee2e2;color:#991b1b}.badge.done{background:#dcfce7;color:#166534}.notice{margin-bottom:14px;padding:12px;border-radius:9px;background:#dcfce7;color:#166534;font-weight:800}.actions{margin-top:20px;display:flex;gap:8px;flex-wrap:wrap}.btn{border:0;border-radius:8px;padding:11px 14px;background:#2563eb;color:#fff;font-weight:800;cursor:pointer}.btn-green{background:#16a34a}.btn-gray{background:#64748b}@media(max-width:700px){.meta{grid-template-columns:1fr}h1{font-size:24px}}
+body{margin:0;background:#f4f7fb;font-family:Arial,Helvetica,sans-serif;color:#111827}.wrap{max-width:900px;margin:36px auto;padding:0 18px}.card{background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:26px;box-shadow:0 14px 34px rgba(15,23,42,.07);text-align:center}h1{margin:10px 0 8px;font-size:30px}.muted{color:#64748b}.meta{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:22px 0}.box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:13px;text-align:center}.box span{display:block;font-size:12px;color:#64748b;font-weight:800}.box strong{display:block;margin-top:5px;font-size:16px}.desc{white-space:pre-wrap;line-height:1.55;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:16px;text-align:left}.badge{display:inline-flex;border-radius:999px;padding:6px 10px;font-size:12px;font-weight:800;background:#dbeafe;color:#1d4ed8}.badge.late{background:#fee2e2;color:#991b1b}.badge.done{background:#dcfce7;color:#166534}.notice{margin-bottom:14px;padding:12px;border-radius:9px;background:#dcfce7;color:#166534;font-weight:800}.status-flow{display:grid;grid-template-columns:repeat(4,1fr);margin:28px 0 24px}.status-step{position:relative;text-align:center;color:#64748b;font-size:13px;font-weight:700}.status-step:before{content:'';position:absolute;left:-50%;right:50%;top:9px;height:3px;background:#e5e7eb}.status-step:first-child:before{display:none}.status-dot{display:block;width:16px;height:16px;margin:0 auto 10px;border:4px solid #fff;border-radius:50%;background:#d1d5db;box-shadow:0 0 0 3px #e5e7eb;position:relative;z-index:1}.status-step.active{color:#047857}.status-step.active:before{background:#059669}.status-step.active .status-dot{background:#059669;box-shadow:0 0 0 3px #a7f3d0}.actions{margin-top:20px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}.btn{border:0;border-radius:8px;padding:11px 14px;background:#2563eb;color:#fff;font-weight:800;cursor:pointer}.btn.active{outline:3px solid #bfdbfe}.btn-green{background:#16a34a}.btn-gray{background:#64748b}.btn-cyan{background:#0891b2}@media(max-width:700px){.meta{grid-template-columns:1fr}h1{font-size:24px}.status-step{font-size:11px}.status-step span:last-child{display:block;min-height:28px}}
 </style>
 </head>
 <body>
@@ -79,11 +91,17 @@ body{margin:0;background:#f4f7fb;font-family:Arial,Helvetica,sans-serif;color:#1
             <div class="box"><span>Bitiş</span><strong><?php echo view_date($gorev['bitis_tarihi']); ?></strong></div>
             <div class="box"><span>Tamamlanma</span><strong><?php echo view_date($gorev['tamamlanma_tarihi']); ?></strong></div>
         </div>
+        <div class="status-flow" aria-label="Görev durum akışı">
+            <?php foreach(['baslamadi','baslatildi','devam','tamamlandi'] as $i => $status): ?>
+                <div class="status-step <?php echo $i <= $currentStep ? 'active' : ''; ?>"><span class="status-dot"></span><span><?php echo view_status_label($status); ?></span></div>
+            <?php endforeach; ?>
+        </div>
         <div class="desc"><?php echo view_e($gorev['aciklama'] ?: 'Açıklama girilmemiş.'); ?></div>
         <form method="POST" class="actions">
-            <button class="btn btn-gray" name="durum" value="baslamadi">Hiç Başlamadı</button>
-            <button class="btn" name="durum" value="devam">Devam Ediyor</button>
-            <button class="btn btn-green" name="durum" value="tamamlandi">Tamamlandı</button>
+            <button class="btn btn-gray <?php echo $gorev['durum']==='baslamadi'?'active':''; ?>" name="durum" value="baslamadi">Başlamadı</button>
+            <button class="btn btn-cyan <?php echo $gorev['durum']==='baslatildi'?'active':''; ?>" name="durum" value="baslatildi">Başlatıldı</button>
+            <button class="btn <?php echo $gorev['durum']==='devam'?'active':''; ?>" name="durum" value="devam">Devam Ediyor</button>
+            <button class="btn btn-green <?php echo $gorev['durum']==='tamamlandi'?'active':''; ?>" name="durum" value="tamamlandi">Tamamlandı</button>
         </form>
     </div>
 </div>
