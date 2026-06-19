@@ -2,6 +2,7 @@
 session_start();
 header('Content-Type: text/html; charset=UTF-8');
 require_once __DIR__ . '/config/database.php';
+$db->exec("SET NAMES utf8mb4 COLLATE utf8mb4_turkish_ci");
 
 if(!isset($_SESSION['user_id'])){
     header("Location: login.php");
@@ -149,7 +150,7 @@ if(!in_array('user_id', $personelColumns, true)){
 
 $message = '';
 $error = '';
-$tab = (string)($_GET['tab'] ?? 'toplanti');
+$tab = (string)($_GET['tab'] ?? 'gorev');
 if(!in_array($tab, ['toplanti','gorev','personel','rapor'], true)){
     $tab = 'gorev';
 }
@@ -216,6 +217,23 @@ try {
             $db->prepare("UPDATE gorevler SET toplanti_id=NULL WHERE toplanti_id=?")->execute([$id]);
             $db->prepare("DELETE FROM gorev_toplantilari WHERE id=?")->execute([$id]);
             $message = 'Toplantı tutanağı silindi.';
+            $tab = 'toplanti';
+        }
+
+        if($action === 'gorev_hizli_kaydet'){
+            $toplantiId = (int)($_POST['toplanti_id'] ?? 0);
+            $personelId = (int)($_POST['personel_id'] ?? 0);
+            $baslik = trim((string)($_POST['baslik'] ?? ''));
+            $bitis = trim((string)($_POST['bitis_tarihi'] ?? ''));
+            $q = $db->prepare("SELECT toplanti_tarihi FROM gorev_toplantilari WHERE id=? LIMIT 1");
+            $q->execute([$toplantiId]);
+            $toplantiTarihi = (string)($q->fetchColumn() ?: '');
+            if($toplantiId <= 0 || $personelId <= 0 || $baslik === '' || $bitis === '' || $toplantiTarihi === ''){
+                throw new Exception('Toplantı, görev maddesi, personel ve bitiş tarihi zorunludur.');
+            }
+            $q = $db->prepare("INSERT INTO gorevler (toplanti_id,personel_id,baslik,aciklama,baslangic_tarihi,bitis_tarihi,durum,link_token,created_by) VALUES (?,?,?,?,?,?,?,?,?)");
+            $q->execute([$toplantiId, $personelId, $baslik, $baslik, $toplantiTarihi, $bitis, 'baslamadi', task_token(), $currentUserId]);
+            $message = 'Görev atandı.';
             $tab = 'toplanti';
         }
 
@@ -507,23 +525,24 @@ body{font-family:Arial,Helvetica,sans-serif;color:#0f172a;margin:0;background:#e
 .task-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}.task-tab{padding:10px 13px;border:1px solid #d8e0ea;border-radius:8px;background:#fff;color:#334155;text-decoration:none;font-size:12px;font-weight:800}.task-tab.active{background:#17233b;color:#fff;border-color:#17233b}.panel{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:16px;margin-bottom:16px;box-shadow:0 8px 24px rgba(15,23,42,.04)}.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.field label{display:block;font-size:12px;font-weight:800;color:#334155;margin-bottom:6px}.field input,.field select,.field textarea{width:100%;border:1px solid #d1d5db;border-radius:8px;padding:9px 10px;font-size:13px;box-sizing:border-box;background:#fff}.field textarea{min-height:86px;resize:vertical}.span-2{grid-column:span 2}.span-4{grid-column:span 4}.btn{border:0;border-radius:8px;padding:9px 12px;background:#2563eb;color:#fff;text-decoration:none;font-size:12px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}.btn-green{background:#16a34a}.btn-red{background:#dc2626}.btn-gray{background:#64748b}.btn-dark{background:#0f172a}.actions{display:flex;gap:6px;flex-wrap:wrap}.notice{padding:12px 14px;border-radius:9px;margin-bottom:14px;font-size:13px;font-weight:800}.ok{background:#dcfce7;color:#166534}.err{background:#fee2e2;color:#991b1b}.summary{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:16px}.summary-card{background:#fff;border:1px solid #e5e7eb;border-radius:11px;padding:13px}.summary-card span{display:block;font-size:11px;color:#64748b;font-weight:800}.summary-card strong{display:block;font-size:22px;margin-top:5px}.filters{display:grid;grid-template-columns:1fr 1fr auto auto;gap:10px;align-items:end;margin-bottom:14px}.layout{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:16px}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;font-size:12px;min-width:900px}th{background:#0f172a;color:#fff;text-align:left;padding:9px 8px;white-space:nowrap}td{border-bottom:1px solid #edf2f7;padding:8px;vertical-align:top}.muted{color:#64748b}.badge{display:inline-flex;border-radius:999px;padding:5px 8px;font-size:11px;font-weight:800}.badge.wait{background:#e2e8f0;color:#334155}.badge.work{background:#dbeafe;color:#1d4ed8}.badge.done{background:#dcfce7;color:#166534}.badge.late{background:#fee2e2;color:#991b1b}.timeline{position:sticky;top:18px}.timeline-list{display:flex;flex-direction:column;gap:9px}.time-item{border-left:4px solid #cbd5e1;background:#f8fafc;border-radius:8px;padding:9px 10px}.time-item.work{border-color:#2563eb}.time-item.done{border-color:#16a34a}.time-item.late{border-color:#dc2626}.time-item b{display:block;font-size:12px}.time-item span{display:block;color:#64748b;font-size:11px;margin-top:3px}.empty{padding:16px;background:#f8fafc;border-radius:9px;color:#64748b}.checkbox-line{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:700}.checkbox-line input{width:auto}@media(max-width:1150px){.layout{grid-template-columns:1fr}.timeline{position:static}.summary{grid-template-columns:repeat(2,1fr)}}@media(max-width:750px){.grid,.filters{grid-template-columns:1fr}.span-2,.span-4{grid-column:span 1}.summary{grid-template-columns:1fr}}
 .progress{height:7px;background:#e5e7eb;border-radius:999px;overflow:hidden;margin-top:7px}.progress-fill{display:block;height:100%;background:#2563eb;border-radius:999px}.progress-fill.done{background:#16a34a}.minute-list{display:grid;gap:8px}.minute-row{display:flex;gap:10px;align-items:flex-start;justify-content:space-between;background:#f8fafc;border:1px solid #e5e7eb;border-radius:9px;padding:10px}.minute-row span{font-size:13px;line-height:1.4}.minute-assign-box{background:#f8fafc;border:1px solid #dbeafe;border-radius:10px;padding:12px}.assign-row{display:grid;grid-template-columns:minmax(0,1fr) 220px 150px;gap:10px;align-items:center;border-top:1px solid #e5e7eb;padding:9px 0}.assign-row:first-child{border-top:0}.assign-row b{font-size:13px}.assign-row select,.assign-row input{border:1px solid #d1d5db;border-radius:8px;padding:8px;font-size:12px}.report-layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:16px}@media(max-width:1150px){.report-layout{grid-template-columns:1fr}.assign-row{grid-template-columns:1fr}}
 .summary{grid-template-columns:repeat(6,1fr)}.summary-card{text-align:center}.meeting-table th,.meeting-table td{text-align:center;vertical-align:middle}.meeting-table td:nth-child(3){text-align:left;line-height:1.45}.meeting-table .actions{justify-content:center}.meeting-table .badge{justify-content:center;min-width:42px}.badge.started{background:#e0f2fe;color:#0369a1}.time-item.started{border-color:#0ea5e9}.mini-flow{display:flex;align-items:center;justify-content:center;margin-top:8px}.mini-step{width:9px;height:9px;border-radius:50%;background:#d1d5db;position:relative}.mini-step+.mini-step{margin-left:20px}.mini-step+.mini-step:before{content:'';position:absolute;right:9px;top:4px;width:20px;height:2px;background:#d1d5db}.mini-step.active{background:#059669}.mini-step.active:before{background:#059669}@media(max-width:1150px){.summary{grid-template-columns:repeat(3,1fr)}}@media(max-width:750px){.summary{grid-template-columns:repeat(2,1fr)}}
+.task-head{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;margin-bottom:18px;padding-bottom:16px;border-bottom:1px solid #dbe3ed}.task-kicker{margin-bottom:5px;color:#087f8c;font-size:10px;font-weight:900;letter-spacing:1.5px}.task-head h2{margin:0;font-size:28px}.task-user{text-align:right;color:#64748b;font-size:12px}.task-user strong{display:block;color:#172033;font-size:13px;margin-bottom:3px}.task-tabs{display:inline-flex;padding:4px;background:#f3f6fa;border:1px solid #d7e0eb;border-radius:8px}.task-tab{min-width:108px;text-align:center;border:0;background:transparent;border-radius:6px}.task-tab.active{background:#fff;color:#087f8c;box-shadow:0 1px 4px rgba(15,23,42,.12)}.tab-count{display:inline-flex;align-items:center;justify-content:center;min-width:21px;height:18px;margin-left:5px;padding:0 5px;border-radius:999px;background:#e2e8f0;font-size:10px}.summary-card{position:relative;overflow:hidden;border-radius:8px}.summary-card:before{content:'';position:absolute;left:0;right:0;top:0;height:3px;background:#087f8c}.summary-card:nth-child(2):before{background:#94a3b8}.summary-card:nth-child(3):before{background:#0ea5e9}.summary-card:nth-child(4):before{background:#d97706}.summary-card:nth-child(5):before{background:#16a34a}.summary-card:nth-child(6):before{background:#dc2626}.meeting-simple{min-width:0;table-layout:fixed}.meeting-simple th:nth-child(1){width:18%}.meeting-simple th:nth-child(3){width:90px}.meeting-simple th:nth-child(4){width:100px}.meeting-simple td:nth-child(2){text-align:left}.meeting-open{width:100%}.meeting-dialog{width:min(880px,calc(100% - 28px));max-height:88vh;padding:0;border:1px solid #d7e0eb;border-radius:10px;background:#fff;color:#172033;box-shadow:0 24px 70px rgba(15,23,42,.28);overflow:hidden}.meeting-dialog::backdrop{background:rgba(15,23,42,.65)}.dialog-head{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;padding:20px 22px;background:#f6f9fc;border-bottom:1px solid #d7e0eb}.dialog-head h3{margin:5px 0 0;font-size:20px}.dialog-kicker{color:#087f8c;font-size:11px;font-weight:900;text-transform:uppercase}.dialog-close{width:36px;height:36px;padding:0;border:1px solid #d7e0eb;border-radius:7px;background:#fff;color:#172033;font-size:24px;cursor:pointer}.dialog-body{max-height:calc(88vh - 82px);padding:20px 22px;overflow:auto}.dialog-section{margin-bottom:16px;border:1px solid #d7e0eb;border-radius:8px;background:#f8fafc;overflow:hidden}.dialog-section:last-child{margin-bottom:0}.dialog-section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border-bottom:1px solid #d7e0eb}.dialog-section-head h4{margin:0;font-size:14px}.dialog-section-head span{color:#64748b;font-size:11px}.dialog-minutes{margin:0;padding:14px 18px 14px 38px}.dialog-minutes li{padding:7px 4px;border-bottom:1px solid #e2e8f0;line-height:1.45}.dialog-minutes li:last-child{border-bottom:0}.dialog-assign{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:14px}.dialog-assign select,.dialog-assign input{width:100%;min-width:0;border:1px solid #d1d5db;border-radius:7px;padding:9px 10px;font-size:13px}.dialog-assign select[name=baslik]{grid-column:1/-1}.dialog-assign button{grid-column:1/-1}.dialog-actions{padding:14px}.empty.compact{margin:14px}@media(max-width:700px){.task-head{align-items:flex-start;flex-direction:column}.task-user{text-align:left}.task-tabs{display:grid;grid-template-columns:1fr 1fr;width:100%}.meeting-dialog{width:calc(100% - 16px);max-height:94vh}.dialog-head,.dialog-body{padding:16px}.dialog-assign{grid-template-columns:1fr}.dialog-assign select[name=baslik],.dialog-assign button{grid-column:auto}}
 </style>
 </head>
 <body>
 <?php require_once __DIR__ . '/sidebar.php'; ?>
 <div class="main">
-    <div class="topbar">
-        <h2>Görev Takip</h2>
-        <p>Personele görev atayın, süre verin, durumları ve geciken işleri tek ekranda izleyin.</p>
+    <div class="task-head">
+        <div><div class="task-kicker">İŞ YÖNETİMİ</div><h2>Görev Takip</h2></div>
+        <div class="task-user"><strong><?php echo task_e($_SESSION['name'] ?? $_SESSION['username'] ?? ''); ?></strong><?php echo date('d.m.Y'); ?></div>
     </div>
 
     <?php if($message): ?><div class="notice ok"><?php echo task_e($message); ?></div><?php endif; ?>
     <?php if($error): ?><div class="notice err"><?php echo task_e($error); ?></div><?php endif; ?>
 
     <nav class="task-tabs">
-        <a class="task-tab <?php echo $tab==='toplanti'?'active':''; ?>" href="?tab=toplanti">Toplantı Tutanakları</a>
-        <a class="task-tab <?php echo $tab==='gorev'?'active':''; ?>" href="?tab=gorev">Görevler</a>
-        <a class="task-tab <?php echo $tab==='personel'?'active':''; ?>" href="?tab=personel">Personel</a>
+        <a class="task-tab <?php echo $tab==='gorev'?'active':''; ?>" href="?tab=gorev">Görevler <span class="tab-count"><?php echo count($gorevler); ?></span></a>
+        <a class="task-tab <?php echo $tab==='toplanti'?'active':''; ?>" href="?tab=toplanti">Toplantılar <span class="tab-count"><?php echo count($toplantilar); ?></span></a>
+        <a class="task-tab <?php echo $tab==='personel'?'active':''; ?>" href="?tab=personel">Personel <span class="tab-count"><?php echo count($personeller); ?></span></a>
         <a class="task-tab <?php echo $tab==='rapor'?'active':''; ?>" href="?tab=rapor">Raporlar</a>
     </nav>
 
@@ -554,16 +573,25 @@ body{font-family:Arial,Helvetica,sans-serif;color:#0f172a;margin:0;background:#e
     </div>
     <?php endif; ?>
     <div class="panel">
-        <h3>Toplantı Tutanakları</h3>
-        <div class="table-wrap"><table class="meeting-table"><thead><tr><th>Gün</th><th>Toplantı</th><th>Tutanak</th><th>Görev</th><th>İşlem</th></tr></thead><tbody>
-        <?php if(!$toplantilar): ?><tr><td colspan="5">Henüz toplantı tutanağı yok.</td></tr><?php endif; ?>
+        <h3>Kayıtlı Toplantılar</h3>
+        <div class="table-wrap"><table class="meeting-table meeting-simple"><thead><tr><th>Tarih</th><th>Toplantı</th><th>Görevler</th><th>İşlem</th></tr></thead><tbody>
+        <?php if(!$toplantilar): ?><tr><td colspan="4">Henüz toplantı tutanağı yok.</td></tr><?php endif; ?>
         <?php foreach($toplantilar as $t): ?><tr>
-            <td><?php echo task_date($t['toplanti_tarihi']); ?></td>
-            <td><strong><?php echo task_e($t['baslik']); ?></strong></td>
-            <td><?php echo nl2br(task_e(task_short((string)$t['tutanak']))); ?></td>
+            <td><strong><?php echo task_date($t['toplanti_tarihi']); ?></strong></td>
+            <td><strong><?php echo task_e($t['baslik']); ?></strong><br><small class="muted"><?php echo task_e(task_short((string)$t['tutanak'], 120)); ?></small></td>
             <td><span class="badge work"><?php echo (int)$t['gorev_adet']; ?> görev</span></td>
-            <td><div class="actions"><?php if($canManageTasks): ?><a class="btn btn-green" href="?tab=gorev&toplanti_id=<?php echo (int)$t['id']; ?>">Görev Ata</a><?php endif; ?><a class="btn btn-dark" target="_blank" href="?toplanti_export=<?php echo (int)$t['id']; ?>&format=pdf">PDF</a><a class="btn btn-gray" href="?toplanti_export=<?php echo (int)$t['id']; ?>&format=word">Word</a><?php if($canManageTasks): ?><a class="btn" href="?tab=toplanti&toplanti_edit=<?php echo (int)$t['id']; ?>">Düzelt</a><form method="POST" onsubmit="return confirm('Silinsin mi?');"><input type="hidden" name="action" value="toplanti_sil"><input type="hidden" name="id" value="<?php echo (int)$t['id']; ?>"><button class="btn btn-red">Sil</button></form><?php endif; ?></div></td>
+            <td><button type="button" class="btn meeting-open" data-dialog="meeting-<?php echo (int)$t['id']; ?>">Detay</button></td>
         </tr><?php endforeach; ?></tbody></table></div>
+        <?php foreach($toplantilar as $t): $maddeler=array_values(array_filter(array_map('trim',preg_split('/\R+/',(string)($t['tutanak'] ?? ''))))); ?>
+        <dialog class="meeting-dialog" id="meeting-<?php echo (int)$t['id']; ?>">
+            <div class="dialog-head"><div><div class="dialog-kicker"><?php echo task_date($t['toplanti_tarihi']); ?></div><h3><?php echo task_e($t['baslik']); ?></h3></div><button type="button" class="dialog-close" aria-label="Kapat">×</button></div>
+            <div class="dialog-body">
+                <section class="dialog-section"><div class="dialog-section-head"><h4>Toplantı Tutanağı</h4><span><?php echo count($maddeler); ?> madde</span></div><?php if($maddeler): ?><ol class="dialog-minutes"><?php foreach($maddeler as $madde): ?><li><?php echo task_e($madde); ?></li><?php endforeach; ?></ol><?php else: ?><div class="empty compact">Tutanak maddesi bulunmuyor.</div><?php endif; ?></section>
+                <?php if($canManageTasks && $maddeler): ?><section class="dialog-section"><div class="dialog-section-head"><h4>Hızlı Görev Atama</h4><span>Bitiş tarihi zorunludur</span></div><form method="POST" class="dialog-assign"><input type="hidden" name="action" value="gorev_hizli_kaydet"><input type="hidden" name="toplanti_id" value="<?php echo (int)$t['id']; ?>"><select name="baslik" required><option value="">Tutanak maddesi seç</option><?php foreach($maddeler as $madde): ?><option value="<?php echo task_e($madde); ?>"><?php echo task_e($madde); ?></option><?php endforeach; ?></select><select name="personel_id" required><option value="">Personel seç</option><?php foreach($aktifPersoneller as $p): ?><option value="<?php echo (int)$p['id']; ?>"><?php echo task_e($p['ad_soyad']); ?><?php echo $p['unvan'] ? ' - '.task_e($p['unvan']) : ''; ?></option><?php endforeach; ?></select><input type="date" name="bitis_tarihi" required value="<?php echo date('Y-m-d', strtotime('+7 days')); ?>"><button class="btn btn-green">Görev Ata</button></form></section><?php endif; ?>
+                <section class="dialog-section"><div class="dialog-section-head"><h4>Belge ve İşlemler</h4><span><?php echo (int)$t['gorev_adet']; ?> görev</span></div><div class="actions dialog-actions"><a class="btn btn-dark" target="_blank" href="?toplanti_export=<?php echo (int)$t['id']; ?>&format=pdf">PDF Görüntüle</a><a class="btn btn-gray" href="?toplanti_export=<?php echo (int)$t['id']; ?>&format=word">Word İndir</a><?php if($canManageTasks): ?><a class="btn btn-green" href="?tab=gorev&toplanti_id=<?php echo (int)$t['id']; ?>">Detaylı Görev Ata</a><a class="btn" href="?tab=toplanti&toplanti_edit=<?php echo (int)$t['id']; ?>">Toplantıyı Düzenle</a><form method="POST" onsubmit="return confirm('Toplantı silinsin mi?');"><input type="hidden" name="action" value="toplanti_sil"><input type="hidden" name="id" value="<?php echo (int)$t['id']; ?>"><button class="btn btn-red">Toplantıyı Sil</button></form><?php endif; ?></div></section>
+            </div>
+        </dialog>
+        <?php endforeach; ?>
     </div>
     <?php endif; ?>
 
@@ -750,6 +778,19 @@ body{font-family:Arial,Helvetica,sans-serif;color:#0f172a;margin:0;background:#e
     }
     notes.addEventListener('input', renderAssignments);
     renderAssignments();
+})();
+(function(){
+    document.querySelectorAll('.meeting-open').forEach(function(button){
+        button.addEventListener('click', function(){
+            var dialog = document.getElementById(button.dataset.dialog);
+            if(dialog && typeof dialog.showModal === 'function'){ dialog.showModal(); }
+        });
+    });
+    document.querySelectorAll('.meeting-dialog').forEach(function(dialog){
+        var close = dialog.querySelector('.dialog-close');
+        if(close){ close.addEventListener('click', function(){ dialog.close(); }); }
+        dialog.addEventListener('click', function(event){ if(event.target === dialog){ dialog.close(); } });
+    });
 })();
 </script>
 </body>
