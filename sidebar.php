@@ -27,6 +27,8 @@
 
         <a href="demirbas-takip.php">Demirbaş Takip</a>
 
+        <a href="palet-takip.php">Palet Takip</a>
+
         <a href="gorev-takip.php">Görev Takip</a>
 
         <a href="log-kayitlari.php">Log Kayıtları</a>
