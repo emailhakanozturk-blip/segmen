@@ -69,10 +69,47 @@ CREATE TABLE IF NOT EXISTS palet_hareketleri (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci
 ");
 
+$db->exec("
+CREATE TABLE IF NOT EXISTS palet_yerleri (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    yer_adi VARCHAR(180) NOT NULL UNIQUE,
+    aciklama VARCHAR(255) NULL,
+    created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci
+");
+
+$db->exec("
+CREATE TABLE IF NOT EXISTS palet_sevk_eden_yerleri (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    yer_adi VARCHAR(180) NOT NULL UNIQUE,
+    aciklama VARCHAR(255) NULL,
+    created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci
+");
+
+$db->exec("
+CREATE TABLE IF NOT EXISTS palet_sevk_edilen_yerleri (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    yer_adi VARCHAR(180) NOT NULL UNIQUE,
+    aciklama VARCHAR(255) NULL,
+    created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci
+");
+
+$isYerDeletePost = ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && ($_POST['action'] ?? '') === 'yer_sil';
+if(!$isYerDeletePost && (int)$db->query("SELECT COUNT(*) FROM palet_sevk_eden_yerleri")->fetchColumn() === 0){
+    $db->exec("INSERT IGNORE INTO palet_sevk_eden_yerleri (yer_adi,aciklama) SELECT yer_adi,aciklama FROM palet_yerleri");
+    $db->exec("INSERT IGNORE INTO palet_sevk_eden_yerleri (yer_adi,aciklama) VALUES ('SEĞMEN SU DEPO','Ana depo')");
+}
+if(!$isYerDeletePost && (int)$db->query("SELECT COUNT(*) FROM palet_sevk_edilen_yerleri")->fetchColumn() === 0){
+    $db->exec("INSERT IGNORE INTO palet_sevk_edilen_yerleri (yer_adi,aciklama) SELECT yer_adi,aciklama FROM palet_yerleri");
+    $db->exec("INSERT IGNORE INTO palet_sevk_edilen_yerleri (yer_adi,aciklama) VALUES ('SEĞMEN SU DEPO','Ana depo')");
+}
+
 $message = '';
 $error = '';
 $tab = (string)($_GET['tab'] ?? 'hareket');
-if(!in_array($tab, ['hareket', 'excel', 'kalan', 'liste', 'ozet'], true)){
+if(!in_array($tab, ['hareket', 'excel', 'kalan', 'liste', 'ozet', 'yer'], true)){
     $tab = 'hareket';
 }
 
@@ -108,6 +145,27 @@ try {
             $tab = 'liste';
         }
 
+        if($action === 'yer_kaydet'){
+            $yerAdi = trim((string)($_POST['yer_adi'] ?? ''));
+            $yerTipi = (string)($_POST['yer_tipi'] ?? 'eden');
+            $table = $yerTipi === 'edilen' ? 'palet_sevk_edilen_yerleri' : 'palet_sevk_eden_yerleri';
+            if($yerAdi === ''){
+                throw new Exception('Yer adı zorunludur.');
+            }
+            $query = $db->prepare("INSERT INTO {$table} (yer_adi,aciklama) VALUES (?,?) ON DUPLICATE KEY UPDATE aciklama=VALUES(aciklama)");
+            $query->execute([$yerAdi, trim((string)($_POST['aciklama'] ?? ''))]);
+            $message = 'Yer tanımı kaydedildi.';
+            $tab = 'yer';
+        }
+
+        if($action === 'yer_sil'){
+            $yerTipi = (string)($_POST['yer_tipi'] ?? 'eden');
+            $table = $yerTipi === 'edilen' ? 'palet_sevk_edilen_yerleri' : 'palet_sevk_eden_yerleri';
+            $db->prepare("DELETE FROM {$table} WHERE id=?")->execute([(int)($_POST['id'] ?? 0)]);
+            $message = 'Yer tanımı silindi.';
+            $tab = 'yer';
+        }
+
         if($action === 'excel_aktar'){
             if(empty($_FILES['excel']['tmp_name'])){
                 throw new Exception('Excel dosyası seçiniz.');
@@ -124,10 +182,43 @@ try {
             $sheet = $spreadsheet->getActiveSheet();
             $rows = $sheet->toArray(null, true, true, true);
             $insert = $db->prepare("INSERT INTO palet_hareketleri (tarih,sevk_eden_yer,sevk_edilen_yer,giden_adet,gelen_adet,teslim_eden,teslim_alan,aciklama,kaydeden_user_id) VALUES (?,?,?,?,?,?,?,?,?)");
+            $insertEdenYer = $db->prepare("INSERT IGNORE INTO palet_sevk_eden_yerleri (yer_adi,aciklama) VALUES (?,?)");
+            $insertEdilenYer = $db->prepare("INSERT IGNORE INTO palet_sevk_edilen_yerleri (yer_adi,aciklama) VALUES (?,?)");
+            $yeniFormat = mb_strtoupper(trim((string)($rows[2]['B'] ?? '')), 'UTF-8') === 'SEVK EDEN';
             $count = 0;
+            $sonTarih = null;
 
             foreach($rows as $index => $row){
                 if($index < 3){
+                    continue;
+                }
+                if($yeniFormat){
+                    $tarih = palet_date($row['A'] ?? null) ?: $sonTarih;
+                    if($tarih){
+                        $sonTarih = $tarih;
+                    }
+                    $sevkEden = trim((string)($row['B'] ?? ''));
+                    $sevkEdilen = trim((string)($row['C'] ?? ''));
+                    $giden = max(0, palet_num($row['D'] ?? 0));
+                    $gelen = max(0, palet_num($row['E'] ?? 0));
+                    $teslimEden = trim((string)($row['G'] ?? ''));
+                    $teslimAlan = trim((string)($row['H'] ?? ''));
+                    $not = trim(implode(' / ', array_filter([trim((string)($row['I'] ?? '')), trim((string)($row['J'] ?? ''))])));
+                    if(!$tarih || $sevkEden === '' || $sevkEdilen === '' || ($giden <= 0 && $gelen <= 0)){
+                        continue;
+                    }
+                    $insertEdenYer->execute([$sevkEden, 'Excelden geldi']);
+                    $insertEdilenYer->execute([$sevkEdilen, 'Excelden geldi']);
+                    if($giden > 0){
+                        $insert->execute([$tarih, $sevkEden, $sevkEdilen, $giden, 0, $teslimEden, $teslimAlan, trim('Excel aktarım - giden ' . $not), (int)$_SESSION['user_id']]);
+                        $count++;
+                    }
+                    if($gelen > 0){
+                        $insertEdenYer->execute([$sevkEdilen, 'Excelden geldi']);
+                        $insertEdilenYer->execute([$sevkEden, 'Excelden geldi']);
+                        $insert->execute([$tarih, $sevkEdilen, $sevkEden, 0, $gelen, $teslimEden, $teslimAlan, trim('Excel aktarım - geri gelen ' . $not), (int)$_SESSION['user_id']]);
+                        $count++;
+                    }
                     continue;
                 }
                 $tarih = palet_date($row['A'] ?? null);
@@ -163,6 +254,8 @@ try {
 }
 
 $ozet = $db->query("SELECT COALESCE(SUM(giden_adet),0) giden, COALESCE(SUM(gelen_adet),0) gelen, COUNT(*) kayit FROM palet_hareketleri")->fetch();
+$sevkEdenYerler = $db->query("SELECT * FROM palet_sevk_eden_yerleri ORDER BY yer_adi ASC")->fetchAll();
+$sevkEdilenYerler = $db->query("SELECT * FROM palet_sevk_edilen_yerleri ORDER BY yer_adi ASC")->fetchAll();
 $yerKalan = $db->query("
     SELECT yer, SUM(giden) giden, SUM(gelen) gelen, SUM(giden)-SUM(gelen) kalan
     FROM (
@@ -184,19 +277,26 @@ $hareketler = $db->query("SELECT * FROM palet_hareketleri ORDER BY tarih DESC, i
     <title>Palet Takip</title>
     <link rel="stylesheet" href="assets/css/style.css">
     <style>
-        .palet-tabs{display:grid;grid-template-columns:repeat(5,minmax(130px,1fr));gap:10px;margin-bottom:18px}
+        .palet-tabs{display:grid;grid-template-columns:repeat(6,minmax(120px,1fr));gap:10px;margin-bottom:18px}
         .palet-tab{padding:13px 15px;border:1px solid #dce2ea;border-radius:8px;background:#fff;color:#1f2937;text-decoration:none;font-weight:800;font-size:13px}
         .palet-tab.active{border-color:#2563eb;background:#eff6ff;color:#1d4ed8}
         .panel{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:18px;margin-bottom:18px}
         .grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
         .field label{display:block;font-size:12px;font-weight:800;margin-bottom:6px;color:#334155}
-        .field input,.field textarea{width:100%;box-sizing:border-box;border:1px solid #cfd6df;border-radius:7px;padding:9px 10px;font-size:13px;background:#fff}
+        .field input,.field select,.field textarea{width:100%;box-sizing:border-box;border:1px solid #cfd6df;border-radius:7px;padding:9px 10px;font-size:13px;background:#fff}
         .field textarea{min-height:72px;resize:vertical}.span-2{grid-column:span 2}.span-4{grid-column:span 4}
         .btn{border:0;border-radius:7px;padding:9px 12px;background:#2563eb;color:#fff;text-decoration:none;font-size:12px;font-weight:800;cursor:pointer;display:inline-flex;justify-content:center}
         .btn-green{background:#16a34a}.btn-red{background:#dc2626}.btn-gray{background:#64748b}
         .notice{padding:12px 14px;border-radius:8px;margin-bottom:14px;font-size:13px;font-weight:800}.ok{background:#dcfce7;color:#166534}.err{background:#fee2e2;color:#991b1b}
         .summary{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}.summary-item{background:#fff;border:1px solid #e5e7eb;border-radius:9px;padding:14px}.summary-item span{display:block;color:#64748b;font-size:11px;margin-bottom:5px}.summary-item strong{font-size:20px}
         .table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;font-size:12px;min-width:900px}th{background:#17233b;color:#fff;text-align:left;padding:9px 8px;white-space:nowrap}td{border-bottom:1px solid #e8edf3;padding:8px;vertical-align:middle}.num{text-align:right;font-variant-numeric:tabular-nums}.actions{display:flex;gap:6px;flex-wrap:wrap}
+        .route-card{border-left:5px solid #2563eb;background:#f8fbff}
+        .route-card.to{border-left-color:#16a34a;background:#f7fff9}
+        .route-title{display:inline-flex;align-items:center;gap:8px;margin:0 0 14px;font-size:18px}
+        .route-title span{display:inline-flex;border-radius:999px;padding:4px 9px;font-size:11px;color:#fff;background:#2563eb}
+        .route-card.to .route-title span{background:#16a34a}
+        .route-select.from select{border-color:#93c5fd;background:#eff6ff}
+        .route-select.to select{border-color:#86efac;background:#f0fdf4}
         @media(max-width:900px){.palet-tabs,.grid,.summary{grid-template-columns:1fr 1fr}.span-2,.span-4{grid-column:span 2}}@media(max-width:620px){.palet-tabs,.grid,.summary{grid-template-columns:1fr}.span-2,.span-4{grid-column:span 1}}
     </style>
 </head>
@@ -216,6 +316,7 @@ $hareketler = $db->query("SELECT * FROM palet_hareketleri ORDER BY tarih DESC, i
         <a class="palet-tab <?php echo $tab==='kalan'?'active':''; ?>" href="?tab=kalan">Yer Bazlı Kalan</a>
         <a class="palet-tab <?php echo $tab==='liste'?'active':''; ?>" href="?tab=liste">Hareket Listesi</a>
         <a class="palet-tab <?php echo $tab==='ozet'?'active':''; ?>" href="?tab=ozet">Toplam Özet</a>
+        <a class="palet-tab <?php echo $tab==='yer'?'active':''; ?>" href="?tab=yer">Yer Tanımları</a>
     </nav>
 
     <?php if($tab === 'hareket'): ?>
@@ -224,8 +325,8 @@ $hareketler = $db->query("SELECT * FROM palet_hareketleri ORDER BY tarih DESC, i
         <form method="POST" class="grid">
             <input type="hidden" name="action" value="hareket_kaydet">
             <div class="field"><label>Tarih</label><input type="date" name="tarih" value="<?php echo date('Y-m-d'); ?>" required></div>
-            <div class="field"><label>Sevk Eden Yer</label><input name="sevk_eden_yer" required placeholder="Seğmen Su Depo"></div>
-            <div class="field"><label>Sevk Edilen Yer</label><input name="sevk_edilen_yer" required placeholder="Bayi / kullanım yeri"></div>
+            <div class="field route-select from"><label>Sevk Eden Yer</label><select name="sevk_eden_yer" required><option value="">Seçiniz</option><?php foreach($sevkEdenYerler as $yer): ?><option value="<?php echo palet_e($yer['yer_adi']); ?>"><?php echo palet_e($yer['yer_adi']); ?></option><?php endforeach; ?></select></div>
+            <div class="field route-select to"><label>Sevk Edilen Yer</label><select name="sevk_edilen_yer" required><option value="">Seçiniz</option><?php foreach($sevkEdilenYerler as $yer): ?><option value="<?php echo palet_e($yer['yer_adi']); ?>"><?php echo palet_e($yer['yer_adi']); ?></option><?php endforeach; ?></select></div>
             <div class="field"><label>Giden Palet</label><input name="giden_adet" inputmode="decimal" placeholder="0"></div>
             <div class="field"><label>Gelen Palet</label><input name="gelen_adet" inputmode="decimal" placeholder="0"></div>
             <div class="field"><label>Teslim Eden</label><input name="teslim_eden"></div>
@@ -275,6 +376,43 @@ $hareketler = $db->query("SELECT * FROM palet_hareketleri ORDER BY tarih DESC, i
         <div class="summary-item"><span>Toplam gelen</span><strong><?php echo number_format((float)$ozet['gelen'],2,',','.'); ?></strong></div>
         <div class="summary-item"><span>Net kalan</span><strong><?php echo number_format((float)$ozet['giden'] - (float)$ozet['gelen'],2,',','.'); ?></strong></div>
         <div class="summary-item"><span>Hareket kaydı</span><strong><?php echo number_format((int)$ozet['kayit']); ?></strong></div>
+    </div>
+    <?php endif; ?>
+
+    <?php if($tab === 'yer'): ?>
+    <div class="panel route-card">
+        <h3 class="route-title"><span>ÇIKIŞ</span> Sevk Eden Yer Tanımı</h3>
+        <form method="POST" class="grid">
+            <input type="hidden" name="action" value="yer_kaydet">
+            <input type="hidden" name="yer_tipi" value="eden">
+            <div class="field span-2"><label>Yer Adı</label><input name="yer_adi" required placeholder="Bayi, depo veya kullanım yeri"></div>
+            <div class="field span-2"><label>Açıklama</label><input name="aciklama"></div>
+            <div class="span-4"><button class="btn btn-green">Yer Kaydet</button></div>
+        </form>
+    </div>
+    <div class="panel route-card">
+        <h3 class="route-title"><span>ÇIKIŞ</span> Sevk Eden Yer Listesi</h3>
+        <div class="table-wrap"><table><thead><tr><th>Yer</th><th>Açıklama</th><th>İşlem</th></tr></thead><tbody>
+        <?php if(!$sevkEdenYerler): ?><tr><td colspan="3">Henüz sevk eden yer tanımı bulunmuyor.</td></tr><?php endif; ?>
+        <?php foreach($sevkEdenYerler as $yer): ?><tr><td><strong><?php echo palet_e($yer['yer_adi']); ?></strong></td><td><?php echo palet_e($yer['aciklama']); ?></td><td><form method="POST" onsubmit="return confirm('Yer tanımı silinsin mi?');"><input type="hidden" name="action" value="yer_sil"><input type="hidden" name="yer_tipi" value="eden"><input type="hidden" name="id" value="<?php echo (int)$yer['id']; ?>"><button class="btn btn-red">Sil</button></form></td></tr><?php endforeach; ?>
+        </tbody></table></div>
+    </div>
+    <div class="panel route-card to">
+        <h3 class="route-title"><span>VARIŞ</span> Sevk Edilen Yer Tanımı</h3>
+        <form method="POST" class="grid">
+            <input type="hidden" name="action" value="yer_kaydet">
+            <input type="hidden" name="yer_tipi" value="edilen">
+            <div class="field span-2"><label>Yer Adı</label><input name="yer_adi" required placeholder="Bayi, depo veya kullanım yeri"></div>
+            <div class="field span-2"><label>Açıklama</label><input name="aciklama"></div>
+            <div class="span-4"><button class="btn btn-green">Yer Kaydet</button></div>
+        </form>
+    </div>
+    <div class="panel route-card to">
+        <h3 class="route-title"><span>VARIŞ</span> Sevk Edilen Yer Listesi</h3>
+        <div class="table-wrap"><table><thead><tr><th>Yer</th><th>Açıklama</th><th>İşlem</th></tr></thead><tbody>
+        <?php if(!$sevkEdilenYerler): ?><tr><td colspan="3">Henüz sevk edilen yer tanımı bulunmuyor.</td></tr><?php endif; ?>
+        <?php foreach($sevkEdilenYerler as $yer): ?><tr><td><strong><?php echo palet_e($yer['yer_adi']); ?></strong></td><td><?php echo palet_e($yer['aciklama']); ?></td><td><form method="POST" onsubmit="return confirm('Yer tanımı silinsin mi?');"><input type="hidden" name="action" value="yer_sil"><input type="hidden" name="yer_tipi" value="edilen"><input type="hidden" name="id" value="<?php echo (int)$yer['id']; ?>"><button class="btn btn-red">Sil</button></form></td></tr><?php endforeach; ?>
+        </tbody></table></div>
     </div>
     <?php endif; ?>
 </div>
