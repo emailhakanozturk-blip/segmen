@@ -209,16 +209,8 @@ try {
                     }
                     $insertEdenYer->execute([$sevkEden, 'Excelden geldi']);
                     $insertEdilenYer->execute([$sevkEdilen, 'Excelden geldi']);
-                    if($giden > 0){
-                        $insert->execute([$tarih, $sevkEden, $sevkEdilen, $giden, 0, $teslimEden, $teslimAlan, trim('Excel aktarım - giden ' . $not), (int)$_SESSION['user_id']]);
-                        $count++;
-                    }
-                    if($gelen > 0){
-                        $insertEdenYer->execute([$sevkEdilen, 'Excelden geldi']);
-                        $insertEdilenYer->execute([$sevkEden, 'Excelden geldi']);
-                        $insert->execute([$tarih, $sevkEdilen, $sevkEden, 0, $gelen, $teslimEden, $teslimAlan, trim('Excel aktarım - geri gelen ' . $not), (int)$_SESSION['user_id']]);
-                        $count++;
-                    }
+                    $insert->execute([$tarih, $sevkEden, $sevkEdilen, $giden, $gelen, $teslimEden, $teslimAlan, trim('Excel aktarım ' . $not), (int)$_SESSION['user_id']]);
+                    $count++;
                     continue;
                 }
                 $tarih = palet_date($row['A'] ?? null);
