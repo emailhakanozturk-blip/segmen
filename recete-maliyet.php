@@ -53,11 +53,11 @@ function rm_urun_kodu_satir(array $u): string
 function rm_urun_grubu(array $u): array
 {
     $txt = rm_lower(($u['urun_adi'] ?? '') . ' ' . ($u['urun_grubu'] ?? '') . ' ' . ($u['ambalaj_tipi'] ?? ''));
-    if(str_contains($txt, 'cam')){ return ['cam','Cam ?r?nler','Cam ambalajl? ?r?nler']; }
-    if(str_contains($txt, 'damacana') || str_contains($txt, '19')){ return ['damacana','Damacana','Polikarbon damacana ?r?nleri']; }
-    if(str_contains($txt, 'bardak') || str_contains($txt, '200 cc')){ return ['bardak','Bardak','Tek kullan?ml?k bardak ?r?nleri']; }
-    if(str_contains($txt, 'bidon') || str_contains($txt, '5 lt') || str_contains($txt, '10 lt')){ return ['bidon','Bidon / B?y?k Hacimli','Y?ksek hacimli PET ?r?nleri']; }
-    return ['pet','PET ?i?eler','PET ambalajl? ?r?nler'];
+    if(str_contains($txt, 'cam')){ return ['cam','Cam Ürünler','Cam ambalajlı ürünler']; }
+    if(str_contains($txt, 'damacana') || str_contains($txt, '19')){ return ['damacana','Damacana','Polikarbon damacana ürünleri']; }
+    if(str_contains($txt, 'bardak') || str_contains($txt, '200 cc')){ return ['bardak','Bardak','Tek kullanımlık bardak ürünleri']; }
+    if(str_contains($txt, 'bidon') || str_contains($txt, '5 lt') || str_contains($txt, '10 lt')){ return ['bidon','Bidon / Büyük Hacimli','Yüksek hacimli PET ürünleri']; }
+    return ['pet','PET Şişeler','PET ambalajlı ürünler'];
 }
 function rm_urun_hacim(array $u): string
 {
@@ -70,7 +70,7 @@ function rm_urun_varyant(array $u): string
 {
     $a = rm_lower((string)($u['ambalaj_tipi'] ?? ''));
     if(str_contains($a, 'pet')) return 'Standart PET';
-    if(str_contains($a, 'cam')) return 'Cam ?i?e';
+    if(str_contains($a, 'cam')) return 'Cam Şişe';
     if(str_contains($a, 'damacana')) return 'Damacana';
     if(str_contains($a, 'bardak')) return 'Bardak';
     return (string)($u['urun_grubu'] ?? '');
@@ -219,15 +219,15 @@ try {
         $action = (string)($_POST['action'] ?? '');
         if($action === 'urun_kaydet'){
             $ad = trim((string)($_POST['urun_adi'] ?? ''));
-            if($ad === ''){ throw new RuntimeException('?r?n ad? bo? olamaz.'); }
+            if($ad === ''){ throw new RuntimeException('Ürün adı boş olamaz.'); }
             $kod = trim((string)($_POST['urun_kodu'] ?? ''));
             $db->prepare("INSERT INTO maliyet_urunler (urun_kodu,urun_adi,urun_grubu,ambalaj_tipi,koli_ici_adet) VALUES (?,?,?,?,?) ON DUPLICATE KEY UPDATE urun_adi=VALUES(urun_adi), urun_grubu=VALUES(urun_grubu), ambalaj_tipi=VALUES(ambalaj_tipi), koli_ici_adet=VALUES(koli_ici_adet)")
-                ->execute([$kod !== '' ? $kod : null, $ad, trim((string)($_POST['urun_grubu'] ?? 'PET ?i?eler')), trim((string)($_POST['ambalaj_tipi'] ?? 'PET')), rm_num($_POST['koli_ici_adet'] ?? 1)]);
+                ->execute([$kod !== '' ? $kod : null, $ad, trim((string)($_POST['urun_grubu'] ?? 'PET Şişeler')), trim((string)($_POST['ambalaj_tipi'] ?? 'PET')), rm_num($_POST['koli_ici_adet'] ?? 1)]);
             $tab = 'urunler';
-            $message = '?r?n kaydedildi.';
+            $message = 'Ürün kaydedildi.';
         } elseif($action === 'fiyat_kaydet'){
             $ad = trim((string)($_POST['urun_adi'] ?? ''));
-            if($ad === ''){ throw new RuntimeException('?r?n fiyat ad? bo? olamaz.'); }
+            if($ad === ''){ throw new RuntimeException('Ürün fiyat adı boş olamaz.'); }
             $db->prepare("INSERT INTO maliyet_fiyatlama (fiyat_tarihi,kategori,urun_adi,ton_fiyati,doviz_adet,tl_adet,cam_sise_033,cam_sise_075,aciklama) VALUES (?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE kategori=VALUES(kategori), ton_fiyati=VALUES(ton_fiyati), doviz_adet=VALUES(doviz_adet), tl_adet=VALUES(tl_adet), cam_sise_033=VALUES(cam_sise_033), cam_sise_075=VALUES(cam_sise_075), aciklama=VALUES(aciklama)")
                 ->execute([trim((string)($_POST['fiyat_tarihi'] ?? date('Y-m-d'))), trim((string)($_POST['kategori'] ?? 'Ürün')), $ad, trim((string)($_POST['ton_fiyati'] ?? '')), trim((string)($_POST['doviz_adet'] ?? '')), rm_num($_POST['tl_adet'] ?? 0), rm_num($_POST['cam_sise_033'] ?? 0), rm_num($_POST['cam_sise_075'] ?? 0), trim((string)($_POST['aciklama'] ?? ''))]);
             $tab = 'urunler';
@@ -255,17 +255,17 @@ try {
         } elseif($action === 'urun_guncelle'){
             $urunId = (int)($_POST['urun_id'] ?? 0);
             $ad = trim((string)($_POST['urun_adi'] ?? ''));
-            if($urunId <= 0 || $ad === ''){ throw new RuntimeException('?r?n bilgisi eksik.'); }
-            $db->prepare("UPDATE maliyet_urunler SET urun_kodu=, urun_adi=, urun_grubu=, ambalaj_tipi=, koli_ici_adet= WHERE id=")
-                ->execute([trim((string)($_POST['urun_kodu'] ?? '')), $ad, trim((string)($_POST['urun_grubu'] ?? 'PET ?i?eler')), trim((string)($_POST['ambalaj_tipi'] ?? '')), rm_num($_POST['koli_ici_adet'] ?? 1), $urunId]);
+            if($urunId <= 0 || $ad === ''){ throw new RuntimeException('Ürün bilgisi eksik.'); }
+            $db->prepare("UPDATE maliyet_urunler SET urun_kodu=?, urun_adi=?, urun_grubu=?, ambalaj_tipi=?, koli_ici_adet=? WHERE id=?")
+                ->execute([trim((string)($_POST['urun_kodu'] ?? '')), $ad, trim((string)($_POST['urun_grubu'] ?? 'PET Şişeler')), trim((string)($_POST['ambalaj_tipi'] ?? '')), rm_num($_POST['koli_ici_adet'] ?? 1), $urunId]);
             $tab = 'urunler';
-            $message = '?r?n g?ncellendi.';
+            $message = 'Ürün güncellendi.';
         } elseif($action === 'urun_sil'){
             $urunId = (int)($_POST['urun_id'] ?? 0);
-            $q = $db->prepare("SELECT urun_adi FROM maliyet_urunler WHERE id=");
+            $q = $db->prepare("SELECT urun_adi FROM maliyet_urunler WHERE id=?");
             $q->execute([$urunId]);
             $urunAdi = (string)$q->fetchColumn();
-            if($urunAdi === ''){ throw new RuntimeException('?r?n bulunamad?.'); }
+            if($urunAdi === ''){ throw new RuntimeException('Ürün bulunamadı.'); }
             $checks = [
                 [$db->prepare("SELECT COUNT(*) FROM maliyet_receteler WHERE urun_id=?"), [$urunId]],
                 [$db->prepare("SELECT COUNT(*) FROM recete_bom WHERE urun_id=?"), [$urunId]],
@@ -274,10 +274,10 @@ try {
             ];
             $related = 0;
             foreach($checks as $c){ $c[0]->execute($c[1]); $related += (int)$c[0]->fetchColumn(); }
-            if($related > 0){ throw new RuntimeException('Bu ?r?n re?ete, ?retim veya maliyet kay?tlar?yla ili?kili oldu?u i?in silinemedi.'); }
-            $db->prepare("DELETE FROM maliyet_urunler WHERE id=")->execute([$urunId]);
+            if($related > 0){ throw new RuntimeException('Bu ürün reçete, üretim veya maliyet kayıtlarıyla ilişkili olduğu için silinemedi.'); }
+            $db->prepare("DELETE FROM maliyet_urunler WHERE id=?")->execute([$urunId]);
             $tab = 'urunler';
-            $message = '?r?n silindi.';
+            $message = 'Ürün silindi.';
         } elseif($action === 'bom_kaydet' || $action === 'bom_kopyala'){
             $urunId = (int)($_POST['urun_id'] ?? 0);
             $versiyon = trim((string)($_POST['versiyon'] ?? 'v1.0'));
@@ -589,15 +589,15 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
     <?php if($tab==='urunler'): ?>
     <section class="product-list-card">
         <div class="product-list-top">
-            <h3>KAYITLI ?R?N L?STES? (<?php echo count($urunler); ?>)</h3>
+            <h3>KAYITLI ÜRÜN LİSTESİ (<?php echo count($urunler); ?>)</h3>
             <div class="product-list-actions">
-                <input class="product-search" id="productSearchModern" placeholder="?r?n ad?, kod ara...">
-                <button class="primary-add" type="button" onclick="openProductCard()">+ Yeni ?r?n</button>
+                <input class="product-search" id="productSearchModern" placeholder="Ürün adı, kod ara...">
+                <button class="primary-add" type="button" onclick="openProductCard()">+ Yeni Ürün</button>
             </div>
         </div>
         <div class="rm-table-wrap" style="padding:0">
             <table class="product-list-table">
-                <thead><tr><th>?r?n Kodu</th><th>?r?n Ad?</th><th>Varyant</th><th>Hacim</th><th>Koli ??i Adet</th><th>Ambalaj Tipi</th><th>Durum</th><th style="text-align:right">??lemler</th></tr></thead>
+                <thead><tr><th>Ürün Kodu</th><th>Ürün Adı</th><th>Varyant</th><th>Hacim</th><th>Koli İçi Adet</th><th>Ambalaj Tipi</th><th>Durum</th><th style="text-align:right">İşlemler</th></tr></thead>
                 <tbody>
                 <?php foreach($urunler as $u): $code=rm_urun_kodu_satir($u); $hacim=rm_urun_hacim($u); $varyant=rm_urun_varyant($u); ?>
                     <tr class="product-modern-row" data-search="<?php echo rm_e(rm_lower($code.' '.$u['urun_adi'].' '.$varyant.' '.$u['ambalaj_tipi'])); ?>">
@@ -608,7 +608,7 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
                         <td><strong><?php echo number_format((float)$u['koli_ici_adet'],0,',','.'); ?> Adet</strong></td>
                         <td><?php echo rm_e($u['ambalaj_tipi']); ?></td>
                         <td><span class="active-badge">Aktif</span></td>
-                        <td><div class="product-icon-actions"><button class="product-icon" type="button" title="D?zelt" data-id="<?php echo (int)$u['id']; ?>" data-code="<?php echo rm_e($code); ?>" data-name="<?php echo rm_e($u['urun_adi']); ?>" data-variant="<?php echo rm_e($u['urun_grubu']); ?>" data-hacim="<?php echo rm_e($hacim); ?>" data-koli="<?php echo number_format((float)$u['koli_ici_adet'],0,',','.'); ?>" data-ambalaj="<?php echo rm_e($u['ambalaj_tipi']); ?>" onclick="openProductCard(this)">D?zelt</button><button class="product-icon delete" type="button" title="Sil" data-id="<?php echo (int)$u['id']; ?>" data-code="<?php echo rm_e($code); ?>" data-name="<?php echo rm_e($u['urun_adi']); ?>" onclick="confirmDeleteBtn(this)">Sil</button></div></td>
+                        <td><div class="product-icon-actions"><button class="product-icon" type="button" title="Düzelt" data-id="<?php echo (int)$u['id']; ?>" data-code="<?php echo rm_e($code); ?>" data-name="<?php echo rm_e($u['urun_adi']); ?>" data-variant="<?php echo rm_e($u['urun_grubu']); ?>" data-hacim="<?php echo rm_e($hacim); ?>" data-koli="<?php echo number_format((float)$u['koli_ici_adet'],0,',','.'); ?>" data-ambalaj="<?php echo rm_e($u['ambalaj_tipi']); ?>" onclick="openProductCard(this)">Düzelt</button><button class="product-icon delete" type="button" title="Sil" data-id="<?php echo (int)$u['id']; ?>" data-code="<?php echo rm_e($code); ?>" data-name="<?php echo rm_e($u['urun_adi']); ?>" onclick="confirmDeleteBtn(this)">Sil</button></div></td>
                     </tr>
                 <?php endforeach; ?>
                 </tbody>
@@ -617,60 +617,60 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
     </section>
     <div class="product-modal" id="productCardModal">
         <div class="product-modal-box">
-            <div class="product-modal-head"><h3>?r?n Kart? Kayd?</h3><button class="product-close" type="button" onclick="closeProductCard()">?</button></div>
+            <div class="product-modal-head"><h3>Ürün Kartı Kaydı</h3><button class="product-close" type="button" onclick="closeProductCard()">×</button></div>
             <form method="POST" class="product-modal-body">
                 <input type="hidden" name="action" id="productAction" value="urun_kaydet">
                 <input type="hidden" name="urun_id" id="productId">
                 <div class="product-modal-grid">
-                    <label class="wide">?r?n Kodu<input name="urun_kodu" id="productCode" placeholder="SU-PET-033"></label>
-                    <label class="wide">?r?n Ad?<input name="urun_adi" id="productName" required placeholder="0,33 L Pet ?i?e Su"></label>
+                    <label class="wide">Ürün Kodu<input name="urun_kodu" id="productCode" placeholder="SU-PET-033"></label>
+                    <label class="wide">Ürün Adı<input name="urun_adi" id="productName" required placeholder="0,33 L Pet Şişe Su"></label>
                     <label>Varyant<input name="urun_grubu" id="productVariant" placeholder="Standart PET"></label>
                     <label>Hacim<input id="productHacim" placeholder="0.33 lt"></label>
-                    <label>Koli ??i Adet<input name="koli_ici_adet" id="productKoli" placeholder="24"></label>
-                    <label>Ambalaj Tipi<input name="ambalaj_tipi" id="productAmbalaj" placeholder="PET ?i?e"></label>
+                    <label>Koli İçi Adet<input name="koli_ici_adet" id="productKoli" placeholder="24"></label>
+                    <label>Ambalaj Tipi<input name="ambalaj_tipi" id="productAmbalaj" placeholder="PET Şişe"></label>
                 </div>
-                <label class="product-check"><input type="checkbox" checked> Aktif ?r?n Kart?</label>
-                <div class="product-modal-footer"><button class="product-cancel" type="button" onclick="closeProductCard()">?ptal</button><button class="product-save">Kaydet</button></div>
+                <label class="product-check"><input type="checkbox" checked> Aktif Ürün Kartı</label>
+                <div class="product-modal-footer"><button class="product-cancel" type="button" onclick="closeProductCard()">İptal</button><button class="product-save">Kaydet</button></div>
             </form>
         </div>
     </div>
     <section class="product-head">
-        <div><h1>?r?n Tan?mlar?</h1><p>Sistemde maliyet hesaplamas?na tabi tutulacak ambalajl? ?r?nlerin listesi</p></div>
-        <button class="primary-add" type="button" onclick="openProductForm('')">+ Yeni ?r?n Ekle</button>
+        <div><h1>Ürün Tanımları</h1><p>Sistemde maliyet hesaplamasına tabi tutulacak ambalajlı ürünlerin listesi</p></div>
+        <button class="primary-add" type="button" onclick="openProductForm('')">+ Yeni Ürün Ekle</button>
     </section>
     <section class="product-kpis">
-        <div class="product-kpi"><span>Toplam ?r?n</span><strong><?php echo (int)$urunKpi['toplam']; ?></strong></div>
-        <div class="product-kpi"><span>Aktif ?r?n</span><strong><?php echo (int)$urunKpi['aktif']; ?></strong></div>
-        <div class="product-kpi"><span>?r?n Grubu</span><strong><?php echo (int)$urunKpi['grup']; ?></strong></div>
-        <div class="product-kpi"><span>Eksik Re?ete</span><strong><?php echo (int)$urunKpi['eksik']; ?></strong></div>
+        <div class="product-kpi"><span>Toplam Ürün</span><strong><?php echo (int)$urunKpi['toplam']; ?></strong></div>
+        <div class="product-kpi"><span>Aktif Ürün</span><strong><?php echo (int)$urunKpi['aktif']; ?></strong></div>
+        <div class="product-kpi"><span>Ürün Grubu</span><strong><?php echo (int)$urunKpi['grup']; ?></strong></div>
+        <div class="product-kpi"><span>Eksik Reçete</span><strong><?php echo (int)$urunKpi['eksik']; ?></strong></div>
     </section>
     <section class="product-add" id="productForm">
         <form method="POST" class="rm-form">
             <input type="hidden" name="action" value="urun_kaydet">
-            <div class="rm-field"><label>?r?n Kodu</label><input name="urun_kodu" placeholder="SU-PET-033"></div>
-            <div class="rm-field"><label>?r?n Ad?</label><input name="urun_adi" required></div>
-            <div class="rm-field"><label>?r?n Grubu</label><select name="urun_grubu" id="addGroup"><option>PET ?i?eler</option><option>Bidon / B?y?k Hacimli</option><option>Cam ?r?nler</option><option>Damacana</option><option>Bardak</option></select></div>
+            <div class="rm-field"><label>Ürün Kodu</label><input name="urun_kodu" placeholder="SU-PET-033"></div>
+            <div class="rm-field"><label>Ürün Adı</label><input name="urun_adi" required></div>
+            <div class="rm-field"><label>Ürün Grubu</label><select name="urun_grubu" id="addGroup"><option>PET Şişeler</option><option>Bidon / Büyük Hacimli</option><option>Cam Ürünler</option><option>Damacana</option><option>Bardak</option></select></div>
             <div class="rm-field"><label>Ambalaj Tipi</label><input name="ambalaj_tipi" value="PET"></div>
-            <div class="rm-field"><label>Koli ??i</label><input name="koli_ici_adet" value="24"></div>
+            <div class="rm-field"><label>Koli İçi</label><input name="koli_ici_adet" value="24"></div>
             <div class="rm-field"><label>&nbsp;</label><button class="primary-add">Kaydet</button></div>
         </form>
     </section>
     <section class="product-tools">
-        <input id="productSearch" placeholder="?r?n ad?, kod ara...">
+        <input id="productSearch" placeholder="Ürün adı, kod ara...">
         <select id="groupFilter"><option value="">Gruplar</option><?php foreach($urunGruplari as $key=>$g): ?><option value="<?php echo rm_e($key); ?>"><?php echo rm_e($g['baslik']); ?></option><?php endforeach; ?></select>
         <select id="statusFilter"><option value="">Durum</option><option value="aktif">Aktif</option><option value="pasif">Pasif</option></select>
-        <select id="sortProducts"><option value="az">?r?n Ad? A-Z</option><option value="za">?r?n Ad? Z-A</option><option value="kod">?r?n Kodu</option><option value="hacim">Hacim</option></select>
+        <select id="sortProducts"><option value="az">Ürün Adı A-Z</option><option value="za">Ürün Adı Z-A</option><option value="kod">Ürün Kodu</option><option value="hacim">Hacim</option></select>
     </section>
     <section class="product-groups">
         <?php foreach($urunGruplari as $key=>$g): ?>
         <details class="product-group" open data-group="<?php echo rm_e($key); ?>">
             <summary>
                 <div class="group-title"><strong><?php echo rm_e($g['baslik']); ?></strong><span><?php echo rm_e($g['aciklama']); ?></span></div>
-                <button class="mini-add" type="button" onclick="event.preventDefault();openProductForm('<?php echo rm_e($g['baslik']); ?>')">+ ?r?n Ekle</button>
-                <span class="group-count"><?php echo count($g['urunler']); ?> ?r?n</span>
+                <button class="mini-add" type="button" onclick="event.preventDefault();openProductForm('<?php echo rm_e($g['baslik']); ?>')">+ Ürün Ekle</button>
+                <span class="group-count"><?php echo count($g['urunler']); ?> ürün</span>
             </summary>
             <div class="rm-table-wrap">
-                <table class="product-table"><thead><tr><th>?r?n Kodu</th><th>?r?n Ad?</th><th>Varyant</th><th>Hacim</th><th>Koli ??i</th><th>Durum</th><th>??lemler</th></tr></thead><tbody>
+                <table class="product-table"><thead><tr><th>Ürün Kodu</th><th>Ürün Adı</th><th>Varyant</th><th>Hacim</th><th>Koli İçi</th><th>Durum</th><th>İşlemler</th></tr></thead><tbody>
                 <?php foreach($g['urunler'] as $u): $code = rm_urun_kodu_satir($u); ?>
                     <tr class="product-row" data-group="<?php echo rm_e($key); ?>" data-status="aktif" data-name="<?php echo rm_e(rm_lower($u['urun_adi'].' '.$code)); ?>" data-code="<?php echo rm_e($code); ?>" data-hacim="<?php echo rm_e($u['urun_adi']); ?>">
                         <td><span class="code-pill"><?php echo rm_e($code); ?></span></td>
@@ -679,22 +679,22 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
                         <td><?php echo rm_e($u['urun_adi']); ?></td>
                         <td><?php echo number_format((float)$u['koli_ici_adet'],2,',','.'); ?></td>
                         <td><span class="status-pill">Aktif</span></td>
-                        <td><div class="row-actions"><button class="icon-btn" type="button" onclick="editProduct(this)">D?zenle</button><button class="icon-btn" type="button" data-name="<?php echo rm_e($u['urun_adi']); ?>" onclick="openPriceModal(this)">Fiyat</button><button class="delete-btn" type="button" data-id="<?php echo (int)$u['id']; ?>" data-code="<?php echo rm_e($code); ?>" data-name="<?php echo rm_e($u['urun_adi']); ?>" onclick="confirmDeleteBtn(this)">Sil</button></div></td>
+                        <td><div class="row-actions"><button class="icon-btn" type="button" onclick="editProduct(this)">Düzenle</button><button class="icon-btn" type="button" data-name="<?php echo rm_e($u['urun_adi']); ?>" onclick="openPriceModal(this)">Fiyat</button><button class="delete-btn" type="button" data-id="<?php echo (int)$u['id']; ?>" data-code="<?php echo rm_e($code); ?>" data-name="<?php echo rm_e($u['urun_adi']); ?>" onclick="confirmDeleteBtn(this)">Sil</button></div></td>
                     </tr>
-                    <tr class="edit-row"><td colspan="7"><form method="POST" class="rm-form"><input type="hidden" name="action" value="urun_guncelle"><input type="hidden" name="urun_id" value="<?php echo (int)$u['id']; ?>"><div class="rm-field"><label>?r?n Kodu</label><input name="urun_kodu" value="<?php echo rm_e($code); ?>"></div><div class="rm-field"><label>?r?n Ad?</label><input name="urun_adi" value="<?php echo rm_e($u['urun_adi']); ?>"></div><div class="rm-field"><label>?r?n Grubu</label><input name="urun_grubu" value="<?php echo rm_e($u['urun_grubu']); ?>"></div><div class="rm-field"><label>Ambalaj Tipi</label><input name="ambalaj_tipi" value="<?php echo rm_e($u['ambalaj_tipi']); ?>"></div><div class="rm-field"><label>Koli ??i</label><input name="koli_ici_adet" value="<?php echo number_format((float)$u['koli_ici_adet'],2,',','.'); ?>"></div><div class="rm-field"><label>&nbsp;</label><button class="primary-add">Kaydet</button> <button class="icon-btn" type="button" onclick="cancelEdit(this)">Vazge?</button></div></form></td></tr>
+                    <tr class="edit-row"><td colspan="7"><form method="POST" class="rm-form"><input type="hidden" name="action" value="urun_guncelle"><input type="hidden" name="urun_id" value="<?php echo (int)$u['id']; ?>"><div class="rm-field"><label>Ürün Kodu</label><input name="urun_kodu" value="<?php echo rm_e($code); ?>"></div><div class="rm-field"><label>Ürün Adı</label><input name="urun_adi" value="<?php echo rm_e($u['urun_adi']); ?>"></div><div class="rm-field"><label>Ürün Grubu</label><input name="urun_grubu" value="<?php echo rm_e($u['urun_grubu']); ?>"></div><div class="rm-field"><label>Ambalaj Tipi</label><input name="ambalaj_tipi" value="<?php echo rm_e($u['ambalaj_tipi']); ?>"></div><div class="rm-field"><label>Koli İçi</label><input name="koli_ici_adet" value="<?php echo number_format((float)$u['koli_ici_adet'],2,',','.'); ?>"></div><div class="rm-field"><label>&nbsp;</label><button class="primary-add">Kaydet</button> <button class="icon-btn" type="button" onclick="cancelEdit(this)">Vazgeç</button></div></form></td></tr>
                 <?php endforeach; ?>
                 </tbody></table>
             </div>
             <div class="price-panel" style="margin:12px 16px 16px">
                 <div class="price-head">
-                    <div><h3>Fiyat Ge?mi?i</h3><p>Bu gruba ait ?r?n fiyatlar?n? buradan izleyebilir, sat?rdaki Fiyat butonuyla ekleyip d?zeltebilirsiniz.</p></div>
+                    <div><h3>Fiyat Geçmişi</h3><p>Bu gruba ait ürün fiyatlarını buradan izleyebilir, satırdaki Fiyat butonuyla ekleyip düzeltebilirsiniz.</p></div>
                     <div class="rate-boxes">
                         <div class="rate-box"><span>USD/TL</span><strong><?php echo $kurOzet['usd'] > 0 ? number_format($kurOzet['usd'],4,',','.') : '-'; ?></strong></div>
                         <div class="rate-box"><span>EUR/TL</span><strong><?php echo $kurOzet['eur'] > 0 ? number_format($kurOzet['eur'],4,',','.') : '-'; ?></strong></div>
                     </div>
                 </div>
                 <div class="rm-table-wrap">
-                    <table class="product-table"><thead><tr><th>Tarih</th><th>Kategori</th><th>?r?n / Malzeme</th><th>D?viz Fiyat?</th><th>D?viz Adet</th><th>TL Birim</th><th>Hareket</th><th>??lem</th></tr></thead><tbody>
+                    <table class="product-table"><thead><tr><th>Tarih</th><th>Kategori</th><th>Ürün / Malzeme</th><th>Döviz Fiyatı</th><th>Döviz Adet</th><th>TL Birim</th><th>Hareket</th><th>İşlem</th></tr></thead><tbody>
                     <?php $groupPrices = $fiyatlarByGroup[$key] ?? []; if(!$groupPrices): ?><tr><td colspan="8">Bu grup için fiyat geçmişi yok.</td></tr><?php endif; ?>
                     <?php foreach(array_slice($groupPrices,0,24) as $f): $mv=(float)$f['hareket']; ?>
                         <tr>
@@ -709,22 +709,22 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
     </section>
     <div class="price-modal" id="priceModal">
         <div class="price-box">
-            <div class="price-box-head"><div><h3 id="priceTitle">Fiyat Ekle / D?zelt</h3><p>Fiyat? kaydedin; ayn? tarih ve ?r?n varsa kay?t g?ncellenir. Hareketler a?a??da g?r?n?r.</p></div><button class="icon-btn" type="button" onclick="closePriceModal()">Kapat</button></div>
+            <div class="price-box-head"><div><h3 id="priceTitle">Fiyat Ekle / Düzelt</h3><p>Fiyatı kaydedin; aynı tarih ve ürün varsa kayıt güncellenir. Hareketler aşağıda görünür.</p></div><button class="icon-btn" type="button" onclick="closePriceModal()">Kapat</button></div>
             <form method="POST" class="price-form">
                 <input type="hidden" name="action" value="fiyat_kaydet">
                 <label>Tarih<input type="date" name="fiyat_tarihi" value="<?php echo date('Y-m-d'); ?>"></label>
-                <label>Kategori<select name="kategori"><option>?r?n</option><option>Pet Hammadde</option><option>Kapak</option><option>Etiket</option><option>Ambalaj</option><option>Cam</option></select></label>
-                <label>?r?n / Malzeme<input name="urun_adi" id="priceProductName" required></label>
-                <label>D?viz Fiyat?<input name="ton_fiyati" placeholder="$1.950 / 7,00 ?"></label>
-                <label>D?viz Adet<input name="doviz_adet" placeholder="$0,0019500"></label>
+                <label>Kategori<select name="kategori"><option>Ürün</option><option>Pet Hammadde</option><option>Kapak</option><option>Etiket</option><option>Ambalaj</option><option>Cam</option></select></label>
+                <label>Ürün / Malzeme<input name="urun_adi" id="priceProductName" required></label>
+                <label>Döviz Fiyatı<input name="ton_fiyati" placeholder="$1.950 / 7,00 €"></label>
+                <label>Döviz Adet<input name="doviz_adet" placeholder="$0,0019500"></label>
                 <label>TL Adet<input name="tl_adet" value="0,00"></label>
                 <label>Cam 0,33<input name="cam_sise_033" value="0,00"></label>
                 <label>Cam 0,75<input name="cam_sise_075" value="0,00"></label>
-                <label style="grid-column:span 3">A??klama<input name="aciklama"></label>
+                <label style="grid-column:span 3">Açıklama<input name="aciklama"></label>
                 <label><span>&nbsp;</span><button class="primary-add" style="width:100%">Fiyat Kaydet</button></label>
             </form>
             <div class="price-history">
-                <table class="product-table"><thead><tr><th>Tarih</th><th>Kategori</th><th>?r?n</th><th>D?viz</th><th>D?viz Adet</th><th>TL</th><th>Hareket</th><th>D?zelt</th></tr></thead><tbody>
+                <table class="product-table"><thead><tr><th>Tarih</th><th>Kategori</th><th>Ürün</th><th>Döviz</th><th>Döviz Adet</th><th>TL</th><th>Hareket</th><th>Düzelt</th></tr></thead><tbody>
                 <?php foreach($fiyatHareketleri as $f): $mv=(float)$f['hareket']; ?>
                     <tr class="modal-price-row" data-price-name="<?php echo rm_e(rm_lower($f['urun_adi'])); ?>">
                         <td><?php echo rm_e($f['fiyat_tarihi']); ?></td><td><?php echo rm_e($f['kategori']); ?></td><td><strong><?php echo rm_e($f['urun_adi']); ?></strong></td><td><?php echo rm_e($f['ton_fiyati']); ?></td><td><?php echo rm_e($f['doviz_adet']); ?></td><td class="num"><?php echo rm_money($f['tl_adet']); ?></td><td class="num <?php echo $mv>0 ? 'move-up' : ($mv<0 ? 'move-down' : ''); ?>"><?php echo $mv==0 ? '-' : (($mv>0 ? '+' : '').rm_money($mv)); ?></td><td><button type="button" class="icon-btn" data-date="<?php echo rm_e($f['fiyat_tarihi']); ?>" data-cat="<?php echo rm_e($f['kategori']); ?>" data-name="<?php echo rm_e($f['urun_adi']); ?>" data-ton="<?php echo rm_e($f['ton_fiyati']); ?>" data-doviz="<?php echo rm_e($f['doviz_adet']); ?>" data-tl="<?php echo number_format((float)$f['tl_adet'],2,',','.'); ?>" data-c033="<?php echo number_format((float)($f['cam_sise_033'] ?? 0),2,',','.'); ?>" data-c075="<?php echo number_format((float)($f['cam_sise_075'] ?? 0),2,',','.'); ?>" onclick="fillPriceForm(this)">Düzelt</button></td>
@@ -734,26 +734,26 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
             </div>
         </div>
     </div>
-    <div class="confirm-modal" id="deleteModal"><div class="confirm-box"><h3>?r?n? Sil</h3><p>Bu ?r?n? silmek istedi?inizden emin misiniz</p><p><strong id="delName"></strong><br><span class="code-pill" id="delCode"></span></p><form method="POST" class="confirm-actions"><input type="hidden" name="action" value="urun_sil"><input type="hidden" name="urun_id" id="delId"><button class="icon-btn" type="button" onclick="closeDelete()">Vazge?</button><button class="delete-btn">?r?n? Sil</button></form></div></div>
+    <div class="confirm-modal" id="deleteModal"><div class="confirm-box"><h3>Ürünü Sil</h3><p>Bu ürünü silmek istediğinizden emin misiniz?</p><p><strong id="delName"></strong><br><span class="code-pill" id="delCode"></span></p><form method="POST" class="confirm-actions"><input type="hidden" name="action" value="urun_sil"><input type="hidden" name="urun_id" id="delId"><button class="icon-btn" type="button" onclick="closeDelete()">Vazgeç</button><button class="delete-btn">Ürünü Sil</button></form></div></div>
     <script>
     function openProductForm(group){ var f=document.getElementById('productForm'); f.classList.add('show'); if(group){ document.getElementById('addGroup').value=group; } f.scrollIntoView({behavior:'smooth',block:'center'}); }
     function openProductCard(btn){
         var m=document.getElementById('productCardModal');
-        document.getElementById('productAction').value=btn'urun_guncelle':'urun_kaydet';
-        document.getElementById('productId').value=btnbtn.dataset.id:'';
-        document.getElementById('productCode').value=btnbtn.dataset.code:'';
-        document.getElementById('productName').value=btnbtn.dataset.name:'';
-        document.getElementById('productVariant').value=btnbtn.dataset.variant:'';
-        document.getElementById('productHacim').value=btnbtn.dataset.hacim:'';
-        document.getElementById('productKoli').value=btnbtn.dataset.koli:'';
-        document.getElementById('productAmbalaj').value=btnbtn.dataset.ambalaj:'';
+        document.getElementById('productAction').value=btn ? 'urun_guncelle' : 'urun_kaydet';
+        document.getElementById('productId').value=btn ? btn.dataset.id : '';
+        document.getElementById('productCode').value=btn ? btn.dataset.code : '';
+        document.getElementById('productName').value=btn ? btn.dataset.name : '';
+        document.getElementById('productVariant').value=btn ? btn.dataset.variant : '';
+        document.getElementById('productHacim').value=btn ? btn.dataset.hacim : '';
+        document.getElementById('productKoli').value=btn ? btn.dataset.koli : '';
+        document.getElementById('productAmbalaj').value=btn ? btn.dataset.ambalaj : '';
         m.classList.add('show');
     }
     function closeProductCard(){ document.getElementById('productCardModal').classList.remove('show'); }
     var psModern=document.getElementById('productSearchModern');
     if(psModern){ psModern.addEventListener('input', function(){
         var q=this.value.toLocaleLowerCase('tr-TR');
-        document.querySelectorAll('.product-modern-row').forEach(function(r){ r.style.display = !q || r.dataset.search.indexOf(q)>-1  '' : 'none'; });
+        document.querySelectorAll('.product-modern-row').forEach(function(r){ r.style.display = (!q || r.dataset.search.indexOf(q)>-1) ? '' : 'none'; });
     }); }
     function editProduct(btn){ btn.closest('tr').classList.add('editing'); }
     function cancelEdit(btn){ btn.closest('tr').previousElementSibling.classList.remove('editing'); }
@@ -761,17 +761,17 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
     function closeDelete(){ document.getElementById('deleteModal').classList.remove('show'); }
     function openPriceModal(btn){
         var name=btn.dataset.name||'';
-        document.getElementById('priceTitle').textContent=name+' - Fiyat Ekle / D?zelt';
+        document.getElementById('priceTitle').textContent=name+' - Fiyat Ekle / Düzelt';
         document.getElementById('priceProductName').value=name;
         var q=name.toLocaleLowerCase('tr-TR'), any=false;
-        document.querySelectorAll('.modal-price-row').forEach(function(r){ var ok=r.dataset.priceName.indexOf(q)>-1; r.style.display=ok'':'none'; if(ok) any=true; });
+        document.querySelectorAll('.modal-price-row').forEach(function(r){ var ok=r.dataset.priceName.indexOf(q)>-1; r.style.display=ok ? '' : 'none'; if(ok) any=true; });
         document.getElementById('priceModal').classList.add('show');
     }
     function closePriceModal(){ document.getElementById('priceModal').classList.remove('show'); }
     function fillPriceForm(btn){
         var f=btn.closest('.price-box').querySelector('form');
         f.fiyat_tarihi.value=btn.dataset.date||'';
-        f.kategori.value=btn.dataset.cat||'?r?n';
+        f.kategori.value=btn.dataset.cat||'Ürün';
         f.urun_adi.value=btn.dataset.name||'';
         f.ton_fiyati.value=btn.dataset.ton||'';
         f.doviz_adet.value=btn.dataset.doviz||'';
