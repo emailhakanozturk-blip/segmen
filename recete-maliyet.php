@@ -101,6 +101,57 @@ function rm_stok_sync(PDO $db, string $donem, int $urunId): void
     }
 }
 
+$db->exec("CREATE TABLE IF NOT EXISTS maliyet_urunler (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    urun_kodu VARCHAR(40) NULL UNIQUE,
+    urun_adi VARCHAR(180) NOT NULL,
+    urun_grubu VARCHAR(80) NULL,
+    ambalaj_tipi VARCHAR(80) NULL,
+    koli_ici_adet DECIMAL(12,2) NOT NULL DEFAULT 1,
+    created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci");
+
+$db->exec("CREATE TABLE IF NOT EXISTS maliyet_kalemleri (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    kategori VARCHAR(80) NOT NULL DEFAULT 'Hammadde',
+    kalem_adi VARCHAR(180) NOT NULL,
+    birim VARCHAR(40) NULL,
+    birim_fiyat DECIMAL(15,6) NOT NULL DEFAULT 0,
+    aciklama VARCHAR(255) NULL,
+    created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uniq_maliyet_kalem (kategori, kalem_adi)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci");
+
+$db->exec("CREATE TABLE IF NOT EXISTS maliyet_receteler (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    donem VARCHAR(20) NOT NULL,
+    urun_id INT NOT NULL,
+    kalem_id INT NOT NULL,
+    miktar DECIMAL(15,6) NOT NULL DEFAULT 0,
+    fire_orani DECIMAL(8,4) NOT NULL DEFAULT 0,
+    satir_tutari DECIMAL(15,4) NOT NULL DEFAULT 0,
+    aciklama VARCHAR(255) NULL,
+    created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_maliyet_recete_donem (donem),
+    INDEX idx_maliyet_recete_urun (urun_id),
+    INDEX idx_maliyet_recete_kalem (kalem_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci");
+
+$db->exec("CREATE TABLE IF NOT EXISTS maliyet_fiyatlama (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    fiyat_tarihi DATE NOT NULL,
+    kategori VARCHAR(80) NOT NULL,
+    urun_adi VARCHAR(180) NOT NULL,
+    ton_fiyati VARCHAR(80) NULL,
+    doviz_adet VARCHAR(80) NULL,
+    tl_adet DECIMAL(15,7) NOT NULL DEFAULT 0,
+    cam_sise_033 DECIMAL(15,4) NOT NULL DEFAULT 0,
+    cam_sise_075 DECIMAL(15,4) NOT NULL DEFAULT 0,
+    aciklama VARCHAR(255) NULL,
+    created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uniq_maliyet_fiyat (fiyat_tarihi, kategori, urun_adi)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci");
+
 $db->exec("CREATE TABLE IF NOT EXISTS recete_donemler (
     id INT AUTO_INCREMENT PRIMARY KEY,
     donem VARCHAR(20) NOT NULL UNIQUE,
