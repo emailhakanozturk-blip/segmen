@@ -1025,33 +1025,33 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
 
     <?php if($tab==='giderler'): $costTab = $_GET['cost'] ?? 'tum'; if(!in_array($costTab, ['tum','hammadde','genel','nakliye'], true)){ $costTab='tum'; } ?>
     <nav class="cost-tabs">
-        <a class="<?php echo $costTab==='tum'?'active':''; ?>" href="?tab=giderler&cost=tum&donem=<?php echo rm_e($donem); ?>">T?m Giderler</a>
+        <a class="<?php echo $costTab==='tum'?'active':''; ?>" href="?tab=giderler&cost=tum&donem=<?php echo rm_e($donem); ?>">Tüm Giderler</a>
         <a class="<?php echo $costTab==='hammadde'?'active':''; ?>" href="?tab=giderler&cost=hammadde&donem=<?php echo rm_e($donem); ?>">Hammadde & Ambalaj</a>
         <a class="<?php echo $costTab==='genel'?'active':''; ?>" href="?tab=giderler&cost=genel&donem=<?php echo rm_e($donem); ?>">Genel Giderler</a>
         <a class="<?php echo $costTab==='nakliye'?'active':''; ?>" href="?tab=giderler&cost=nakliye&donem=<?php echo rm_e($donem); ?>">Nakliye / DEKAP</a>
     </nav>
     <section class="cost-subsection <?php echo $costTab==='tum'?'active':''; ?>">
         <section class="rm-kpis">
-            <div class="rm-card"><span>Hammadde & Ambalaj</span><strong><?php echo count($hammaddeler); ?> Kalem</strong><em class="rm-change">Ay bazl? fiyat</em></div>
-            <div class="rm-card"><span>Genel Giderler</span><strong>720 / 730 / 760 / 770</strong><em class="rm-change">Da??t?m anahtar?</em></div>
-            <div class="rm-card"><span>Nakliye / DEKAP</span><strong><?php echo count($urunMaliyetleri); ?> ?r?n</strong><em class="rm-change">Koli bazl?</em></div>
-            <div class="rm-card"><span>D?nem</span><strong><?php echo rm_e($currentDonem['donem_adi']); ?></strong><em class="rm-change">FIFO fiyat mant???</em></div>
+            <div class="rm-card"><span>Hammadde & Ambalaj</span><strong><?php echo count($hammaddeler); ?> Kalem</strong><em class="rm-change">Ay bazlı fiyat</em></div>
+            <div class="rm-card"><span>Genel Giderler</span><strong>720 / 730 / 760 / 770</strong><em class="rm-change">Dağıtım anahtarı</em></div>
+            <div class="rm-card"><span>Nakliye / DEKAP</span><strong><?php echo count($urunMaliyetleri); ?> ürün</strong><em class="rm-change">Koli bazlı</em></div>
+            <div class="rm-card"><span>Dönem</span><strong><?php echo rm_e($currentDonem['donem_adi']); ?></strong><em class="rm-change">FIFO fiyat mantığı</em></div>
         </section>
         <section class="rm-grid">
             <div class="rm-panel">
                 <h3>Hammadde & Ambalaj Kalemleri</h3>
-                <div class="rm-table-wrap"><table class="rm-table"><thead><tr><th>#</th><th>Malzeme</th><th>Birim</th><th>Ay ??i Fiyat Mant???</th></tr></thead><tbody>
-                    <?php foreach($hammaddeler as $i=>$h): ?><tr><td><?php echo $i+1; ?></td><td class="rm-product"><?php echo rm_e($h['kalem_adi']); ?></td><td><?php echo rm_e($h['birim']); ?></td><td>Faturalar ay i?inde birden fazla girilebilir; ilk giren ilk ??kar mant???yla izlenir.</td></tr><?php endforeach; ?>
+                <div class="rm-table-wrap"><table class="rm-table"><thead><tr><th>#</th><th>Malzeme</th><th>Birim</th><th>Ay İçi Fiyat Mantığı</th></tr></thead><tbody>
+                    <?php foreach($hammaddeler as $i=>$h): ?><tr><td><?php echo $i+1; ?></td><td class="rm-product"><?php echo rm_e($h['kalem_adi']); ?></td><td><?php echo rm_e($h['birim']); ?></td><td>Faturalar ay içinde birden fazla girilebilir; ilk giren ilk çıkar mantığıyla izlenir.</td></tr><?php endforeach; ?>
                 </tbody></table></div>
             </div>
             <aside class="rm-panel">
-                <h3>T?m Gider Ba?l?klar?</h3>
+                <h3>Tüm Gider Başlıkları</h3>
                 <div class="rm-break">
                     <div class="rm-break-row"><span>Hammadde & Ambalaj</span><b><?php echo count($hammaddeler); ?> kalem</b></div>
-                    <div class="rm-break-row"><span>720 Direkt ???ilik</span><b>Genel gider</b></div>
-                    <div class="rm-break-row"><span>730 Genel ?retim</span><b>Genel gider</b></div>
-                    <div class="rm-break-row"><span>760 Pazarlama Sat?? Da??t?m</span><b>Genel gider</b></div>
-                    <div class="rm-break-row"><span>770 Genel Y?netim</span><b>Genel gider</b></div>
+                    <div class="rm-break-row"><span>720 Direkt İşçilik</span><b>Genel gider</b></div>
+                    <div class="rm-break-row"><span>730 Genel Üretim</span><b>Genel gider</b></div>
+                    <div class="rm-break-row"><span>760 Pazarlama Satış Dağıtım</span><b>Genel gider</b></div>
+                    <div class="rm-break-row"><span>770 Genel Yönetim</span><b>Genel gider</b></div>
                     <div class="rm-break-row"><span>Nakliye</span><b>Koli maliyeti</b></div>
                     <div class="rm-break-row"><span>DEKAP</span><b>Koli maliyeti</b></div>
                 </div>
@@ -1061,12 +1061,12 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
     <section class="cost-subsection <?php echo $costTab==='hammadde'?'active':''; ?>">
         <div class="cost-page">
             <div class="price-hero">
-                <div><span class="price-kicker"><?php echo rm_e(rm_upper((string)$currentDonem['donem_adi'])); ?> F?YATLANDIRMA PANEL?</span><h2>Hammadde & Ambalaj Al?? Fiyatlar?</h2><p>Bu ekranda tan?mlanan fiyatlar re?ete maliyetleri ve mamul maliyet kartlar? taraf?ndan otomatik kullan?l?r. Ay i?inde birden fazla fatura girilebilir; maliyetlendirme ilk giren ilk ??kar mant???yla izlenir.</p></div>
+                <div><span class="price-kicker"><?php echo rm_e(rm_upper((string)$currentDonem['donem_adi'])); ?> FİYATLANDIRMA PANELİ</span><h2>Hammadde & Ambalaj Alış Fiyatları</h2><p>Bu ekranda tanımlanan fiyatlar reçete maliyetleri ve mamul maliyet kartları tarafından otomatik kullanılır. Ay içinde birden fazla fatura girilebilir; maliyetlendirme ilk giren ilk çıkar mantığıyla izlenir.</p></div>
                 <div class="currency-card"><div class="currency-grid"><label>USD Dolar Kuru (TL)<input value="<?php echo $kurOzet['usd'] > 0 ? number_format($kurOzet['usd'],2,',','.') : '36,50'; ?>"></label><label>EUR Euro Kuru (TL)<input value="<?php echo $kurOzet['eur'] > 0 ? number_format($kurOzet['eur'],2,',','.') : '39,80'; ?>"></label></div><div style="display:flex;gap:10px;margin-top:18px"><button class="method-btn active" type="button">Sorgulanıyor...</button><button class="primary-add" type="button">Kurları Kaydet</button></div></div>
             </div>
-            <div class="price-kpis"><div class="rm-card"><span>Toplam Aktif Malzeme</span><strong><?php echo count($hammaddeler); ?> Kalem</strong><em class="rm-change">Re?etelerde kullan?lan</em></div><div class="rm-card"><span>Para Birimi Da??l?m?</span><strong><?php echo count(array_filter($fiyatlar, function($f){ return str_contains((string)$f['ton_fiyati'],'$'); })); ?> USD</strong><em class="rm-change"><?php echo count(array_filter($fiyatlar, function($f){ return str_contains((string)$f['ton_fiyati'],'€'); })); ?> EUR / <?php echo count($fiyatlar); ?> kay?t</em></div><div class="rm-card"><span>H?zl? Aktar?m</span><strong>?nceki Ay</strong><em class="rm-change">Fiyatlar? bu aya kopyala</em></div><div class="rm-card dark"><span>Toplu Kaydet</span><strong>T?m Fiyatlar</strong><em class="rm-change">Re?eteyi senkronize et</em></div></div>
-            <div class="price-tools"><input id="matSearch" placeholder="Malzeme ad? veya kodu ile filtrele..."><div class="price-filter"><span class="fifo-note">G?r?n?m:</span><button class="filter-pill active" type="button">T?m Malzemeler (<?php echo count($hammaddeler); ?>)</button><button class="filter-pill" type="button">USD ($)</button><button class="filter-pill" type="button">EUR (?)</button><button class="filter-pill" type="button">?oklu Fatura Girdili</button></div></div>
-            <div class="price-list"><div class="price-list-head"><h3><?php echo rm_e(rm_upper((string)$currentDonem['donem_adi'])); ?> AKT?F F?YAT ??ZELGES?</h3><span><?php echo count($hammaddeler); ?> Malzeme Listeleniyor</span></div><div class="rm-table-wrap"><table><thead><tr><th>#</th><th>Malzeme Kodu & Ad?</th><th>Fatura Al?? Fiyat?</th><th>Al?? Birimi</th><th>Para Birimi</th><th>Uygulanan Kur</th><th>Net TL Birim Fiyat?</th><th>Ay ??i Fiyatlar</th><th>??lem</th></tr></thead><tbody>
+            <div class="price-kpis"><div class="rm-card"><span>Toplam Aktif Malzeme</span><strong><?php echo count($hammaddeler); ?> Kalem</strong><em class="rm-change">Reçetelerde kullanılan</em></div><div class="rm-card"><span>Para Birimi Dağılımı</span><strong><?php echo count(array_filter($fiyatlar, function($f){ return str_contains((string)$f['ton_fiyati'],'$'); })); ?> USD</strong><em class="rm-change"><?php echo count(array_filter($fiyatlar, function($f){ return str_contains((string)$f['ton_fiyati'],'€'); })); ?> EUR / <?php echo count($fiyatlar); ?> kayıt</em></div><div class="rm-card"><span>Hızlı Aktarım</span><strong>Önceki Ay</strong><em class="rm-change">Fiyatları bu aya kopyala</em></div><div class="rm-card dark"><span>Toplu Kaydet</span><strong>Tüm Fiyatlar</strong><em class="rm-change">Reçeteyi senkronize et</em></div></div>
+            <div class="price-tools"><input id="matSearch" placeholder="Malzeme adı veya kodu ile filtrele..."><div class="price-filter"><span class="fifo-note">Görünüm:</span><button class="filter-pill active" type="button">Tüm Malzemeler (<?php echo count($hammaddeler); ?>)</button><button class="filter-pill" type="button">USD ($)</button><button class="filter-pill" type="button">EUR (€)</button><button class="filter-pill" type="button">Çoklu Fatura Girdili</button></div></div>
+            <div class="price-list"><div class="price-list-head"><h3><?php echo rm_e(rm_upper((string)$currentDonem['donem_adi'])); ?> AKTİF FİYAT ÇİZELGESİ</h3><span><?php echo count($hammaddeler); ?> Malzeme Listeleniyor</span></div><div class="rm-table-wrap"><table><thead><tr><th>#</th><th>Malzeme Kodu & Adı</th><th>Fatura Alış Fiyatı</th><th>Alış Birimi</th><th>Para Birimi</th><th>Uygulanan Kur</th><th>Net TL Birim Fiyatı</th><th>Ay İçi Fiyatlar</th><th>İşlem</th></tr></thead><tbody>
                 <?php foreach($hammaddeler as $i=>$h): $last=$fiyatHareketleri[$i % max(1,count($fiyatHareketleri))] ?? ['ton_fiyati'=>'0','tl_adet'=>0,'doviz_adet'=>'']; ?>
                 <tr class="mat-row" data-name="<?php echo rm_e(rm_lower($h['kalem_adi'].' '.$h['kategori'])); ?>"><td><?php echo $i+1; ?></td><td><strong><?php echo rm_e($h['kalem_adi']); ?></strong><br><span class="bom-code">Kod: HM-<?php echo (int)$h['id']; ?> · <?php echo rm_e($h['kategori']); ?></span></td><td><input class="price-input" value="<?php echo rm_e($last['ton_fiyati']); ?>"></td><td><input class="price-input" value="<?php echo rm_e($h['birim']); ?>"></td><td><select class="price-input"><option>TL</option><option <?php echo str_contains((string)$last['ton_fiyati'],'$') ? 'selected' : ''; ?>>USD ($)</option><option <?php echo str_contains((string)$last['ton_fiyati'],'€') ? 'selected' : ''; ?>>EUR (€)</option></select></td><td><?php echo $kurOzet['usd'] > 0 ? number_format($kurOzet['usd'],4,',','.') : '-'; ?> TL</td><td class="tl-cell"><?php echo rm_money($last['tl_adet']); ?><br><small><?php echo rm_e($last['doviz_adet'] ?? ''); ?></small></td><td><button class="invoice-btn" type="button">+ Fatura Ekle</button><br><span class="fifo-note">FIFO ay içi giriş</span></td><td><button class="primary-add" type="button">Kaydet</button></td></tr>
                 <?php endforeach; ?>
@@ -1078,30 +1078,30 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
     <section class="expense-grid">
         <div class="expense-panel">
             <div class="expense-cards">
-                <div class="expense-card"><label>720 Direkt ???ilik Giderleri (TL)</label><input class="expense-input" value="1.250.000"><p>Fabrika personeli ve mavi yaka direkt i??ilik maliyetleri</p></div>
-                <div class="expense-card"><label>730 Genel ?retim Giderleri (TL)</label><input class="expense-input" value="890.000"><p>Elektrik, su, tesis bak?m, amortisman vb.</p></div>
-                <div class="expense-card"><label>760 Pazarlama Sat?? Da??t?m (TL)</label><input class="expense-input" value="420.000"><p>Saha sat??, reklam ve pazarlama birimi giderleri</p></div>
-                <div class="expense-card"><label>770 Genel Y?netim Giderleri (TL)</label><input class="expense-input" value="310.000"><p>Merkez ofis, idari personel, muhasebe ve bilgi i?lem</p></div>
+                <div class="expense-card"><label>720 Direkt İşçilik Giderleri (TL)</label><input class="expense-input" value="1.250.000"><p>Fabrika personeli ve mavi yaka direkt işçilik maliyetleri</p></div>
+                <div class="expense-card"><label>730 Genel Üretim Giderleri (TL)</label><input class="expense-input" value="890.000"><p>Elektrik, su, tesis bakım, amortisman vb.</p></div>
+                <div class="expense-card"><label>760 Pazarlama Satış Dağıtım (TL)</label><input class="expense-input" value="420.000"><p>Saha satış, reklam ve pazarlama birimi giderleri</p></div>
+                <div class="expense-card"><label>770 Genel Yönetim Giderleri (TL)</label><input class="expense-input" value="310.000"><p>Merkez ofis, idari personel, muhasebe ve bilgi işlem</p></div>
             </div>
-            <div class="method-title">Gider Da??t?m Y?ntemi (Maliyet Anahtar?)</div>
+            <div class="method-title">Gider Dağıtım Yöntemi (Maliyet Anahtarı)</div>
             <div class="method-buttons">
-                <button class="method-btn active" type="button">Koli Miktar?na G?re</button>
-                <button class="method-btn" type="button">Hacim/Litreye G?re</button>
-                <button class="method-btn" type="button">?r?n Bazl? Tutar</button>
-                <button class="method-btn" type="button">?zel Da??t?m Anahtar?</button>
+                <button class="method-btn active" type="button">Koli Miktarına Göre</button>
+                <button class="method-btn" type="button">Hacim/Litreye Göre</button>
+                <button class="method-btn" type="button">Ürün Bazlı Tutar</button>
+                <button class="method-btn" type="button">Özel Dağıtım Anahtarı</button>
             </div>
         </div>
         <aside class="analysis-card">
-            <h3>DA?ITIM ANAL?Z? SUMMARY</h3>
-            <div class="kpi"><span>D?nem Toplam Genel Gider</span><strong class="amber" id="expenseTotal">2.870.000 TL</strong></div>
-            <div class="kpi"><span>D?nem Toplam ?retim</span><strong id="expenseProduction">380.000 Koli</strong></div>
-            <div class="kpi"><span>Hesaplanan Koli Ba??na Gider Pay?</span><strong class="cyan" id="expensePerBox">7,55 TL / Koli</strong></div>
-            <div class="analysis-note">Giderler se?ilen ?Koli? anahtar?na g?re ?retilen t?m ?r?nlerin koli ba??na maliyetine otomatik eklenir.</div>
+            <h3>DAĞITIM ANALİZİ SUMMARY</h3>
+            <div class="kpi"><span>Dönem Toplam Genel Gider</span><strong class="amber" id="expenseTotal">2.870.000 TL</strong></div>
+            <div class="kpi"><span>Dönem Toplam Üretim</span><strong id="expenseProduction">380.000 Koli</strong></div>
+            <div class="kpi"><span>Hesaplanan Koli Başına Gider Payı</span><strong class="cyan" id="expensePerBox">7,55 TL / Koli</strong></div>
+            <div class="analysis-note">Giderler seçilen "Koli" anahtarına göre üretilen tüm ürünlerin koli başına maliyetine otomatik eklenir.</div>
         </aside>
     </section>
     </section>
     <section class="cost-subsection <?php echo $costTab==='nakliye'?'active':''; ?>">
-        <section class="rm-panel"><h3>Nakliye / DEKAP</h3><div class="rm-table-wrap"><table class="rm-table"><thead><tr><th>?r?n</th><th>Nakliye TL/Koli</th><th>DEKAP TL/Koli</th><th>Nakliyeli</th><th>Nakliyesiz</th><th>Nakliyesiz + DEKAP</th><th>Nakliye + DEKAP Dahil</th></tr></thead><tbody><?php foreach($urunMaliyetleri as $u): $nd=$ndByProduct[$u['urun_adi']] ?? ['nakliye_tl_koli'=>0,'dekap_tl_koli'=>0]; ?><tr><td class="rm-product"><?php echo rm_e($u['urun_adi']); ?></td><td class="num"><?php echo rm_money($nd['nakliye_tl_koli']); ?></td><td class="num"><?php echo rm_money($nd['dekap_tl_koli']); ?></td><td class="num"><?php echo rm_money((float)$u['toplam']+(float)$nd['nakliye_tl_koli']); ?></td><td class="num"><?php echo rm_money($u['toplam']); ?></td><td class="num"><?php echo rm_money((float)$u['toplam']+(float)$nd['dekap_tl_koli']); ?></td><td class="num"><?php echo rm_money((float)$u['toplam']+(float)$nd['nakliye_tl_koli']+(float)$nd['dekap_tl_koli']); ?></td></tr><?php endforeach; ?></tbody></table></div></section>
+        <section class="rm-panel"><h3>Nakliye / DEKAP</h3><div class="rm-table-wrap"><table class="rm-table"><thead><tr><th>Ürün</th><th>Nakliye TL/Koli</th><th>DEKAP TL/Koli</th><th>Nakliyeli</th><th>Nakliyesiz</th><th>Nakliyesiz + DEKAP</th><th>Nakliye + DEKAP Dahil</th></tr></thead><tbody><?php foreach($urunMaliyetleri as $u): $nd=$ndByProduct[$u['urun_adi']] ?? ['nakliye_tl_koli'=>0,'dekap_tl_koli'=>0]; ?><tr><td class="rm-product"><?php echo rm_e($u['urun_adi']); ?></td><td class="num"><?php echo rm_money($nd['nakliye_tl_koli']); ?></td><td class="num"><?php echo rm_money($nd['dekap_tl_koli']); ?></td><td class="num"><?php echo rm_money((float)$u['toplam']+(float)$nd['nakliye_tl_koli']); ?></td><td class="num"><?php echo rm_money($u['toplam']); ?></td><td class="num"><?php echo rm_money((float)$u['toplam']+(float)$nd['dekap_tl_koli']); ?></td><td class="num"><?php echo rm_money((float)$u['toplam']+(float)$nd['nakliye_tl_koli']+(float)$nd['dekap_tl_koli']); ?></td></tr><?php endforeach; ?></tbody></table></div></section>
     </section>
     <script>
     (function(){
