@@ -75,6 +75,14 @@ function rm_urun_varyant(array $u): string
     if(str_contains($a, 'bardak')) return 'Bardak';
     return (string)($u['urun_grubu'] ?? '');
 }
+function rm_kalem_id(PDO $db, string $kategori, string $ad, string $birim, float $fiyat = 0): int
+{
+    $stmt = $db->prepare("INSERT INTO maliyet_kalemleri (kategori,kalem_adi,birim,birim_fiyat) VALUES (?,?,?,?) ON DUPLICATE KEY UPDATE birim=VALUES(birim), birim_fiyat=VALUES(birim_fiyat)");
+    $stmt->execute([$kategori, $ad, $birim, $fiyat]);
+    $q = $db->prepare("SELECT id FROM maliyet_kalemleri WHERE kategori=? AND kalem_adi=? LIMIT 1");
+    $q->execute([$kategori, $ad]);
+    return (int)$q->fetchColumn();
+}
 function rm_stok_sync(PDO $db, string $donem, int $urunId): void
 {
     $depoId = (int)$db->query("SELECT id FROM maliyet_depolar ORDER BY id LIMIT 1")->fetchColumn();
@@ -294,24 +302,59 @@ foreach($kalemSeed as $k){ $fiyatIns->execute(['2026-04-01',$k[0],$k[1],'', '', 
 
 $pet033Id = (int)$db->query("SELECT id FROM maliyet_urunler WHERE urun_kodu='SU-PET-033' LIMIT 1")->fetchColumn();
 if($pet033Id > 0){
-    $has033 = $db->prepare("SELECT COUNT(*) FROM maliyet_receteler WHERE donem='2026-04' AND urun_id=?");
-    $has033->execute([$pet033Id]);
-    if((int)$has033->fetchColumn() === 0){
-        $receteIns = $db->prepare("INSERT INTO maliyet_receteler (donem,urun_id,kalem_id,miktar,fire_orani,satir_tutari,aciklama) VALUES ('2026-04',?,?,?,?,?,?)");
-        $rows033 = [
-            ['Preform / Cam Şişe',24,3,2.1375,'0,33 PET preform'],
-            ['Kapak',24,1.5,4.6448,'0,33 PET kapak'],
-            ['Etiket',24,2,1.9580,'0,33 PET etiket'],
-            ['Shrink Film',0.026,3.5,3.3435,'0,33 PET shrink'],
-            ['Strech Film',0.0088,2,0.0046,'0,33 PET strech'],
-        ];
-        foreach($rows033 as $r){
-            $kidStmt = $db->prepare("SELECT id FROM maliyet_kalemleri WHERE kalem_adi=? LIMIT 1");
-            $kidStmt->execute([$r[0]]);
-            $kid = (int)$kidStmt->fetchColumn();
-            if($kid > 0){ $receteIns->execute([$pet033Id,$kid,$r[1],$r[2],$r[3],$r[4]]); }
-        }
+    $usdKur = 36.50;
+    $eurKur = 39.80;
+    $koliIci = 24;
+    $fireOrani = 3;
+    $toplamUretimKoli = 600000;
+    $preformUsdTon = 1950;
+    $kapakUsdKg = 4.30;
+    $etiketEurPaket = 7;
+    $etiketRuloAdet = 4500;
+    $shrinkUsdTon = 2800;
+    $strecUsdTon = 2600;
+    $seperatorTlAdet = 22;
+    $giderIsçilikHaric = 890000;
+    $giderPazarlama = 420000;
+    $giderGenelYonetim = 310000;
+    $giderIscilik = 1250000;
+
+    $preformAdet = 9.2 * (($preformUsdTon / 1000000) * $usdKur);
+    $kapakAdet = ($kapakUsdKg / 1000) * $usdKur;
+    $etiketAdet = ($etiketEurPaket / $etiketRuloAdet) * $eurKur;
+    $shrinkAdet = (26 * (($shrinkUsdTon / 1000000) * $usdKur)) / $koliIci;
+    $strecAdet = (500 * (($strecUsdTon / 1000000) * $usdKur)) / ($koliIci * 116);
+    $seperatorAdet = (5 * $seperatorTlAdet) / (116 * $koliIci);
+    $hammaddeKoli = ($preformAdet + $kapakAdet + $etiketAdet + $shrinkAdet + $strecAdet + $seperatorAdet) * $koliIci;
+    $fireTutari = $hammaddeKoli * ($fireOrani / 100);
+    $giderPaylari = [
+        ['730 Genel Üretim', $giderIsçilikHaric / $toplamUretimKoli, 'İşçilik hariç gider payı'],
+        ['760 Pazarlama Satış Dağıtım', $giderPazarlama / $toplamUretimKoli, 'Pazarlama gideri payı'],
+        ['770 Genel Yönetim', $giderGenelYonetim / $toplamUretimKoli, 'Genel yönetim gideri payı'],
+        ['720 Direkt İşçilik', $giderIscilik / $toplamUretimKoli, 'İşçilik gideri payı'],
+    ];
+
+    $db->prepare("DELETE FROM maliyet_receteler WHERE donem='2026-04' AND urun_id=?")->execute([$pet033Id]);
+    $receteIns = $db->prepare("INSERT INTO maliyet_receteler (donem,urun_id,kalem_id,miktar,fire_orani,satir_tutari,aciklama) VALUES ('2026-04',?,?,?,?,?,?)");
+    $rows033 = [
+        ['Hammadde','Preform / Cam Şişe','Adet',$koliIci,0,$preformAdet * $koliIci,'9,2 gr x preform TL/gr x 24'],
+        ['Hammadde','Kapak','Adet',$koliIci,0,$kapakAdet * $koliIci,'29,25 mm kapak TL/adet x 24'],
+        ['Hammadde','Etiket','Adet',$koliIci,0,$etiketAdet * $koliIci,'0,33 etiket paket/rulo x euro kuru x 24'],
+        ['Hammadde','Shrink Film','Kg',26,0,$shrinkAdet * $koliIci,'(26 x shrink TL/gr)'],
+        ['Hammadde','Strech Film','Kg',500,0,$strecAdet * $koliIci,'(500 x streç TL/gr) / 116'],
+        ['Hammadde','Palet Ara Seperatör','Adet',5,0,$seperatorAdet * $koliIci,'(5 x seperatör TL/adet) / 116'],
+        ['Hammadde','Fire','Koli',1,$fireOrani,$fireTutari,'Hammadde koli toplamı x %3 fire'],
+    ];
+    foreach($rows033 as $r){
+        $kid = rm_kalem_id($db, $r[0], $r[1], $r[2], 0);
+        if($kid > 0){ $receteIns->execute([$pet033Id,$kid,$r[3],$r[4],$r[5],$r[6]]); }
     }
+    foreach($giderPaylari as $g){
+        $kid = rm_kalem_id($db, 'Genel Gider', $g[0], 'Koli', 0);
+        if($kid > 0){ $receteIns->execute([$pet033Id,$kid,1,0,$g[1],$g[2] . ' / 600.000 koli']); }
+    }
+    $db->prepare("INSERT INTO recete_nakliye_dekap (donem,urun_adi,nakliye_tl_koli,dekap_tl_koli) VALUES ('2026-04','0,33 L Pet Şişe Su',8.8,8.4) ON DUPLICATE KEY UPDATE nakliye_tl_koli=VALUES(nakliye_tl_koli), dekap_tl_koli=VALUES(dekap_tl_koli)")
+        ->execute();
 }
 
 $tab = (string)($_GET['tab'] ?? 'ozet');
@@ -664,7 +707,7 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
             <div class="rm-detail-head"><div><h3><?php echo rm_e($selected['urun_adi'] ?? 'Ürün seçin'); ?></h3><span class="muted"><?php echo rm_e($currentDonem['donem_adi']); ?></span></div><button class="calc-info-btn" type="button" onclick="document.getElementById('calcModal').classList.add('show')">Nasıl hesaplandı</button></div>
             <div class="rm-break"><?php foreach($detaylar as $d): ?><div class="rm-break-row"><span><?php echo rm_e($d['kalem_adi']); ?></span><b><?php echo rm_money($d['tutar']); ?></b></div><?php endforeach; ?></div>
             <div class="rm-total"><span>Koli Başına Maliyet</span><strong><?php echo rm_money($selected['toplam'] ?? 0); ?></strong></div>
-            <div class="rm-break" style="margin-top:12px"><div class="rm-break-row"><span>Nakliyeli</span><b><?php echo rm_money(($selected['toplam'] ?? 0) + (float)$selectedNd['nakliye_tl_koli']); ?></b></div><div class="rm-break-row"><span>Nakliyesiz</span><b><?php echo rm_money($selected['toplam'] ?? 0); ?></b></div><div class="rm-break-row"><span>Nakliyesiz + DEKAP</span><b><?php echo rm_money(($selected['toplam'] ?? 0) + (float)$selectedNd['dekap_tl_koli']); ?></b></div></div>
+            <div class="rm-break" style="margin-top:12px"><div class="rm-break-row"><span>Nakliyeli</span><b><?php echo rm_money($selected['toplam'] ?? 0); ?></b></div><div class="rm-break-row"><span>Nakliyesiz</span><b><?php echo rm_money(($selected['toplam'] ?? 0) - (float)$selectedNd['nakliye_tl_koli']); ?></b></div><div class="rm-break-row"><span>Nakliyesiz + DEKAP</span><b><?php echo rm_money(($selected['toplam'] ?? 0) - (float)$selectedNd['nakliye_tl_koli'] + (float)$selectedNd['dekap_tl_koli']); ?></b></div><div class="rm-break-row"><span>Nakliye + DEKAP Dahil</span><b><?php echo rm_money(($selected['toplam'] ?? 0) + (float)$selectedNd['dekap_tl_koli']); ?></b></div></div>
         </aside>
     </section>
     <div class="calc-modal" id="calcModal" onclick="if(event.target===this)this.classList.remove('show')">
@@ -1101,7 +1144,7 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
     </section>
     </section>
     <section class="cost-subsection <?php echo $costTab==='nakliye'?'active':''; ?>">
-        <section class="rm-panel"><h3>Nakliye / DEKAP</h3><div class="rm-table-wrap"><table class="rm-table"><thead><tr><th>Ürün</th><th>Nakliye TL/Koli</th><th>DEKAP TL/Koli</th><th>Nakliyeli</th><th>Nakliyesiz</th><th>Nakliyesiz + DEKAP</th><th>Nakliye + DEKAP Dahil</th></tr></thead><tbody><?php foreach($urunMaliyetleri as $u): $nd=$ndByProduct[$u['urun_adi']] ?? ['nakliye_tl_koli'=>0,'dekap_tl_koli'=>0]; ?><tr><td class="rm-product"><?php echo rm_e($u['urun_adi']); ?></td><td class="num"><?php echo rm_money($nd['nakliye_tl_koli']); ?></td><td class="num"><?php echo rm_money($nd['dekap_tl_koli']); ?></td><td class="num"><?php echo rm_money((float)$u['toplam']+(float)$nd['nakliye_tl_koli']); ?></td><td class="num"><?php echo rm_money($u['toplam']); ?></td><td class="num"><?php echo rm_money((float)$u['toplam']+(float)$nd['dekap_tl_koli']); ?></td><td class="num"><?php echo rm_money((float)$u['toplam']+(float)$nd['nakliye_tl_koli']+(float)$nd['dekap_tl_koli']); ?></td></tr><?php endforeach; ?></tbody></table></div></section>
+        <section class="rm-panel"><h3>Nakliye / DEKAP</h3><div class="rm-table-wrap"><table class="rm-table"><thead><tr><th>Ürün</th><th>Nakliye TL/Koli</th><th>DEKAP TL/Koli</th><th>Nakliyeli</th><th>Nakliyesiz</th><th>Nakliyesiz + DEKAP</th><th>Nakliye + DEKAP Dahil</th></tr></thead><tbody><?php foreach($urunMaliyetleri as $u): $nd=$ndByProduct[$u['urun_adi']] ?? ['nakliye_tl_koli'=>0,'dekap_tl_koli'=>0]; ?><tr><td class="rm-product"><?php echo rm_e($u['urun_adi']); ?></td><td class="num"><?php echo rm_money($nd['nakliye_tl_koli']); ?></td><td class="num"><?php echo rm_money($nd['dekap_tl_koli']); ?></td><td class="num"><?php echo rm_money($u['toplam']); ?></td><td class="num"><?php echo rm_money((float)$u['toplam']-(float)$nd['nakliye_tl_koli']); ?></td><td class="num"><?php echo rm_money((float)$u['toplam']-(float)$nd['nakliye_tl_koli']+(float)$nd['dekap_tl_koli']); ?></td><td class="num"><?php echo rm_money((float)$u['toplam']+(float)$nd['dekap_tl_koli']); ?></td></tr><?php endforeach; ?></tbody></table></div></section>
     </section>
     <script>
     (function(){
@@ -1122,7 +1165,7 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
     <?php endif; ?>
 
     <?php if($tab==='nakliye'): ?>
-    <section class="rm-panel"><h3>Nakliye / DEKAP</h3><div class="rm-table-wrap"><table class="rm-table"><thead><tr><th>?r?n</th><th>Nakliye TL/Koli</th><th>DEKAP TL/Koli</th><th>Nakliyeli</th><th>Nakliyesiz</th><th>Nakliyesiz + DEKAP</th><th>Nakliye + DEKAP Dahil</th></tr></thead><tbody><?php foreach($urunMaliyetleri as $u): $nd=$ndByProduct[$u['urun_adi']] ?? ['nakliye_tl_koli'=>0,'dekap_tl_koli'=>0]; ?><tr><td class="rm-product"><?php echo rm_e($u['urun_adi']); ?></td><td class="num"><?php echo rm_money($nd['nakliye_tl_koli']); ?></td><td class="num"><?php echo rm_money($nd['dekap_tl_koli']); ?></td><td class="num"><?php echo rm_money((float)$u['toplam']+(float)$nd['nakliye_tl_koli']); ?></td><td class="num"><?php echo rm_money($u['toplam']); ?></td><td class="num"><?php echo rm_money((float)$u['toplam']+(float)$nd['dekap_tl_koli']); ?></td><td class="num"><?php echo rm_money((float)$u['toplam']+(float)$nd['nakliye_tl_koli']+(float)$nd['dekap_tl_koli']); ?></td></tr><?php endforeach; ?></tbody></table></div></section>
+    <section class="rm-panel"><h3>Nakliye / DEKAP</h3><div class="rm-table-wrap"><table class="rm-table"><thead><tr><th>Ürün</th><th>Nakliye TL/Koli</th><th>DEKAP TL/Koli</th><th>Nakliyeli</th><th>Nakliyesiz</th><th>Nakliyesiz + DEKAP</th><th>Nakliye + DEKAP Dahil</th></tr></thead><tbody><?php foreach($urunMaliyetleri as $u): $nd=$ndByProduct[$u['urun_adi']] ?? ['nakliye_tl_koli'=>0,'dekap_tl_koli'=>0]; ?><tr><td class="rm-product"><?php echo rm_e($u['urun_adi']); ?></td><td class="num"><?php echo rm_money($nd['nakliye_tl_koli']); ?></td><td class="num"><?php echo rm_money($nd['dekap_tl_koli']); ?></td><td class="num"><?php echo rm_money($u['toplam']); ?></td><td class="num"><?php echo rm_money((float)$u['toplam']-(float)$nd['nakliye_tl_koli']); ?></td><td class="num"><?php echo rm_money((float)$u['toplam']-(float)$nd['nakliye_tl_koli']+(float)$nd['dekap_tl_koli']); ?></td><td class="num"><?php echo rm_money((float)$u['toplam']+(float)$nd['dekap_tl_koli']); ?></td></tr><?php endforeach; ?></tbody></table></div></section>
     <?php endif; ?>
 </main>
 </body>
