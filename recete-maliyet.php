@@ -9,7 +9,11 @@ if(!isset($_SESSION['user_id'])){
 
 function rm_e($value): string { return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8'); }
 function rm_money($value): string { return '₺' . number_format((float)$value, 2, ',', '.'); }
+if(!function_exists('str_contains')){
+    function str_contains($haystack, $needle){ return $needle === '' || strpos((string)$haystack, (string)$needle) !== false; }
+}
 function rm_lower($value): string { return function_exists('mb_strtolower') ? mb_strtolower((string)$value, 'UTF-8') : strtolower((string)$value); }
+function rm_upper($value): string { return function_exists('mb_strtoupper') ? mb_strtoupper((string)$value, 'UTF-8') : strtoupper((string)$value); }
 function rm_currency_num($value): float
 {
     $value = str_replace([' ', 'TL', '₺', '$', '€', 'USD', 'EUR'], '', trim((string)$value));
@@ -58,7 +62,7 @@ function rm_urun_grubu(array $u): array
 function rm_urun_hacim(array $u): string
 {
     if(preg_match('/^([0-9]+(:,[0-9]+)|[0-9]+(:\.[0-9]+))\s*(ml|l)/iu', (string)$u['urun_adi'], $m)){
-        return str_replace('.', ',', $m[1]).' '.mb_strtolower($m[2], 'UTF-8');
+        return str_replace('.', ',', $m[1]).' '.rm_lower($m[2]);
     }
     return '';
 }
@@ -376,7 +380,7 @@ foreach($urunler as $u){
 }
 $fiyatlarByGroup = [];
 foreach($urunGruplari as $key=>$g){
-    $names = array_map(fn($u) => rm_lower($u['urun_adi']), $g['urunler']);
+    $names = array_map(function($u){ return rm_lower($u['urun_adi']); }, $g['urunler']);
     $fiyatlarByGroup[$key] = array_values(array_filter($fiyatHareketleri, function($f) use ($names){
         $fn = rm_lower($f['urun_adi'] ?? '');
         foreach($names as $n){ if($n !== '' && (str_contains($fn, $n) || str_contains($n, $fn))){ return true; } }
@@ -387,7 +391,7 @@ $urunKpi = [
     'toplam' => count($urunler),
     'aktif' => count($urunler),
     'grup' => count($urunGruplari),
-    'eksik' => count(array_filter($urunler, fn($u) => ($bomDurum[(int)$u['id']] ?? 0) <= 0)),
+    'eksik' => count(array_filter($urunler, function($u) use ($bomDurum){ return ($bomDurum[(int)$u['id']] ?? 0) <= 0; })),
 ];
 $selectedProductName = (string)($selected['urun_adi'] ?? '');
 $selectedProductCode = '';
@@ -942,18 +946,18 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
     <section class="cost-subsection <?php echo $costTab==='hammadde'?'active':''; ?>">
         <div class="cost-page">
             <div class="price-hero">
-                <div><span class="price-kicker"><?php echo rm_e(mb_strtoupper((string)$currentDonem['donem_adi'], 'UTF-8')); ?> F?YATLANDIRMA PANEL?</span><h2>Hammadde & Ambalaj Al?? Fiyatlar?</h2><p>Bu ekranda tan?mlanan fiyatlar re?ete maliyetleri ve mamul maliyet kartlar? taraf?ndan otomatik kullan?l?r. Ay i?inde birden fazla fatura girilebilir; maliyetlendirme ilk giren ilk ??kar mant???yla izlenir.</p></div>
+                <div><span class="price-kicker"><?php echo rm_e(rm_upper((string)$currentDonem['donem_adi'])); ?> F?YATLANDIRMA PANEL?</span><h2>Hammadde & Ambalaj Al?? Fiyatlar?</h2><p>Bu ekranda tan?mlanan fiyatlar re?ete maliyetleri ve mamul maliyet kartlar? taraf?ndan otomatik kullan?l?r. Ay i?inde birden fazla fatura girilebilir; maliyetlendirme ilk giren ilk ??kar mant???yla izlenir.</p></div>
                 <div class="currency-card"><div class="currency-grid"><label>USD Dolar Kuru (TL)<input value="<?php echo $kurOzet['usd'] > 0 ? number_format($kurOzet['usd'],2,',','.') : '36,50'; ?>"></label><label>EUR Euro Kuru (TL)<input value="<?php echo $kurOzet['eur'] > 0 ? number_format($kurOzet['eur'],2,',','.') : '39,80'; ?>"></label></div><div style="display:flex;gap:10px;margin-top:18px"><button class="method-btn active" type="button">Sorgulanıyor...</button><button class="primary-add" type="button">Kurları Kaydet</button></div></div>
             </div>
-            <div class="price-kpis"><div class="rm-card"><span>Toplam Aktif Malzeme</span><strong><?php echo count($hammaddeler); ?> Kalem</strong><em class="rm-change">Re?etelerde kullan?lan</em></div><div class="rm-card"><span>Para Birimi Da??l?m?</span><strong><?php echo count(array_filter($fiyatlar, fn($f)=>str_contains((string)$f['ton_fiyati'],'$'))); ?> USD</strong><em class="rm-change"><?php echo count(array_filter($fiyatlar, fn($f)=>str_contains((string)$f['ton_fiyati'],'€'))); ?> EUR / <?php echo count($fiyatlar); ?> kay?t</em></div><div class="rm-card"><span>H?zl? Aktar?m</span><strong>?nceki Ay</strong><em class="rm-change">Fiyatlar? bu aya kopyala</em></div><div class="rm-card dark"><span>Toplu Kaydet</span><strong>T?m Fiyatlar</strong><em class="rm-change">Re?eteyi senkronize et</em></div></div>
+            <div class="price-kpis"><div class="rm-card"><span>Toplam Aktif Malzeme</span><strong><?php echo count($hammaddeler); ?> Kalem</strong><em class="rm-change">Re?etelerde kullan?lan</em></div><div class="rm-card"><span>Para Birimi Da??l?m?</span><strong><?php echo count(array_filter($fiyatlar, function($f){ return str_contains((string)$f['ton_fiyati'],'$'); })); ?> USD</strong><em class="rm-change"><?php echo count(array_filter($fiyatlar, function($f){ return str_contains((string)$f['ton_fiyati'],'€'); })); ?> EUR / <?php echo count($fiyatlar); ?> kay?t</em></div><div class="rm-card"><span>H?zl? Aktar?m</span><strong>?nceki Ay</strong><em class="rm-change">Fiyatlar? bu aya kopyala</em></div><div class="rm-card dark"><span>Toplu Kaydet</span><strong>T?m Fiyatlar</strong><em class="rm-change">Re?eteyi senkronize et</em></div></div>
             <div class="price-tools"><input id="matSearch" placeholder="Malzeme ad? veya kodu ile filtrele..."><div class="price-filter"><span class="fifo-note">G?r?n?m:</span><button class="filter-pill active" type="button">T?m Malzemeler (<?php echo count($hammaddeler); ?>)</button><button class="filter-pill" type="button">USD ($)</button><button class="filter-pill" type="button">EUR (?)</button><button class="filter-pill" type="button">?oklu Fatura Girdili</button></div></div>
-            <div class="price-list"><div class="price-list-head"><h3><?php echo rm_e(mb_strtoupper((string)$currentDonem['donem_adi'], 'UTF-8')); ?> AKT?F F?YAT ??ZELGES?</h3><span><?php echo count($hammaddeler); ?> Malzeme Listeleniyor</span></div><div class="rm-table-wrap"><table><thead><tr><th>#</th><th>Malzeme Kodu & Ad?</th><th>Fatura Al?? Fiyat?</th><th>Al?? Birimi</th><th>Para Birimi</th><th>Uygulanan Kur</th><th>Net TL Birim Fiyat?</th><th>Ay ??i Fiyatlar</th><th>??lem</th></tr></thead><tbody>
+            <div class="price-list"><div class="price-list-head"><h3><?php echo rm_e(rm_upper((string)$currentDonem['donem_adi'])); ?> AKT?F F?YAT ??ZELGES?</h3><span><?php echo count($hammaddeler); ?> Malzeme Listeleniyor</span></div><div class="rm-table-wrap"><table><thead><tr><th>#</th><th>Malzeme Kodu & Ad?</th><th>Fatura Al?? Fiyat?</th><th>Al?? Birimi</th><th>Para Birimi</th><th>Uygulanan Kur</th><th>Net TL Birim Fiyat?</th><th>Ay ??i Fiyatlar</th><th>??lem</th></tr></thead><tbody>
                 <?php foreach($hammaddeler as $i=>$h): $last=$fiyatHareketleri[$i % max(1,count($fiyatHareketleri))] ?? ['ton_fiyati'=>'0','tl_adet'=>0,'doviz_adet'=>'']; ?>
                 <tr class="mat-row" data-name="<?php echo rm_e(rm_lower($h['kalem_adi'].' '.$h['kategori'])); ?>"><td><?php echo $i+1; ?></td><td><strong><?php echo rm_e($h['kalem_adi']); ?></strong><br><span class="bom-code">Kod: HM-<?php echo (int)$h['id']; ?> · <?php echo rm_e($h['kategori']); ?></span></td><td><input class="price-input" value="<?php echo rm_e($last['ton_fiyati']); ?>"></td><td><input class="price-input" value="<?php echo rm_e($h['birim']); ?>"></td><td><select class="price-input"><option>TL</option><option <?php echo str_contains((string)$last['ton_fiyati'],'$') ? 'selected' : ''; ?>>USD ($)</option><option <?php echo str_contains((string)$last['ton_fiyati'],'€') ? 'selected' : ''; ?>>EUR (€)</option></select></td><td><?php echo $kurOzet['usd'] > 0 ? number_format($kurOzet['usd'],4,',','.') : '-'; ?> TL</td><td class="tl-cell"><?php echo rm_money($last['tl_adet']); ?><br><small><?php echo rm_e($last['doviz_adet'] ?? ''); ?></small></td><td><button class="invoice-btn" type="button">+ Fatura Ekle</button><br><span class="fifo-note">FIFO ay içi giriş</span></td><td><button class="primary-add" type="button">Kaydet</button></td></tr>
                 <?php endforeach; ?>
             </tbody></table></div></div>
         </div>
-        <script>var ms=document.getElementById('matSearch'); if(ms){ms.addEventListener('input',function(){var q=this.value.toLocaleLowerCase('tr-TR');document.querySelectorAll('.mat-row').forEach(function(r){r.style.display=!q||r.dataset.name.indexOf(q)>-1'':'none';});});}</script>
+        <script>var ms=document.getElementById('matSearch'); if(ms){ms.addEventListener('input',function(){var q=this.value.toLocaleLowerCase('tr-TR');document.querySelectorAll('.mat-row').forEach(function(r){r.style.display=(!q||r.dataset.name.indexOf(q)>-1)?'':'none';});});}</script>
     </section>
     <section class="cost-subsection <?php echo $costTab==='genel'?'active':''; ?>">
     <section class="expense-grid">
