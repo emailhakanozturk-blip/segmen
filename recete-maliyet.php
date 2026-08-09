@@ -197,16 +197,14 @@ $db->exec("CREATE TABLE IF NOT EXISTS recete_stok_hareketleri (
 try { $db->exec("ALTER TABLE maliyet_urunler ADD COLUMN urun_kodu VARCHAR(40) NULL AFTER id"); } catch(Throwable $e) {}
 try { $db->exec("ALTER TABLE maliyet_urunler ADD UNIQUE KEY uniq_maliyet_urun_kodu (urun_kodu)"); } catch(Throwable $e) {}
 
-if(false){
-$db->exec("INSERT IGNORE INTO recete_donemler (donem,donem_adi,toplam_uretim,durum,son_hesaplama) VALUES ('2026-04','Nisan 2026',600000,'A??k',NOW())");
+$db->exec("INSERT INTO recete_donemler (donem,donem_adi,toplam_uretim,durum,son_hesaplama) VALUES ('2026-04','Nisan 2026',600000,'Açık',NOW()) ON DUPLICATE KEY UPDATE donem_adi=VALUES(donem_adi), durum=VALUES(durum)");
 $uretimSeed = [
-    ['2026-04','0,33 lt STANDART',1672], ['2026-04','0,5 lt STANDART',114548],
-    ['2026-04','1,5 lt STANDART',52193], ['2026-04','5 lt STANDART',4011],
-    ['2026-04','19 lt STANDART',109104], ['2026-04','200 cc STANDART',0],
+    ['2026-04','0,33 L Pet Şişe Su',1672], ['2026-04','0,50 L Pet Şişe Su',114548],
+    ['2026-04','1,5 L Pet Şişe Su',52193], ['2026-04','5 L Pet Şişe Su',4011],
+    ['2026-04','19 L Damacana Su',109104], ['2026-04','200 ml Bardak Su',0],
 ];
-$uretimIns = $db->prepare("INSERT IGNORE INTO recete_uretim (donem,urun_adi,koli_miktari) VALUES (?,?,?)");
+$uretimIns = $db->prepare("INSERT INTO recete_uretim (donem,urun_adi,koli_miktari) VALUES (?,?,?) ON DUPLICATE KEY UPDATE koli_miktari=VALUES(koli_miktari)");
 foreach($uretimSeed as $u){ $uretimIns->execute($u); }
-}
 
 $tab = (string)($_GET['tab'] ?? 'ozet');
 if(!in_array($tab, ['ozet','urunler','hammaddeler','fiyatlar','receteler','uretim','giderler','nakliye','stok_hareketleri'], true)){ $tab = 'ozet'; }
@@ -514,7 +512,16 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
         .cost-tabs{display:flex;gap:10px;margin-bottom:16px}.cost-tabs a{background:#fff;border:1px solid #dbe4ef;border-radius:14px;padding:12px 16px;color:#334155;text-decoration:none;font-weight:950}.cost-tabs a.active{background:#0f172a;color:#fff;border-color:#0f172a}.cost-page{display:grid;gap:16px}.price-hero{display:grid;grid-template-columns:1.2fr .8fr;gap:20px;background:linear-gradient(125deg,#0f172a,#2b216b);color:#fff;border-radius:18px;padding:28px;box-shadow:0 18px 42px rgba(15,23,42,.18)}.price-hero h2{margin:10px 0 8px;font-size:28px}.price-hero p{margin:0;color:#dbeafe;line-height:1.6}.price-kicker{display:inline-block;background:#1e40af;border:1px solid rgba(147,197,253,.5);border-radius:999px;padding:7px 12px;color:#93c5fd;font-size:12px;font-weight:950}.currency-card{border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.1);border-radius:16px;padding:18px}.currency-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.currency-grid label{font-size:12px;font-weight:950;color:#dbeafe}.currency-grid input{width:100%;box-sizing:border-box;margin-top:7px;border:0;border-radius:8px;background:#020617;color:#fff;padding:13px;text-align:center;font-size:18px;font-weight:950}.price-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.price-kpis .rm-card.dark{background:#0f172a;color:#fff}.price-tools{display:flex;justify-content:space-between;gap:12px;align-items:center;background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:16px}.price-tools input{border:1px solid #cbd5e1;border-radius:13px;padding:12px 14px;min-width:310px}.price-filter{display:flex;gap:8px;align-items:center}.filter-pill{border:0;border-radius:999px;padding:10px 14px;font-weight:950;background:#f1f5f9;color:#334155}.filter-pill.active{background:#0f172a;color:#fff}.price-list{background:#fff;border:1px solid #dbe4ef;border-radius:18px;overflow:hidden;box-shadow:0 14px 32px rgba(15,23,42,.06)}.price-list-head{display:flex;justify-content:space-between;align-items:center;background:#0f172a;color:#fff;padding:18px 20px}.price-list-head h3{margin:0;font-size:17px}.price-list table{width:100%;border-collapse:separate;border-spacing:0;font-size:13px}.price-list th{background:#f1f5f9;color:#172033;text-align:left;padding:13px}.price-list td{padding:12px;border-top:1px solid #e8eef6}.price-input{width:110px;border:1px solid #cbd5e1;border-radius:12px;padding:10px}.tl-cell{background:#ecfdf5;text-align:center;font-weight:950;color:#064e3b}.fifo-note{font-size:12px;color:#64748b}.invoice-btn{border:1px solid #dbe4ef;background:#fff;border-radius:12px;padding:10px 12px;font-weight:900;color:#334155}.cost-subsection{display:none}.cost-subsection.active{display:block}@media(max-width:900px){.price-hero,.price-kpis{grid-template-columns:1fr}.price-tools{display:block}.price-tools input{width:100%;min-width:0;margin-bottom:10px}}
         @media(max-width:760px){.product-list-top,.product-list-actions{display:block}.product-search{width:100%;max-width:none;margin-top:12px}.product-modal-grid{grid-template-columns:1fr}.product-list-card{overflow:auto}.product-list-table{min-width:900px}}
         .calc-modal{display:none;position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:60;align-items:center;justify-content:center;padding:20px}.calc-modal.show{display:flex}.calc-box{width:min(860px,96vw);max-height:88vh;overflow:auto;background:#fff;border-radius:18px;box-shadow:0 30px 80px rgba(15,23,42,.28)}.calc-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;background:#0f172a;color:#fff;padding:18px 20px}.calc-head h3{margin:0;font-size:20px}.calc-head p{margin:4px 0 0;color:#cbd5e1;font-size:13px}.calc-close{border:0;background:#334155;color:#fff;border-radius:10px;padding:9px 12px;font-weight:900;cursor:pointer}.calc-body{padding:18px 20px}.calc-note{background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:12px;color:#1e3a8a;font-size:13px;margin-bottom:12px}.calc-table{width:100%;border-collapse:collapse;font-size:12px}.calc-table th{background:#f1f5f9;text-align:left;color:#334155;padding:10px}.calc-table td{border-bottom:1px solid #e5e7eb;padding:10px}.calc-table .num{text-align:right;font-variant-numeric:tabular-nums}.calc-info-btn{border:1px solid #bfdbfe;background:#eff6ff;color:#1d4ed8;border-radius:999px;padding:7px 10px;font-size:12px;font-weight:900;cursor:pointer}
-    </style>
+.cost-fit{min-width:0!important;table-layout:fixed}
+.cost-fit th,.cost-fit td{padding:8px 6px;font-size:11px}
+.cost-fit .rm-product{font-size:11px;word-break:break-word}
+.cost-fit .rm-btn{padding:7px 9px;font-size:11px}
+@media(max-width:900px){
+    .cost-fit th:nth-child(n+3):nth-child(-n+6),
+    .cost-fit td:nth-child(n+3):nth-child(-n+6){display:none}
+    .cost-fit th,.cost-fit td{font-size:10px;padding:7px 5px}
+}
+</style>
 </head>
 <body>
 <?php require_once __DIR__ . '/sidebar.php'; ?>
@@ -544,7 +551,7 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
         <div class="rm-card"><span>Genel Giderler</span><strong><?php echo number_format($weightedGider/1000000,2,',','.'); ?> Mn TL</strong><em class="rm-change">720/730/760/770</em></div>
     </section>
     <section class="rm-grid">
-        <div class="rm-panel"><h3>Ürün Maliyet Tablosu</h3><div class="rm-table-wrap"><table class="rm-table"><thead><tr><th>Ürün</th><th>Hammadde</th><th>720</th><th>730</th><th>760</th><th>770</th><th>Toplam</th><th>Değişim</th><th>Detay</th></tr></thead><tbody><?php foreach($urunMaliyetleri as $u): ?><tr onclick="location.href='?tab=ozet&donem=<?php echo rm_e($donem); ?>&urun_id=<?php echo (int)$u['id']; ?>'"><td class="rm-product"><?php echo rm_e($u['urun_adi']); ?></td><td class="num"><?php echo rm_money($u['hammadde']); ?></td><td class="num"><?php echo rm_money($u['g720']); ?></td><td class="num"><?php echo rm_money($u['g730']); ?></td><td class="num"><?php echo rm_money($u['g760']); ?></td><td class="num"><?php echo rm_money($u['g770']); ?></td><td class="num"><b><?php echo rm_money($u['toplam']); ?></b></td><td><span class="green">%0,00</span></td><td><button class="rm-btn" type="button">Aç</button></td></tr><?php endforeach; ?></tbody></table></div></div>
+        <div class="rm-panel"><h3>Ürün Maliyet Tablosu</h3><div class="rm-table-wrap"><table class="rm-table cost-fit"><thead><tr><th>Ürün</th><th>Hammadde</th><th>720</th><th>730</th><th>760</th><th>770</th><th>Toplam</th><th>Değişim</th><th>Detay</th></tr></thead><tbody><?php foreach($urunMaliyetleri as $u): ?><tr onclick="location.href='?tab=ozet&donem=<?php echo rm_e($donem); ?>&urun_id=<?php echo (int)$u['id']; ?>'"><td class="rm-product"><?php echo rm_e($u['urun_adi']); ?></td><td class="num"><?php echo rm_money($u['hammadde']); ?></td><td class="num"><?php echo rm_money($u['g720']); ?></td><td class="num"><?php echo rm_money($u['g730']); ?></td><td class="num"><?php echo rm_money($u['g760']); ?></td><td class="num"><?php echo rm_money($u['g770']); ?></td><td class="num"><b><?php echo rm_money($u['toplam']); ?></b></td><td><span class="green">%0,00</span></td><td><button class="rm-btn" type="button">Aç</button></td></tr><?php endforeach; ?></tbody></table></div></div>
         <aside class="rm-panel">
             <div class="rm-detail-head"><div><h3><?php echo rm_e($selected['urun_adi'] ?? 'Ürün seçin'); ?></h3><span class="muted"><?php echo rm_e($currentDonem['donem_adi']); ?></span></div><button class="calc-info-btn" type="button" onclick="document.getElementById('calcModal').classList.add('show')">Nasıl hesaplandı</button></div>
             <div class="rm-break"><?php foreach($detaylar as $d): ?><div class="rm-break-row"><span><?php echo rm_e($d['kalem_adi']); ?></span><b><?php echo rm_money($d['tutar']); ?></b></div><?php endforeach; ?></div>
