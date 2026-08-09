@@ -205,6 +205,7 @@ $uretimSeed = [
 ];
 $uretimIns = $db->prepare("INSERT INTO recete_uretim (donem,urun_adi,koli_miktari) VALUES (?,?,?) ON DUPLICATE KEY UPDATE koli_miktari=VALUES(koli_miktari)");
 foreach($uretimSeed as $u){ $uretimIns->execute($u); }
+$db->exec("UPDATE recete_uretim SET koli_miktari=1672 WHERE donem='2026-04' AND urun_adi LIKE '%0,33%'");
 
 $tab = (string)($_GET['tab'] ?? 'ozet');
 if(!in_array($tab, ['ozet','urunler','hammaddeler','fiyatlar','receteler','uretim','giderler','nakliye','stok_hareketleri'], true)){ $tab = 'ozet'; }
@@ -466,7 +467,7 @@ $totalProduction = $usedQty > 0 ? $usedQty : (float)($currentDonem['toplam_ureti
 $avgCost = $usedQty > 0 ? $weightedTotal / $usedQty : 0;
 $warnings = [];
 if(!$fiyatlar){ $warnings[] = 'Hammadde fiyatlar? tan?mlanmam??.'; }
-if(!$urunMaliyetleri){ $warnings[] = 'Aktif re?ete maliyeti bulunamad?.'; }
+if(!$urunMaliyetleri){ $warnings[] = 'Aktif reçete maliyeti bulunamadı.'; }
 $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_koli'=>0,'dekap_tl_koli'=>0]) : ['nakliye_tl_koli'=>0,'dekap_tl_koli'=>0];
 ?>
 <!DOCTYPE html>
