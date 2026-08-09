@@ -258,6 +258,62 @@ $uretimIns = $db->prepare("INSERT INTO recete_uretim (donem,urun_adi,koli_miktar
 foreach($uretimSeed as $u){ $uretimIns->execute($u); }
 $db->exec("UPDATE recete_uretim SET koli_miktari=1672 WHERE donem='2026-04' AND urun_adi LIKE '%0,33%'");
 
+$urunSeed = [
+    ['SU-PET-033','0,33 L Pet Şişe Su','PET Şişeler','PET Şişe',24],
+    ['SU-PET-050','0,50 L Pet Şişe Su','PET Şişeler','PET Şişe',24],
+    ['SU-PET-100','1 L Pet Şişe Su','PET Şişeler','PET Şişe',12],
+    ['SU-PET-150','1,5 L Pet Şişe Su','PET Şişeler','PET Şişe',6],
+    ['SU-PET-500','5 L Pet Şişe Su','Bidon / Büyük Hacimli','PET Şişe',4],
+    ['SU-CAM-033','0,33 L Cam Şişe Su','Cam Ürünler','Cam Şişe',24],
+    ['SU-CAM-075','0,75 L Cam Şişe Su','Cam Ürünler','Cam Şişe',12],
+    ['SU-DAM-1900','19 L Damacana Su','Damacana','Damacana',1],
+    ['SU-BAR-200','200 ml Bardak Su','Bardak','Plastik bardak',60],
+];
+$urunIns = $db->prepare("INSERT INTO maliyet_urunler (urun_kodu,urun_adi,urun_grubu,ambalaj_tipi,koli_ici_adet) VALUES (?,?,?,?,?) ON DUPLICATE KEY UPDATE urun_adi=VALUES(urun_adi), urun_grubu=VALUES(urun_grubu), ambalaj_tipi=VALUES(ambalaj_tipi), koli_ici_adet=VALUES(koli_ici_adet)");
+foreach($urunSeed as $u){ $urunIns->execute($u); }
+
+$kalemSeed = [
+    ['Hammadde','Preform / Cam Şişe','Adet',0.0864696],
+    ['Hammadde','Kapak','Adet',0.1906766],
+    ['Hammadde','Kulp','Adet',0],
+    ['Hammadde','Etiket','Adet',0.0799767],
+    ['Hammadde','Shrink Film','Kg',0.1241615],
+    ['Hammadde','Strech Film','Kg',0.5099],
+    ['Hammadde','Palet Ara Seperatör','Adet',0],
+    ['Hammadde','Emniyet Bandı','Adet',0.3599],
+    ['Hammadde','Karton Koli','Adet',13.0000],
+    ['Hammadde','Koli Seperatör','Adet',0],
+    ['Hammadde','Alt folyo','Kg',0.0020],
+    ['Hammadde','Üst Folyo','Kg',0.5099],
+];
+$kalemIns = $db->prepare("INSERT INTO maliyet_kalemleri (kategori,kalem_adi,birim,birim_fiyat) VALUES (?,?,?,?) ON DUPLICATE KEY UPDATE birim=VALUES(birim), birim_fiyat=VALUES(birim_fiyat)");
+foreach($kalemSeed as $k){ $kalemIns->execute($k); }
+
+$fiyatIns = $db->prepare("INSERT INTO maliyet_fiyatlama (fiyat_tarihi,kategori,urun_adi,ton_fiyati,doviz_adet,tl_adet,aciklama) VALUES (?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE tl_adet=VALUES(tl_adet), aciklama=VALUES(aciklama)");
+foreach($kalemSeed as $k){ $fiyatIns->execute(['2026-04-01',$k[0],$k[1],'', '', $k[3], 'Nisan 2026 başlangıç fiyatı']); }
+
+$pet033Id = (int)$db->query("SELECT id FROM maliyet_urunler WHERE urun_kodu='SU-PET-033' LIMIT 1")->fetchColumn();
+if($pet033Id > 0){
+    $has033 = $db->prepare("SELECT COUNT(*) FROM maliyet_receteler WHERE donem='2026-04' AND urun_id=?");
+    $has033->execute([$pet033Id]);
+    if((int)$has033->fetchColumn() === 0){
+        $receteIns = $db->prepare("INSERT INTO maliyet_receteler (donem,urun_id,kalem_id,miktar,fire_orani,satir_tutari,aciklama) VALUES ('2026-04',?,?,?,?,?,?)");
+        $rows033 = [
+            ['Preform / Cam Şişe',24,3,2.1375,'0,33 PET preform'],
+            ['Kapak',24,1.5,4.6448,'0,33 PET kapak'],
+            ['Etiket',24,2,1.9580,'0,33 PET etiket'],
+            ['Shrink Film',0.026,3.5,3.3435,'0,33 PET shrink'],
+            ['Strech Film',0.0088,2,0.0046,'0,33 PET strech'],
+        ];
+        foreach($rows033 as $r){
+            $kidStmt = $db->prepare("SELECT id FROM maliyet_kalemleri WHERE kalem_adi=? LIMIT 1");
+            $kidStmt->execute([$r[0]]);
+            $kid = (int)$kidStmt->fetchColumn();
+            if($kid > 0){ $receteIns->execute([$pet033Id,$kid,$r[1],$r[2],$r[3],$r[4]]); }
+        }
+    }
+}
+
 $tab = (string)($_GET['tab'] ?? 'ozet');
 if(!in_array($tab, ['ozet','urunler','hammaddeler','fiyatlar','receteler','uretim','giderler','nakliye','stok_hareketleri'], true)){ $tab = 'ozet'; }
 $donem = (string)($_GET['donem'] ?? '2026-04');
@@ -517,7 +573,7 @@ foreach($urunMaliyetleri as $u){
 $totalProduction = $usedQty > 0 ? $usedQty : (float)($currentDonem['toplam_uretim'] ?? 0);
 $avgCost = $usedQty > 0 ? $weightedTotal / $usedQty : 0;
 $warnings = [];
-if(!$fiyatlar){ $warnings[] = 'Hammadde fiyatlar? tan?mlanmam??.'; }
+if(!$fiyatlar){ $warnings[] = 'Hammadde fiyatları tanımlanmamış.'; }
 if(!$urunMaliyetleri){ $warnings[] = 'Aktif reçete maliyeti bulunamadı.'; }
 $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_koli'=>0,'dekap_tl_koli'=>0]) : ['nakliye_tl_koli'=>0,'dekap_tl_koli'=>0];
 ?>
