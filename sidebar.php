@@ -29,6 +29,8 @@
 
         <a href="palet-takip.php">Palet Takip</a>
 
+        <a href="recete-maliyet.php">Reçete ve Maliyet</a>
+
         <a href="gorev-takip.php">Görev Takip</a>
 
         <a href="log-kayitlari.php">Log Kayıtları</a>
