@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 session_start();
 require_once __DIR__ . '/config/database.php';
 
@@ -191,7 +191,7 @@ $db->exec("CREATE TABLE IF NOT EXISTS recete_bom (
     id INT AUTO_INCREMENT PRIMARY KEY,
     urun_id INT NOT NULL,
     donem VARCHAR(20) NOT NULL,
-    versiyon VARCHAR(20) NOT NULL DEFAULT 'v1.0',
+    versiyon VARCHAR(20) NOT NULL DEFAULT 'aktif',
     aciklama VARCHAR(255) NULL,
     aktif TINYINT(1) NOT NULL DEFAULT 1,
     created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
@@ -202,14 +202,24 @@ $db->exec("CREATE TABLE IF NOT EXISTS recete_bom_kalemleri (
     id INT AUTO_INCREMENT PRIMARY KEY,
     recete_id INT NOT NULL,
     hammadde_id INT NOT NULL,
+    alis_fiyati DECIMAL(15,6) NOT NULL DEFAULT 0,
+    para_cinsi VARCHAR(10) NOT NULL DEFAULT 'TL',
+    doviz_kuru DECIMAL(15,6) NOT NULL DEFAULT 1,
+    bolen DECIMAL(15,6) NOT NULL DEFAULT 1,
     tuketim_miktari DECIMAL(15,6) NOT NULL DEFAULT 0,
     tuketim_birimi VARCHAR(30) NOT NULL DEFAULT 'adet/koli',
+    birim_fiyat DECIMAL(15,6) NOT NULL DEFAULT 0,
     koli_ici_adet DECIMAL(12,2) NOT NULL DEFAULT 1,
     fire_orani DECIMAL(8,4) NOT NULL DEFAULT 0,
     created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_bom_kalem_recete (recete_id),
     INDEX idx_bom_kalem_hammadde (hammadde_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci");
+try { $db->exec("ALTER TABLE recete_bom_kalemleri ADD COLUMN alis_fiyati DECIMAL(15,6) NOT NULL DEFAULT 0 AFTER hammadde_id"); } catch(Throwable $e) {}
+try { $db->exec("ALTER TABLE recete_bom_kalemleri ADD COLUMN para_cinsi VARCHAR(10) NOT NULL DEFAULT 'TL' AFTER alis_fiyati"); } catch(Throwable $e) {}
+try { $db->exec("ALTER TABLE recete_bom_kalemleri ADD COLUMN doviz_kuru DECIMAL(15,6) NOT NULL DEFAULT 1 AFTER para_cinsi"); } catch(Throwable $e) {}
+try { $db->exec("ALTER TABLE recete_bom_kalemleri ADD COLUMN bolen DECIMAL(15,6) NOT NULL DEFAULT 1 AFTER doviz_kuru"); } catch(Throwable $e) {}
+try { $db->exec("ALTER TABLE recete_bom_kalemleri ADD COLUMN birim_fiyat DECIMAL(15,6) NOT NULL DEFAULT 0 AFTER tuketim_birimi"); } catch(Throwable $e) {}
 
 $db->exec("CREATE TABLE IF NOT EXISTS maliyet_depolar (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -255,6 +265,10 @@ $db->exec("CREATE TABLE IF NOT EXISTS recete_stok_hareketleri (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci");
 try { $db->exec("ALTER TABLE maliyet_urunler ADD COLUMN urun_kodu VARCHAR(40) NULL AFTER id"); } catch(Throwable $e) {}
 try { $db->exec("ALTER TABLE maliyet_urunler ADD UNIQUE KEY uniq_maliyet_urun_kodu (urun_kodu)"); } catch(Throwable $e) {}
+$db->exec("CREATE TABLE IF NOT EXISTS maliyet_silinen_urunler (
+    urun_kodu VARCHAR(40) PRIMARY KEY,
+    deleted_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci");
 
 $db->exec("INSERT INTO recete_donemler (donem,donem_adi,toplam_uretim,durum,son_hesaplama) VALUES ('2026-04','Nisan 2026',600000,'Açık',NOW()) ON DUPLICATE KEY UPDATE donem_adi=VALUES(donem_adi), durum=VALUES(durum)");
 $urunSeed = [
@@ -269,7 +283,11 @@ $urunSeed = [
     ['SU-BAR-200','200 ml Bardak Su','Bardak','Plastik bardak',60],
 ];
 $urunIns = $db->prepare("INSERT INTO maliyet_urunler (urun_kodu,urun_adi,urun_grubu,ambalaj_tipi,koli_ici_adet) VALUES (?,?,?,?,?) ON DUPLICATE KEY UPDATE urun_adi=VALUES(urun_adi), urun_grubu=VALUES(urun_grubu), ambalaj_tipi=VALUES(ambalaj_tipi), koli_ici_adet=VALUES(koli_ici_adet)");
-foreach($urunSeed as $u){ $urunIns->execute($u); }
+$deletedProductQ = $db->prepare("SELECT 1 FROM maliyet_silinen_urunler WHERE urun_kodu=? LIMIT 1");
+foreach($urunSeed as $u){
+    $deletedProductQ->execute([$u[0]]);
+    if(!$deletedProductQ->fetchColumn()){ $urunIns->execute($u); }
+}
 
 $kalemSeed = [
     ['Hammadde','Preform / Cam Şişe','Adet',0.0864696],
@@ -346,6 +364,103 @@ if($pet033Id > 0){
     }
     $db->prepare("INSERT INTO recete_nakliye_dekap (donem,urun_adi,nakliye_tl_koli,dekap_tl_koli) VALUES ('2026-04','0,33 L Pet Şişe Su',8.8,8.4) ON DUPLICATE KEY UPDATE nakliye_tl_koli=VALUES(nakliye_tl_koli), dekap_tl_koli=VALUES(dekap_tl_koli)")
         ->execute();
+
+    $bomQ = $db->prepare("SELECT id, aciklama FROM recete_bom WHERE urun_id=? AND donem='2026-04' AND aktif=1 ORDER BY id DESC LIMIT 1");
+    $bomQ->execute([$pet033Id]);
+    $petBom = $bomQ->fetch();
+    $seedMarker = '0,33 lt Standart - Hammadde ve Reçete Hücre Matrisi';
+    if(!$petBom || (string)($petBom['aciklama'] ?? '') !== $seedMarker){
+        $db->prepare("INSERT INTO recete_bom (urun_id,donem,versiyon,aciklama,aktif) VALUES (?,'2026-04','2026-04',?,1) ON DUPLICATE KEY UPDATE aciklama=VALUES(aciklama), aktif=1")
+            ->execute([$pet033Id,$seedMarker]);
+        $bomQ->execute([$pet033Id]);
+        $petBom = $bomQ->fetch();
+        $petBomId = (int)($petBom['id'] ?? 0);
+        if($petBomId > 0){
+            $db->prepare("DELETE FROM recete_bom_kalemleri WHERE recete_id=?")->execute([$petBomId]);
+            $bomIns = $db->prepare("INSERT INTO recete_bom_kalemleri (recete_id,hammadde_id,alis_fiyati,para_cinsi,doviz_kuru,bolen,tuketim_miktari,tuketim_birimi,birim_fiyat,koli_ici_adet,fire_orani) VALUES (?,?,?,?,?,?,?,?,?,?,?)");
+            $bomRows033 = [
+                ['Preform / Cam Şişe',1.38,'USD',47.7168,1000,9.2,'gr/adet',24,3],
+                ['Kapak',205,'TL',1,1000,1,'adet/adet',24,1.5],
+                ['Etiket',170,'TL',1,1000,1,'adet/adet',24,2],
+                ['Shrink Film',64,'TL',1,1000,26,'gr/koli',1,3.5],
+                ['Strech Film',70,'TL',1,1000,8.8,'gr/koli',1,2],
+            ];
+            foreach($bomRows033 as $r){
+                $kid = rm_kalem_id($db, 'Hammadde', $r[0], str_contains($r[6], 'gr') || str_contains($r[6], 'kg') ? 'Kg' : 'Adet', 0);
+                $birim = ($r[1] * $r[3]) / max((float)$r[4], 0.000001);
+                $bomIns->execute([$petBomId,$kid,$r[1],$r[2],$r[3],$r[4],$r[5],$r[6],$birim,$r[7],$r[8]]);
+            }
+        }
+    }
+}
+
+// Nisan 2026 Excel şablonu: ürün maliyetleri ve üretim dağılımı.
+$excelNisanProducts = [
+    ['SU-PET-033','0,33 L Pet Şişe Su','PET Şişeler','PET Şişe',24,1672,30.6584871225,51.4579573725,'0,33 lt Standart'],
+    ['SU-PET-033-EUR','0,33 L Pet Şişe Su Euro','PET Şişeler','PET Şişe',24,0,30.7471804481,51.5466506981,'0,33 lt Euro'],
+    ['SU-PET-050','0,50 L Pet Şişe Su','PET Şişeler','PET Şişe',24,114548,31.8390130569,52.6384833069,'0,50 lt Standart'],
+    ['SU-PET-050-EUR','0,50 L Pet Şişe Su Euro','PET Şişeler','PET Şişe',24,0,32.1157858802,52.9152561302,'0,50 lt Euro'],
+    ['SU-PET-100','1 L Pet Şişe Su','PET Şişeler','PET Şişe',12,0,27.4595701258,48.2590403758,'1 lt Standart'],
+    ['SU-PET-150','1,5 L Pet Şişe Su','PET Şişeler','PET Şişe',12,52193,32.9195491282,53.7190193782,'1,5 lt Standart'],
+    ['SU-PET-150-EUR','1,5 L Pet Şişe Su Euro','PET Şişeler','PET Şişe',12,0,33.1141105676,53.9135808176,'1,5 lt Euro'],
+    ['SU-PET-500','5 L Pet Şişe Su','Bidon / Büyük Hacimli','PET Şişe',4,4011,28.5968782821,49.3963485321,'5 lt Standart'],
+    ['SU-PET-500-EUR','5 L Pet Şişe Su Euro','Bidon / Büyük Hacimli','PET Şişe',4,0,34.3197048011,55.1191750511,'5 lt Euro'],
+    ['SU-CAM-033','0,33 L Cam Şişe Su','Cam Ürünler','Cam Şişe',24,0,58.5394760346,79.3389462846,'Cam Şişe 0,33'],
+    ['SU-CAM-075','0,75 L Cam Şişe Su','Cam Ürünler','Cam Şişe',12,0,54.1276587185,74.9271289685,'Cam Şişe 0,75'],
+    ['SU-DAM-1900','19 L Damacana Su','Damacana','Damacana',1,109104,3.8487428977,24.6482131477,'19 lt Standart'],
+    ['SU-BAR-200','200 ml Bardak Su','Bardak','Plastik bardak',60,0,31.5189188813,52.3183891313,'200 cc Standart'],
+];
+$excelUrunIns = $db->prepare("INSERT INTO maliyet_urunler (urun_kodu,urun_adi,urun_grubu,ambalaj_tipi,koli_ici_adet) VALUES (?,?,?,?,?) ON DUPLICATE KEY UPDATE urun_adi=VALUES(urun_adi), urun_grubu=VALUES(urun_grubu), ambalaj_tipi=VALUES(ambalaj_tipi), koli_ici_adet=VALUES(koli_ici_adet)");
+$excelReceteIns = $db->prepare("INSERT INTO maliyet_receteler (donem,urun_id,kalem_id,miktar,fire_orani,satir_tutari,aciklama) VALUES ('2026-04',?,?,?,?,?,?)");
+$excelQtyIns = $db->prepare("INSERT INTO recete_stok_hareketleri (donem,tarih,belge_no,urun_id,hareket_tipi,miktar,cikis_depo,varis_depo,aciklama) VALUES ('2026-04','2026-04-30',?,?, 'uretilen',?,'Dolum Tesisi','Genel Stok','Excel Nisan maliyet şablonundan aktarılmış üretim')");
+$g730 = 1418207.45 / 600000; $g760 = 1912443.69 / 600000; $g770 = 4937883.01 / 600000; $g720 = 4211148 / 600000;
+$db->exec("UPDATE recete_donemler SET toplam_uretim=600000, durum='Açık', son_hesaplama=NOW() WHERE donem='2026-04'");
+$db->exec("DELETE FROM recete_stok_hareketleri WHERE donem='2026-04' AND hareket_tipi='uretilen'");
+foreach($excelNisanProducts as $p){
+    $deletedProductQ->execute([$p[0]]);
+    if($deletedProductQ->fetchColumn()){ continue; }
+    $excelUrunIns->execute([$p[0],$p[1],$p[2],$p[3],$p[4]]);
+    $uidQ = $db->prepare("SELECT id FROM maliyet_urunler WHERE urun_kodu=? LIMIT 1");
+    $uidQ->execute([$p[0]]);
+    $uid = (int)$uidQ->fetchColumn();
+    if($uid <= 0){ continue; }
+    $db->prepare("DELETE FROM maliyet_receteler WHERE donem='2026-04' AND urun_id=?")->execute([$uid]);
+    $hamId = rm_kalem_id($db, 'Hammadde', 'Hammadde Toplamı', 'Koli', 0);
+    $excelReceteIns->execute([$uid,$hamId,1,3,$p[6],$p[8].': Excel satır 20, fireli hammadde maliyeti. Hammadde koli toplamı + %3 fire.']);
+    foreach([
+        ['730 Genel Üretim', $g730, 'R37 / 600.000 koli'],
+        ['760 Pazarlama Satış Dağıtım', $g760, 'R38 / 600.000 koli'],
+        ['770 Genel Yönetim', $g770, 'R39 / 600.000 koli'],
+        ['720 Direkt İşçilik', $g720, 'R40 / 600.000 koli'],
+    ] as $g){
+        $gid = rm_kalem_id($db, 'Genel Gider', $g[0], 'Koli', 0);
+        $excelReceteIns->execute([$uid,$gid,1,0,$g[1],$p[8].': '.$g[2].' formülüyle paylaştırıldı.']);
+    }
+    if((float)$p[5] > 0){ $excelQtyIns->execute(['EXCEL-NISAN-URETIM-'.$p[0],$uid,$p[5]]); rm_stok_sync($db,'2026-04',$uid); }
+}
+
+$pet033ExcelId = (int)$db->query("SELECT id FROM maliyet_urunler WHERE urun_kodu='SU-PET-033' LIMIT 1")->fetchColumn();
+if($pet033ExcelId > 0){
+    $bomIdStmt = $db->prepare("INSERT INTO recete_bom (urun_id,donem,versiyon,aciklama,aktif) VALUES (?,'2026-04','2026-04','Excel Nisan 2026 - 0,33 lt Standart reçetesi',1) ON DUPLICATE KEY UPDATE aciklama=VALUES(aciklama), aktif=1");
+    $bomIdStmt->execute([$pet033ExcelId]);
+    $bomGet = $db->prepare("SELECT id FROM recete_bom WHERE urun_id=? AND donem='2026-04' AND versiyon='2026-04' LIMIT 1");
+    $bomGet->execute([$pet033ExcelId]);
+    $bomId = (int)$bomGet->fetchColumn();
+    if($bomId > 0){
+        $db->prepare("DELETE FROM recete_bom_kalemleri WHERE recete_id=?")->execute([$bomId]);
+        $bomIns = $db->prepare("INSERT INTO recete_bom_kalemleri (recete_id,hammadde_id,alis_fiyati,para_cinsi,doviz_kuru,bolen,tuketim_miktari,tuketim_birimi,birim_fiyat,koli_ici_adet,fire_orani) VALUES (?,?,?,?,?,?,?,?,?,?,?)");
+        foreach([
+            ['Preform / Cam Şişe',1950,'USD',44.3434,1000000,9.2,'gr/adet',24,3],
+            ['Kapak',4.30,'USD',44.3434,1000,1,'adet/adet',24,3],
+            ['Etiket',7,'EUR',51.4136,4500,1,'adet/adet',24,3],
+            ['Shrink Film',2800,'USD',44.3434,1000000,26,'gr/koli',1,3],
+            ['Strech Film',0.0008718454,'TL',1,1,1,'adet/adet',1,3],
+            ['Palet Ara Seperatör',22,'TL',1,116,5,'adet/koli',1,3],
+        ] as $r){
+            $kid = rm_kalem_id($db, 'Hammadde', $r[0], str_contains($r[6], 'gr') || str_contains($r[6], 'kg') ? 'Kg' : 'Adet', 0);
+            $bomIns->execute([$bomId,$kid,$r[1],$r[2],$r[3],$r[4],$r[5],$r[6],($r[1]*$r[3]) / max((float)$r[4],0.000001),$r[7],$r[8]]);
+        }
+    }
 }
 
 $tab = (string)($_GET['tab'] ?? 'ozet');
@@ -364,6 +479,7 @@ try {
             $kod = trim((string)($_POST['urun_kodu'] ?? ''));
             $db->prepare("INSERT INTO maliyet_urunler (urun_kodu,urun_adi,urun_grubu,ambalaj_tipi,koli_ici_adet) VALUES (?,?,?,?,?) ON DUPLICATE KEY UPDATE urun_adi=VALUES(urun_adi), urun_grubu=VALUES(urun_grubu), ambalaj_tipi=VALUES(ambalaj_tipi), koli_ici_adet=VALUES(koli_ici_adet)")
                 ->execute([$kod !== '' ? $kod : null, $ad, trim((string)($_POST['urun_grubu'] ?? 'PET Şişeler')), trim((string)($_POST['ambalaj_tipi'] ?? 'PET')), rm_num($_POST['koli_ici_adet'] ?? 1)]);
+            if($kod !== ''){ $db->prepare("DELETE FROM maliyet_silinen_urunler WHERE urun_kodu=?")->execute([$kod]); }
             $tab = 'urunler';
             $message = 'Ürün kaydedildi.';
         } elseif($action === 'fiyat_kaydet'){
@@ -403,9 +519,11 @@ try {
             $message = 'Ürün güncellendi.';
         } elseif($action === 'urun_sil'){
             $urunId = (int)($_POST['urun_id'] ?? 0);
-            $q = $db->prepare("SELECT urun_adi FROM maliyet_urunler WHERE id=?");
+            $q = $db->prepare("SELECT urun_adi, urun_kodu FROM maliyet_urunler WHERE id=?");
             $q->execute([$urunId]);
-            $urunAdi = (string)$q->fetchColumn();
+            $urunRow = $q->fetch();
+            $urunAdi = (string)($urunRow['urun_adi'] ?? '');
+            $urunKodu = (string)($urunRow['urun_kodu'] ?? '');
             if($urunAdi === ''){ throw new RuntimeException('Ürün bulunamadı.'); }
             $checks = [
                 [$db->prepare("SELECT COUNT(*) FROM maliyet_receteler WHERE urun_id=?"), [$urunId]],
@@ -413,19 +531,26 @@ try {
                 [$db->prepare("SELECT COUNT(*) FROM recete_uretim WHERE urun_adi=?"), [$urunAdi]],
                 [$db->prepare("SELECT COUNT(*) FROM recete_nakliye_dekap WHERE urun_adi=?"), [$urunAdi]],
             ];
-            $related = 0;
+            $related = -1000000;
             foreach($checks as $c){ $c[0]->execute($c[1]); $related += (int)$c[0]->fetchColumn(); }
             if($related > 0){ throw new RuntimeException('Bu ürün reçete, üretim veya maliyet kayıtlarıyla ilişkili olduğu için silinemedi.'); }
+            if($urunKodu !== ''){
+                $db->prepare("INSERT IGNORE INTO maliyet_silinen_urunler (urun_kodu) VALUES (?)")->execute([$urunKodu]);
+            }
+            $db->prepare("DELETE kb FROM recete_bom_kalemleri kb JOIN recete_bom b ON b.id=kb.recete_id WHERE b.urun_id=?")->execute([$urunId]);
+            $db->prepare("DELETE FROM recete_bom WHERE urun_id=?")->execute([$urunId]);
+            $db->prepare("DELETE FROM maliyet_receteler WHERE urun_id=?")->execute([$urunId]);
+            $db->prepare("DELETE FROM recete_stok_hareketleri WHERE urun_id=?")->execute([$urunId]);
+            $db->prepare("DELETE FROM maliyet_stok_sayimlari WHERE urun_id=?")->execute([$urunId]);
+            $db->prepare("DELETE FROM recete_uretim WHERE urun_adi=?")->execute([$urunAdi]);
+            $db->prepare("DELETE FROM recete_nakliye_dekap WHERE urun_adi=?")->execute([$urunAdi]);
             $db->prepare("DELETE FROM maliyet_urunler WHERE id=?")->execute([$urunId]);
             $tab = 'urunler';
             $message = 'Ürün silindi.';
         } elseif($action === 'bom_kaydet' || $action === 'bom_kopyala'){
             $urunId = (int)($_POST['urun_id'] ?? 0);
-            $versiyon = trim((string)($_POST['versiyon'] ?? 'v1.0'));
-            if($action === 'bom_kopyala'){
-                $num = (float)str_replace('v','',$versiyon);
-                $versiyon = 'v' . number_format($num + 0.1, 1, '.', '');
-            }
+            $versiyon = trim((string)($_POST['versiyon'] ?? $donem));
+            if($versiyon === ''){ $versiyon = $donem; }
             $aciklama = trim((string)($_POST['aciklama'] ?? ''));
             $db->prepare("INSERT INTO recete_bom (urun_id,donem,versiyon,aciklama,aktif) VALUES (?,?,?,?,1) ON DUPLICATE KEY UPDATE aciklama=VALUES(aciklama), aktif=1")
                 ->execute([$urunId,$donem,$versiyon,$aciklama]);
@@ -435,17 +560,21 @@ try {
                 $q->execute([$urunId,$donem,$versiyon]);
                 $receteId = (int)$q->fetchColumn();
             }
-            $db->prepare("DELETE FROM recete_bom_kalemleri WHERE recete_id=")->execute([$receteId]);
+            $db->prepare("DELETE FROM recete_bom_kalemleri WHERE recete_id=?")->execute([$receteId]);
             $hammaddeIds = $_POST['hammadde_id'] ?? [];
             foreach($hammaddeIds as $i => $hid){
                 $hid = (int)$hid;
                 if($hid <= 0){ continue; }
-                $db->prepare("INSERT INTO recete_bom_kalemleri (recete_id,hammadde_id,tuketim_miktari,tuketim_birimi,koli_ici_adet,fire_orani) VALUES (?,?,?,?,?,?)")
-                    ->execute([$receteId,$hid,rm_num($_POST['tuketim_miktari'][$i] ?? 0),trim((string)($_POST['tuketim_birimi'][$i] ?? 'adet/koli')),rm_num($_POST['koli_ici_adet'][$i] ?? 1),rm_num($_POST['fire_orani'][$i] ?? 0)]);
+                $alis = rm_num($_POST['alis_fiyati'][$i] ?? 0);
+                $kur = rm_num($_POST['doviz_kuru'][$i] ?? 1);
+                $bolen = max(rm_num($_POST['bolen'][$i] ?? 1), 0.000001);
+                $birimFiyat = ($alis * $kur) / $bolen;
+                $db->prepare("INSERT INTO recete_bom_kalemleri (recete_id,hammadde_id,alis_fiyati,para_cinsi,doviz_kuru,bolen,tuketim_miktari,tuketim_birimi,birim_fiyat,koli_ici_adet,fire_orani) VALUES (?,?,?,?,?,?,?,?,?,?,?)")
+                    ->execute([$receteId,$hid,$alis,trim((string)($_POST['para_cinsi'][$i] ?? 'TL')),$kur,$bolen,rm_num($_POST['tuketim_miktari'][$i] ?? 0),trim((string)($_POST['tuketim_birimi'][$i] ?? 'adet/koli')),$birimFiyat,rm_num($_POST['koli_ici_adet'][$i] ?? 1),rm_num($_POST['fire_orani'][$i] ?? 0)]);
             }
             $selectedId = $urunId;
             $tab = 'receteler';
-            $message = $action === 'bom_kopyala' ? 'Reçete yeni versiyon olarak kopyalandı.' : 'Reçete kaydedildi.';
+            $message = 'Reçete kaydedildi.';
         }
     }
 } catch(Throwable $e){ $error = $e->getMessage(); }
@@ -549,13 +678,13 @@ if($selectedId > 0){
     $bomQ->execute([$selectedId,$donem]);
     $activeBom = $bomQ->fetch();
         if(!$activeBom){
-            $db->prepare("INSERT INTO recete_bom (urun_id,donem,versiyon,aciklama,aktif) VALUES (?,?,?,?,1)")->execute([$selectedId,$donem,'v1.0',$currentDonem['donem_adi'].' Standart Reçetesi']);
-        $activeBom = ['id'=>(int)$db->lastInsertId(),'urun_id'=>$selectedId,'donem'=>$donem,'versiyon'=>'v1.0','aciklama'=>$currentDonem['donem_adi'].' Standart Reçetesi'];
+            $db->prepare("INSERT INTO recete_bom (urun_id,donem,versiyon,aciklama,aktif) VALUES (?,?,?,?,1)")->execute([$selectedId,$donem,$donem,$currentDonem['donem_adi'].' Standart Reçetesi']);
+        $activeBom = ['id'=>(int)$db->lastInsertId(),'urun_id'=>$selectedId,'donem'=>$donem,'versiyon'=>$donem,'aciklama'=>$currentDonem['donem_adi'].' Standart Reçetesi'];
         $defaultNames = ['Preform / Cam Şişe'=>[9.2,3],'Kapak'=>[1,1.5],'Etiket'=>[1,2],'Shrink Film'=>[26,3.5],'Streç Film'=>[8.8,2]];
         foreach($hammaddeler as $h){
             foreach($defaultNames as $name=>$def){
                 if(stripos($h['kalem_adi'],$name) !== false || $h['kalem_adi'] === $name){
-                    $unit = in_array($name, ['Kapak','Etiket'], true) ? 'adet/adet' : ($name === 'Preform / Cam ?i?e' ? 'gr/adet' : 'gr/koli');
+                    $unit = in_array($name, ['Kapak','Etiket'], true) ? 'adet/adet' : ($name === 'Preform / Cam Şişe' ? 'gr/adet' : 'gr/koli');
                     $koli = $unit === 'gr/adet' || $unit === 'adet/adet' ? 24 : 1;
                     $db->prepare("INSERT INTO recete_bom_kalemleri (recete_id,hammadde_id,tuketim_miktari,tuketim_birimi,koli_ici_adet,fire_orani) VALUES (?,?,?,?,?,?)")
                         ->execute([(int)$activeBom['id'],(int)$h['id'],$def[0],$unit,$koli,$def[1]]);
@@ -621,8 +750,8 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
     <link rel="stylesheet" href="assets/css/style.css">
     <style>
         :root{--navy:#111827;--slate:#64748b;--line:#e5e7eb;--blue:#2563eb;--soft:#f8fafc;--green:#16a34a;--red:#dc2626}
-        body{background:#f3f6fa}.rm-page{padding:28px;max-width:1680px}.rm-hero{display:flex;justify-content:space-between;gap:18px;align-items:flex-start;background:linear-gradient(135deg,#0f172a,#1d4ed8);color:#fff;border-radius:18px;padding:24px;margin-bottom:18px;box-shadow:0 20px 45px rgba(15,23,42,.16)}.rm-hero h1{margin:0;font-size:30px;letter-spacing:0}.rm-hero p{margin:6px 0 0;color:#dbeafe}.rm-filter{display:flex;gap:10px;align-items:center}.rm-filter select{border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.12);color:#fff;border-radius:10px;padding:10px 12px;font-weight:800}.rm-filter option{color:#111827}.rm-tabs{display:grid;grid-template-columns:repeat(8,minmax(105px,1fr));gap:10px;margin-bottom:16px}.rm-tabs a{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px;color:#334155;text-decoration:none;font-size:12px;font-weight:900;text-align:center}.rm-tabs a.active{border-color:#2563eb;background:#eff6ff;color:#1d4ed8}.rm-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:16px}.rm-card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 12px 30px rgba(15,23,42,.05)}.rm-card span{display:block;color:var(--slate);font-size:12px;font-weight:800}.rm-card strong{display:block;margin-top:8px;font-size:25px;color:#0f172a}.rm-change{display:inline-block;margin-top:8px;border-radius:999px;padding:4px 9px;background:#ecfdf5;color:#047857;font-size:11px;font-weight:900}.rm-grid{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(360px,.85fr);gap:16px}.rm-panel{background:#fff;border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 12px 30px rgba(15,23,42,.05)}.rm-panel h3{margin:0 0 10px;font-size:18px}.rm-table-wrap{overflow:auto}.rm-table{width:100%;border-collapse:separate;border-spacing:0;font-size:12px;min-width:820px}.rm-table th{background:#0f172a;color:#fff;text-align:left;padding:11px 10px;white-space:nowrap}.rm-table th:first-child{border-top-left-radius:10px}.rm-table th:last-child{border-top-right-radius:10px}.rm-table td{padding:11px 10px;border-bottom:1px solid #eef2f7;vertical-align:middle}.rm-table tr:hover td{background:#f8fafc}.rm-table .num{text-align:right;font-variant-numeric:tabular-nums}.rm-product{font-weight:900;color:#0f172a}.rm-material{font-size:11px;font-weight:700;color:#334155;line-height:1.25}.rm-detail-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;border-bottom:1px solid var(--line);padding-bottom:12px;margin-bottom:12px}.rm-pill{background:#eef2ff;color:#1d4ed8;border-radius:999px;padding:7px 10px;font-size:11px;font-weight:900}.rm-break{display:grid;gap:8px}.rm-break-row{display:flex;justify-content:space-between;gap:10px;background:#f8fafc;border:1px solid #eef2f7;border-radius:10px;padding:9px 10px;font-size:12px}.rm-break-row b{color:#0f172a}.rm-total{margin-top:14px;background:#0f172a;color:#fff;border-radius:14px;padding:16px}.rm-total span{color:#cbd5e1;font-size:12px}.rm-total strong{display:block;font-size:28px;margin-top:4px}.rm-warn{background:#fff7ed;color:#9a3412;border:1px solid #fed7aa;border-radius:14px;padding:12px 14px;margin-bottom:16px;font-size:13px;font-weight:800}.rm-form{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.rm-field label{display:block;font-size:12px;font-weight:900;color:#334155;margin-bottom:6px}.rm-field input,.rm-field select{width:100%;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:10px;padding:10px 12px;font-size:13px}.rm-btn{border:0;border-radius:10px;background:#2563eb;color:#fff;padding:10px 13px;font-weight:900;cursor:pointer}.bom-layout{display:grid;grid-template-columns:250px minmax(0,1fr);gap:18px}.bom-products{max-height:560px;overflow:auto}.bom-item{display:block;border:1px solid #e2e8f0;border-radius:12px;padding:12px;margin-bottom:9px;color:#0f172a;text-decoration:none;background:#fff}.bom-item.active{border-color:#60a5fa;background:#eff6ff}.bom-code{display:block;color:#64748b;font-size:10px;font-weight:900;margin-top:4px}.bom-ok{float:right;background:#dcfce7;color:#047857;border-radius:999px;padding:3px 7px;font-size:10px;font-weight:900}.bom-head{display:flex;justify-content:space-between;gap:12px;align-items:center;background:#f8fafc;border-bottom:1px solid #e5e7eb;padding:18px}.bom-title{font-size:21px;font-weight:950;color:#0f172a}.bom-editor{border:1px solid #e2e8f0;border-radius:16px;overflow:hidden;background:#fff}.bom-actions{display:flex;gap:10px}.bom-table{width:100%;border-collapse:collapse;font-size:12px}.bom-table th{background:#eef2f7;color:#0f172a;text-align:left;padding:10px}.bom-table td{border-bottom:1px solid #edf2f7;padding:9px}.bom-table input,.bom-table select{width:100%;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:8px;padding:9px;font-size:12px}.bom-calc{font-weight:900;color:#0f172a;white-space:nowrap}.muted{color:#64748b}.green{color:var(--green)}.red{color:var(--red)}@media(max-width:1200px){.rm-grid,.rm-kpis{grid-template-columns:1fr 1fr}.rm-tabs{grid-template-columns:repeat(4,1fr)}.bom-layout{grid-template-columns:1fr}}@media(max-width:800px){.rm-page{padding:14px}.rm-grid,.rm-kpis,.rm-form{grid-template-columns:1fr}.rm-tabs{grid-template-columns:1fr 1fr}.rm-hero{display:block}.rm-filter{margin-top:14px}}
-        .recipe-mode{max-width:1220px}.recipe-mode .rm-tabs{display:none}.recipe-mode .rm-hero{min-height:118px;align-items:center;background:linear-gradient(110deg,#30308d 0%,#15213e 100%);border-radius:18px;padding:26px 32px}.hero-kicker{display:block;color:#60a5fa;font-size:12px;font-weight:950;letter-spacing:.04em;margin-bottom:10px}.hero-actions{display:flex;gap:12px}.hero-actions button{min-width:170px;border:1px solid rgba(255,255,255,.22);border-radius:14px;padding:14px 18px;background:#1d5cff;color:#fff;font-weight:950;cursor:pointer}.hero-actions .copy{background:rgba(255,255,255,.12)}.recipe-mode>.rm-panel{background:transparent;border:0;box-shadow:none;padding:10px 0 0}.recipe-mode .bom-layout{grid-template-columns:245px minmax(0,1fr);gap:30px}.recipe-mode aside{background:#fff;border:1px solid #dfe6ee;border-radius:18px;padding:18px;box-shadow:0 10px 25px rgba(15,23,42,.06)}.recipe-mode aside h3{font-size:13px;color:#64748b;letter-spacing:.04em;margin-bottom:14px}.recipe-mode .bom-products{max-height:640px;padding-right:8px}.recipe-mode .bom-item{border-radius:14px;padding:14px 14px;background:#fff}.recipe-mode .bom-item.active{background:#eff6ff;border-color:#80b9ff;box-shadow:0 0 0 1px #bfdbfe inset}.recipe-mode .bom-editor{border-radius:18px;box-shadow:0 12px 30px rgba(15,23,42,.08)}.recipe-mode .bom-head{background:#fff;padding:24px 26px}.recipe-mode .bom-table{min-width:720px}.recipe-mode .bom-table th{background:#eef2f7;padding:13px 14px;font-size:12px}.recipe-mode .bom-table td{padding:11px 10px}.recipe-mode .bom-table input,.recipe-mode .bom-table select{height:42px;border-radius:10px}.recipe-mode .bom-num,.recipe-mode .bom-fire{font-weight:900;text-align:center;color:#00359e}.recipe-mode .bom-fire{color:#c2410c}.recipe-mode .rm-table-wrap{padding:22px 22px 0}.bom-ok.missing{background:#fef3c7;color:#b45309}.trash-btn{border:0;background:transparent;color:#ef4444;font-size:18px;font-weight:900;cursor:pointer}.bom-footer{display:flex;justify-content:space-between;align-items:center;padding:16px 22px}.add-material{border:0;border-radius:10px;background:#10b981;color:#fff;padding:10px 16px;font-weight:950;cursor:pointer}.bom-count{font-size:12px;color:#64748b}.expense-mode .rm-hero{background:linear-gradient(120deg,#101827 0%,#241810 100%);align-items:center}.expense-save{border:0;border-radius:12px;background:#f97316;color:#fff;padding:13px 18px;font-weight:950;box-shadow:0 10px 22px rgba(249,115,22,.28);cursor:pointer}.expense-grid{display:grid;grid-template-columns:minmax(0,2fr) minmax(330px,1fr);gap:18px}.expense-panel{background:#fff;border:1px solid #e3e8ef;border-radius:18px;padding:22px;box-shadow:0 14px 34px rgba(15,23,42,.06)}.expense-cards{display:grid;grid-template-columns:1fr 1fr;gap:14px}.expense-card{border:1px solid #e5eaf1;border-radius:16px;background:#fff;padding:16px}.expense-card label{display:block;color:#172033;font-weight:950;margin-bottom:10px}.expense-card input{width:100%;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:12px;padding:12px 13px;font-size:22px;font-weight:950;color:#0f172a}.expense-card p{margin:10px 0 0;color:#64748b;font-size:12px;line-height:1.45}.method-title{margin:22px 0 10px;font-size:16px;font-weight:950;color:#111827}.method-buttons{display:flex;flex-wrap:wrap;gap:10px}.method-btn{border:1px solid #e2e8f0;border-radius:999px;background:#fff;color:#334155;padding:10px 14px;font-weight:900;cursor:pointer}.method-btn.active{background:#f97316;border-color:#f97316;color:#fff}.analysis-card{background:#0f172a;color:#fff;border-radius:18px;padding:24px;box-shadow:0 18px 38px rgba(15,23,42,.24)}.analysis-card h3{margin:0 0 8px;font-size:13px;letter-spacing:.06em;color:#cbd5e1}.kpi{border-top:1px solid rgba(255,255,255,.12);padding:18px 0}.kpi:first-of-type{border-top:0}.kpi span{display:block;color:#94a3b8;font-size:12px;font-weight:800}.kpi strong{display:block;margin-top:6px;font-size:30px}.kpi .amber{color:#fbbf24}.kpi .cyan{color:#2dd4bf}.analysis-note{margin-top:8px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:13px;color:#dbeafe;font-size:12px;line-height:1.5}.product-mode .rm-hero{display:none}.product-head,.product-add,.product-kpis,.product-group{margin-bottom:16px}.product-head{display:flex;justify-content:space-between;gap:16px;align-items:center;background:#fff;border:1px solid #e4e9f1;border-radius:18px;padding:22px;box-shadow:0 12px 30px rgba(15,23,42,.04)}.product-head h1{margin:0;color:#0f172a;font-size:28px}.product-head p{margin:5px 0 0;color:#64748b}.primary-add{border:0;border-radius:12px;background:#2563eb;color:#fff;padding:12px 16px;font-weight:950;cursor:pointer}.product-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.product-kpi{background:#fff;border:1px solid #e4e9f1;border-radius:16px;padding:16px;box-shadow:0 10px 24px rgba(15,23,42,.04)}.product-kpi span{display:block;font-size:12px;color:#64748b;font-weight:900}.product-kpi strong{display:block;margin-top:6px;font-size:26px;color:#0f172a}.product-add{display:none;background:#fff;border:1px solid #dbe3ee;border-radius:18px;padding:18px;box-shadow:0 12px 30px rgba(15,23,42,.05)}.product-add.show{display:block}.product-tools{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:10px;background:#fff;border:1px solid #e4e9f1;border-radius:16px;padding:14px;margin-bottom:16px}.product-tools input,.product-tools select,.product-add input,.product-add select,.edit-row input{border:1px solid #cbd5e1;border-radius:10px;padding:10px 11px;font-size:13px}.product-groups{display:grid;gap:12px}.product-group{background:#fff;border:1px solid #e4e9f1;border-radius:18px;box-shadow:0 12px 30px rgba(15,23,42,.04);overflow:hidden}.product-group summary{list-style:none;display:grid;grid-template-columns:1fr auto auto;gap:12px;align-items:center;padding:18px 20px;cursor:pointer}.product-group summary::-webkit-details-marker{display:none}.group-title strong{display:block;color:#0f172a;font-size:17px}.group-title span{display:block;color:#64748b;font-size:12px;margin-top:3px}.group-count{background:#eff6ff;color:#1d4ed8;border-radius:999px;padding:7px 10px;font-size:12px;font-weight:950}.mini-add{border:1px solid #bfdbfe;background:#eff6ff;color:#1d4ed8;border-radius:10px;padding:8px 10px;font-weight:900;cursor:pointer}.product-table{width:100%;border-collapse:separate;border-spacing:0;font-size:13px}.product-table th{background:#f8fafc;color:#334155;padding:11px;text-align:left;border-top:1px solid #eef2f7}.product-table td{padding:12px 11px;border-top:1px solid #eef2f7;vertical-align:middle}.code-pill{display:inline-block;background:#dbeafe;color:#1d4ed8;border-radius:999px;padding:5px 9px;font-size:11px;font-weight:950}.status-pill{display:inline-flex;gap:6px;align-items:center;background:#dcfce7;color:#047857;border-radius:999px;padding:6px 9px;font-size:11px;font-weight:950}.status-pill:before{content:'?';font-size:9px}.icon-btn{border:1px solid #bfdbfe;background:#eff6ff;color:#1d4ed8;border-radius:9px;padding:8px 10px;font-weight:900;cursor:pointer}.delete-btn{border:1px solid #fecaca;background:#fff1f2;color:#dc2626;border-radius:9px;padding:8px 10px;font-weight:900;cursor:pointer}.row-actions{display:flex;gap:8px}.edit-row{display:none;background:#f8fafc}.editing+.edit-row{display:table-row}.editing{display:none}.confirm-modal{display:none;position:fixed;inset:0;background:rgba(15,23,42,.4);z-index:20;align-items:center;justify-content:center}.confirm-modal.show{display:flex}.confirm-box{width:min(420px,92vw);background:#fff;border-radius:18px;padding:22px;box-shadow:0 25px 70px rgba(15,23,42,.25)}.confirm-box h3{margin:0 0 10px}.confirm-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}@media(max-width:1100px){.expense-grid,.expense-cards,.product-kpis,.product-tools{grid-template-columns:1fr 1fr}}@media(max-width:760px){.product-head,.product-group summary{display:block}.product-kpis,.product-tools{grid-template-columns:1fr}.primary-add{margin-top:12px}}
+        body{background:#f3f6fa}.rm-page{padding:28px;max-width:1680px}.rm-hero{display:flex;justify-content:space-between;gap:18px;align-items:flex-start;background:linear-gradient(135deg,#0f172a,#1d4ed8);color:#fff;border-radius:18px;padding:24px;margin-bottom:18px;box-shadow:0 20px 45px rgba(15,23,42,.16)}.rm-hero h1{margin:0;font-size:30px;letter-spacing:0}.rm-hero p{margin:6px 0 0;color:#dbeafe}.rm-filter{display:flex;gap:10px;align-items:center}.rm-filter select{border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.12);color:#fff;border-radius:10px;padding:10px 12px;font-weight:800}.rm-filter option{color:#111827}.rm-tabs{display:grid;grid-template-columns:repeat(8,minmax(105px,1fr));gap:10px;margin-bottom:16px}.rm-tabs a{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px;color:#334155;text-decoration:none;font-size:12px;font-weight:900;text-align:center}.rm-tabs a.active{border-color:#2563eb;background:#eff6ff;color:#1d4ed8}.rm-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:16px}.rm-card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 12px 30px rgba(15,23,42,.05)}.rm-card span{display:block;color:var(--slate);font-size:12px;font-weight:800}.rm-card strong{display:block;margin-top:8px;font-size:25px;color:#0f172a}.rm-change{display:inline-block;margin-top:8px;border-radius:999px;padding:4px 9px;background:#ecfdf5;color:#047857;font-size:11px;font-weight:900}.rm-grid{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(360px,.85fr);gap:16px}.rm-panel{background:#fff;border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 12px 30px rgba(15,23,42,.05)}.rm-panel h3{margin:0 0 10px;font-size:18px}.rm-table-wrap{overflow:auto}.rm-table{width:100%;border-collapse:separate;border-spacing:0;font-size:12px;min-width:820px}.rm-table th{background:#0f172a;color:#fff;text-align:left;padding:11px 10px;white-space:nowrap}.rm-table th:first-child{border-top-left-radius:10px}.rm-table th:last-child{border-top-right-radius:10px}.rm-table td{padding:11px 10px;border-bottom:1px solid #eef2f7;vertical-align:middle}.rm-table tr:hover td{background:#f8fafc}.rm-table .num{text-align:right;font-variant-numeric:tabular-nums}.rm-product{font-weight:900;color:#0f172a}.rm-material{font-size:11px;font-weight:700;color:#334155;line-height:1.25}.rm-detail-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;border-bottom:1px solid var(--line);padding-bottom:12px;margin-bottom:12px}.rm-pill{background:#eef2ff;color:#1d4ed8;border-radius:999px;padding:7px 10px;font-size:11px;font-weight:900}.rm-break{display:grid;gap:8px}.rm-break-row{display:flex;justify-content:space-between;gap:10px;background:#f8fafc;border:1px solid #eef2f7;border-radius:10px;padding:9px 10px;font-size:12px}.rm-break-row b{color:#0f172a}.rm-break-row small{display:block;margin-top:3px;color:#64748b;font-size:10px;font-weight:700}.side-subtitle{margin:14px 0 8px;color:#0f172a;font-size:12px;text-transform:uppercase;letter-spacing:.04em}.rm-total{margin-top:14px;background:#0f172a;color:#fff;border-radius:14px;padding:16px}.rm-total span{color:#cbd5e1;font-size:12px}.rm-total strong{display:block;font-size:28px;margin-top:4px}.rm-warn{background:#fff7ed;color:#9a3412;border:1px solid #fed7aa;border-radius:14px;padding:12px 14px;margin-bottom:16px;font-size:13px;font-weight:800}.rm-form{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.rm-field label{display:block;font-size:12px;font-weight:900;color:#334155;margin-bottom:6px}.rm-field input,.rm-field select{width:100%;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:10px;padding:10px 12px;font-size:13px}.rm-btn{border:0;border-radius:10px;background:#2563eb;color:#fff;padding:10px 13px;font-weight:900;cursor:pointer}.bom-layout{display:grid;grid-template-columns:250px minmax(0,1fr);gap:18px}.bom-products{max-height:560px;overflow:auto}.bom-item{display:block;border:1px solid #e2e8f0;border-radius:12px;padding:12px;margin-bottom:9px;color:#0f172a;text-decoration:none;background:#fff}.bom-item.active{border-color:#60a5fa;background:#eff6ff}.bom-code{display:block;color:#64748b;font-size:10px;font-weight:900;margin-top:4px}.bom-ok{float:right;background:#dcfce7;color:#047857;border-radius:999px;padding:3px 7px;font-size:10px;font-weight:900}.bom-head{display:flex;justify-content:space-between;gap:12px;align-items:center;background:#f8fafc;border-bottom:1px solid #e5e7eb;padding:18px}.bom-title{font-size:21px;font-weight:950;color:#0f172a}.bom-editor{border:1px solid #e2e8f0;border-radius:16px;overflow:hidden;background:#fff}.bom-actions{display:flex;gap:10px}.bom-table{width:100%;border-collapse:collapse;font-size:12px}.bom-table th{background:#eef2f7;color:#0f172a;text-align:left;padding:10px}.bom-table td{border-bottom:1px solid #edf2f7;padding:9px}.bom-table input,.bom-table select{width:100%;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:8px;padding:9px;font-size:12px}.bom-calc{font-weight:900;color:#0f172a;white-space:nowrap}.muted{color:#64748b}.green{color:var(--green)}.red{color:var(--red)}@media(max-width:1200px){.rm-grid,.rm-kpis{grid-template-columns:1fr 1fr}.rm-tabs{grid-template-columns:repeat(4,1fr)}.bom-layout{grid-template-columns:1fr}}@media(max-width:800px){.rm-page{padding:14px}.rm-grid,.rm-kpis,.rm-form{grid-template-columns:1fr}.rm-tabs{grid-template-columns:1fr 1fr}.rm-hero{display:block}.rm-filter{margin-top:14px}}
+        .recipe-mode{max-width:1680px;width:100%}.recipe-mode .rm-tabs{display:none}.recipe-mode .rm-hero{min-height:118px;align-items:center;background:linear-gradient(110deg,#30308d 0%,#15213e 100%);border-radius:18px;padding:26px 32px}.hero-kicker{display:block;color:#60a5fa;font-size:12px;font-weight:950;letter-spacing:.04em;margin-bottom:10px}.hero-actions{display:flex;gap:12px}.hero-actions button{min-width:170px;border:1px solid rgba(255,255,255,.22);border-radius:14px;padding:14px 18px;background:#1d5cff;color:#fff;font-weight:950;cursor:pointer}.hero-actions .copy{background:rgba(255,255,255,.12)}.recipe-mode>.rm-panel{background:transparent;border:0;box-shadow:none;padding:10px 0 0}.recipe-mode .bom-layout{grid-template-columns:245px minmax(0,1fr);gap:30px}.recipe-mode aside{background:#fff;border:1px solid #dfe6ee;border-radius:18px;padding:18px;box-shadow:0 10px 25px rgba(15,23,42,.06)}.recipe-mode aside h3{font-size:13px;color:#64748b;letter-spacing:.04em;margin-bottom:14px}.recipe-mode .bom-products{max-height:640px;padding-right:8px}.recipe-mode .bom-item{border-radius:14px;padding:14px 14px;background:#fff}.recipe-mode .bom-item.active{background:#eff6ff;border-color:#80b9ff;box-shadow:0 0 0 1px #bfdbfe inset}.recipe-mode .bom-editor{border-radius:18px;box-shadow:0 12px 30px rgba(15,23,42,.08)}.recipe-mode .bom-head{background:#fff;padding:24px 26px}.recipe-mode .recipe-bom-head{align-items:flex-start}.recipe-badges{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}.recipe-note{margin:6px 0 0;font-size:12px}.recipe-actions{align-items:end;flex-wrap:wrap}.recipe-actions label{min-width:300px;color:#334155;font-size:12px;font-weight:900}.recipe-actions input{width:100%;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:10px;padding:11px;font-size:13px}.recipe-actions .primary-add{height:42px}.recipe-mode .bom-table{min-width:720px}.recipe-mode .bom-table th{background:#eef2f7;padding:13px 14px;font-size:12px}.recipe-mode .bom-table td{padding:11px 10px}.recipe-mode .bom-table input,.recipe-mode .bom-table select{height:42px;border-radius:10px}.recipe-mode .bom-num,.recipe-mode .bom-fire{font-weight:900;text-align:center;color:#00359e}.recipe-mode .bom-fire{color:#c2410c}.recipe-mode .rm-table-wrap{padding:22px 22px 0}.bom-ok.missing{background:#fef3c7;color:#b45309}.trash-btn{border:0;background:transparent;color:#ef4444;font-size:18px;font-weight:900;cursor:pointer}.bom-footer{display:flex;justify-content:space-between;align-items:center;padding:16px 22px}.add-material{border:0;border-radius:10px;background:#10b981;color:#fff;padding:10px 16px;font-weight:950;cursor:pointer}.bom-count{font-size:12px;color:#64748b}.expense-mode .rm-hero{background:linear-gradient(120deg,#101827 0%,#241810 100%);align-items:center}.expense-save{border:0;border-radius:12px;background:#f97316;color:#fff;padding:13px 18px;font-weight:950;box-shadow:0 10px 22px rgba(249,115,22,.28);cursor:pointer}.expense-grid{display:grid;grid-template-columns:minmax(0,2fr) minmax(330px,1fr);gap:18px}.expense-panel{background:#fff;border:1px solid #e3e8ef;border-radius:18px;padding:22px;box-shadow:0 14px 34px rgba(15,23,42,.06)}.expense-cards{display:grid;grid-template-columns:1fr 1fr;gap:14px}.expense-card{border:1px solid #e5eaf1;border-radius:16px;background:#fff;padding:16px}.expense-card label{display:block;color:#172033;font-weight:950;margin-bottom:10px}.expense-card input{width:100%;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:12px;padding:12px 13px;font-size:22px;font-weight:950;color:#0f172a}.expense-card p{margin:10px 0 0;color:#64748b;font-size:12px;line-height:1.45}.method-title{margin:22px 0 10px;font-size:16px;font-weight:950;color:#111827}.method-buttons{display:flex;flex-wrap:wrap;gap:10px}.method-btn{border:1px solid #e2e8f0;border-radius:999px;background:#fff;color:#334155;padding:10px 14px;font-weight:900;cursor:pointer}.method-btn.active{background:#f97316;border-color:#f97316;color:#fff}.analysis-card{background:#0f172a;color:#fff;border-radius:18px;padding:24px;box-shadow:0 18px 38px rgba(15,23,42,.24)}.analysis-card h3{margin:0 0 8px;font-size:13px;letter-spacing:.06em;color:#cbd5e1}.kpi{border-top:1px solid rgba(255,255,255,.12);padding:18px 0}.kpi:first-of-type{border-top:0}.kpi span{display:block;color:#94a3b8;font-size:12px;font-weight:800}.kpi strong{display:block;margin-top:6px;font-size:30px}.kpi .amber{color:#fbbf24}.kpi .cyan{color:#2dd4bf}.analysis-note{margin-top:8px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:13px;color:#dbeafe;font-size:12px;line-height:1.5}.product-mode .rm-hero{display:none}.product-head,.product-add,.product-kpis,.product-group{margin-bottom:16px}.product-head{display:flex;justify-content:space-between;gap:16px;align-items:center;background:#fff;border:1px solid #e4e9f1;border-radius:18px;padding:22px;box-shadow:0 12px 30px rgba(15,23,42,.04)}.product-head h1{margin:0;color:#0f172a;font-size:28px}.product-head p{margin:5px 0 0;color:#64748b}.primary-add{border:0;border-radius:12px;background:#2563eb;color:#fff;padding:12px 16px;font-weight:950;cursor:pointer}.product-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.product-kpi{background:#fff;border:1px solid #e4e9f1;border-radius:16px;padding:16px;box-shadow:0 10px 24px rgba(15,23,42,.04)}.product-kpi span{display:block;font-size:12px;color:#64748b;font-weight:900}.product-kpi strong{display:block;margin-top:6px;font-size:26px;color:#0f172a}.product-add{display:none;background:#fff;border:1px solid #dbe3ee;border-radius:18px;padding:18px;box-shadow:0 12px 30px rgba(15,23,42,.05)}.product-add.show{display:block}.product-tools{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:10px;background:#fff;border:1px solid #e4e9f1;border-radius:16px;padding:14px;margin-bottom:16px}.product-tools input,.product-tools select,.product-add input,.product-add select,.edit-row input{border:1px solid #cbd5e1;border-radius:10px;padding:10px 11px;font-size:13px}.product-groups{display:grid;gap:12px}.product-group{background:#fff;border:1px solid #e4e9f1;border-radius:18px;box-shadow:0 12px 30px rgba(15,23,42,.04);overflow:hidden}.product-group summary{list-style:none;display:grid;grid-template-columns:1fr auto auto;gap:12px;align-items:center;padding:18px 20px;cursor:pointer}.product-group summary::-webkit-details-marker{display:none}.group-title strong{display:block;color:#0f172a;font-size:17px}.group-title span{display:block;color:#64748b;font-size:12px;margin-top:3px}.group-count{background:#eff6ff;color:#1d4ed8;border-radius:999px;padding:7px 10px;font-size:12px;font-weight:950}.mini-add{border:1px solid #bfdbfe;background:#eff6ff;color:#1d4ed8;border-radius:10px;padding:8px 10px;font-weight:900;cursor:pointer}.product-table{width:100%;border-collapse:separate;border-spacing:0;font-size:13px}.product-table th{background:#f8fafc;color:#334155;padding:11px;text-align:left;border-top:1px solid #eef2f7}.product-table td{padding:12px 11px;border-top:1px solid #eef2f7;vertical-align:middle}.code-pill{display:inline-block;background:#dbeafe;color:#1d4ed8;border-radius:999px;padding:5px 9px;font-size:11px;font-weight:950}.status-pill{display:inline-flex;gap:6px;align-items:center;background:#dcfce7;color:#047857;border-radius:999px;padding:6px 9px;font-size:11px;font-weight:950}.status-pill:before{content:'?';font-size:9px}.icon-btn{border:1px solid #bfdbfe;background:#eff6ff;color:#1d4ed8;border-radius:9px;padding:8px 10px;font-weight:900;cursor:pointer}.delete-btn{border:1px solid #fecaca;background:#fff1f2;color:#dc2626;border-radius:9px;padding:8px 10px;font-weight:900;cursor:pointer}.row-actions{display:flex;gap:8px}.edit-row{display:none;background:#f8fafc}.editing+.edit-row{display:table-row}.editing{display:none}.confirm-modal{display:none;position:fixed;inset:0;background:rgba(15,23,42,.4);z-index:20;align-items:center;justify-content:center}.confirm-modal.show{display:flex}.confirm-box{width:min(420px,92vw);background:#fff;border-radius:18px;padding:22px;box-shadow:0 25px 70px rgba(15,23,42,.25)}.confirm-box h3{margin:0 0 10px}.confirm-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}@media(max-width:1100px){.expense-grid,.expense-cards,.product-kpis,.product-tools{grid-template-columns:1fr 1fr}}@media(max-width:760px){.product-head,.product-group summary{display:block}.product-kpis,.product-tools{grid-template-columns:1fr}.primary-add{margin-top:12px}}
         .price-panel{background:#fff;border:1px solid #e4e9f1;border-radius:18px;margin:18px 0;padding:18px;box-shadow:0 12px 30px rgba(15,23,42,.04)}.price-head{display:flex;justify-content:space-between;gap:14px;align-items:flex-start;margin-bottom:12px}.price-head h3{margin:0;color:#0f172a;font-size:20px}.price-head p{margin:4px 0 0;color:#64748b;font-size:12px}.rate-boxes{display:flex;gap:10px}.rate-box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;padding:10px 13px;min-width:110px}.rate-box span{display:block;color:#64748b;font-size:11px;font-weight:900}.rate-box strong{display:block;color:#0f172a;margin-top:4px}.move-up{color:#16a34a;font-weight:950}.move-down{color:#dc2626;font-weight:950}.price-modal{display:none;position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:30;align-items:center;justify-content:center;padding:20px}.price-modal.show{display:flex}.price-box{width:min(980px,96vw);max-height:90vh;overflow:auto;background:#fff;border-radius:18px;box-shadow:0 30px 80px rgba(15,23,42,.28)}.price-box-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:18px 20px;border-bottom:1px solid #e5e7eb}.price-box-head h3{margin:0;color:#0f172a}.price-box-head p{margin:4px 0 0;color:#64748b;font-size:12px}.price-form{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;padding:16px 20px;background:#f8fafc}.price-form label{font-size:11px;font-weight:900;color:#475569}.price-form input,.price-form select{width:100%;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:9px;padding:9px}.price-history{padding:0 20px 20px}.stock-page{display:grid;gap:16px}.stock-head{background:linear-gradient(125deg,#0f172a,#1d4ed8);color:#fff;border:0;border-radius:20px;padding:24px 28px;box-shadow:0 18px 42px rgba(15,23,42,.18)}.stock-head-top{display:flex;justify-content:space-between;gap:16px;align-items:flex-start}.stock-head h3{margin:0;font-size:25px}.stock-head p{margin:7px 0 0;color:#dbeafe;font-size:13px}.stock-status{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.24);border-radius:14px;padding:11px 14px;text-align:right}.stock-status span{display:block;color:#bfdbfe;font-size:11px;font-weight:900}.stock-status strong{display:block;margin-top:4px;font-size:19px}.stock-chips{display:grid;grid-template-columns:repeat(6,1fr);gap:9px;margin-top:18px}.stock-chip{border:1px solid rgba(191,219,254,.45);background:rgba(239,246,255,.12);color:#eff6ff;border-radius:13px;padding:11px 9px;font-size:11px;font-weight:950;cursor:pointer;text-align:left}.stock-chip small{display:block;margin-top:3px;color:#cbd5e1;font-size:10px}.stock-chip.plus{background:rgba(22,163,74,.15);border-color:rgba(134,239,172,.55)}.stock-chip.minus{background:rgba(234,88,12,.14);border-color:rgba(253,186,116,.52)}.stock-form{background:#fff;border:1px solid #dbeafe;border-radius:18px;padding:18px;box-shadow:0 12px 30px rgba(37,99,235,.07)}.stock-form h3{margin:0 0 12px;color:#0f172a}.stock-form .rm-form{grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.stock-form .rm-field.wide{grid-column:span 2}.stock-kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:12px}.stock-kpi{background:#fff;border:1px solid #e2e8f0;border-radius:15px;padding:14px 15px;box-shadow:0 10px 24px rgba(15,23,42,.045)}.stock-kpi span{display:block;color:#64748b;font-size:10px;font-weight:950;text-transform:uppercase}.stock-kpi strong{display:block;margin-top:7px;font-size:21px;color:#0f172a}.stock-kpi.fire strong{color:#dc2626}.stock-kpi.dark{background:#0f172a;color:#fff}.stock-kpi.dark span{color:#cbd5e1}.stock-kpi.dark strong{color:#facc15}.stock-tools{display:grid;grid-template-columns:2fr 1fr 1fr;gap:10px;background:#fff;border:1px solid #e2e8f0;border-radius:15px;padding:12px}.stock-tools input,.stock-tools select{border:1px solid #cbd5e1;border-radius:11px;padding:11px;font-size:13px}.stock-list{background:#fff;border:1px solid #e2e8f0;border-radius:18px;overflow:hidden;box-shadow:0 12px 30px rgba(15,23,42,.05)}.stock-list-head{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:17px 19px;border-bottom:1px solid #e2e8f0}.stock-list-head h3{margin:0;color:#0f172a;font-size:18px}.stock-list-head span{color:#64748b;font-size:12px;font-weight:900}.stock-list .rm-table{table-layout:fixed}.stock-list th,.stock-list td{padding:10px 8px;font-size:12px}.stock-route{color:#475569;font-size:11px;line-height:1.45}.stock-route b{color:#0f172a}.stock-amount.plus{color:#047857}.stock-amount.minus{color:#b91c1c}.tip-badge{display:inline-block;border-radius:999px;padding:6px 9px;font-size:10px;font-weight:950;background:#eff6ff;color:#1d4ed8}.tip-badge.plus{background:#dcfce7;color:#047857}.tip-badge.minus{background:#fee2e2;color:#b91c1c}.tip-badge.neutral{background:#e0f2fe;color:#0369a1}.stock-empty{padding:28px;text-align:center;color:#64748b}.stock-empty strong{display:block;color:#0f172a;margin-bottom:5px}@media(max-width:1100px){.stock-chips,.stock-kpis{grid-template-columns:1fr 1fr 1fr}.stock-form .rm-form{grid-template-columns:1fr 1fr}.stock-tools{grid-template-columns:1fr}}@media(max-width:760px){.stock-head{padding:20px}.stock-head-top{display:block}.stock-status{text-align:left;margin-top:14px}.stock-chips,.stock-kpis,.stock-form .rm-form{grid-template-columns:1fr}.stock-form .rm-field.wide{grid-column:auto}.stock-list th:nth-child(2),.stock-list td:nth-child(2),.stock-list th:nth-child(7),.stock-list td:nth-child(7){display:none}.stock-list th,.stock-list td{font-size:11px;padding:8px 6px}}.recipe-mode .rm-tabs{display:grid}.product-mode .rm-hero{display:flex}.recipe-mode .rm-hero,.expense-mode .rm-hero,.product-mode .rm-hero{background:linear-gradient(135deg,#0f172a,#1d4ed8);align-items:center}
         .product-mode .product-head,.product-mode .product-kpis,.product-mode .product-tools,.product-mode .product-groups{display:none}
         .product-list-card{background:#fff;border:1px solid #e2e8f0;border-radius:18px;box-shadow:0 16px 38px rgba(15,23,42,.07);overflow:hidden}
@@ -689,6 +818,7 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
 @media(max-width:1250px){.product-catalogue{grid-template-columns:repeat(2,minmax(0,1fr))}.product-controlbar{grid-template-columns:1fr}.view-switch{justify-self:start}.product-catalogue.list-view .product-module{grid-template-columns:1fr 1fr}.product-catalogue.list-view .product-card-actions{grid-column:1/-1;border-left:0;border-top:1px solid #eef2f7}}
 @media(max-width:760px){.product-overview{display:block}.product-overview .primary-add{width:100%;margin-top:16px}.product-summary{grid-template-columns:1fr 1fr}.product-catalogue{grid-template-columns:1fr}.product-catalogue.list-view .product-module{display:flex}.product-catalogue.list-view .product-specs{position:static}.product-catalogue.list-view .product-card-actions{border-left:0}.product-filters{margin-right:-4px}.view-switch{display:none}}
 .production-workspace{display:grid;gap:16px}.production-hero{display:flex;justify-content:space-between;gap:18px;align-items:center;background:linear-gradient(125deg,#0f172a,#1d4ed8);color:#fff;border-radius:20px;padding:24px 28px;box-shadow:0 18px 42px rgba(15,23,42,.18)}.production-hero small{display:inline-flex;background:rgba(96,165,250,.22);border:1px solid rgba(191,219,254,.3);border-radius:999px;padding:7px 11px;color:#bfdbfe;font-size:11px;font-weight:950;letter-spacing:.08em;text-transform:uppercase}.production-hero h2{margin:10px 0 6px;font-size:28px}.production-hero p{margin:0;color:#dbeafe;font-size:13px}.production-period{min-width:170px;text-align:center;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.22);border-radius:16px;padding:14px}.production-period span{display:block;color:#bfdbfe;font-size:11px;font-weight:900}.production-period strong{display:block;margin-top:4px;font-size:20px}.production-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.production-kpi{background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:16px 18px;box-shadow:0 10px 24px rgba(15,23,42,.045)}.production-kpi span{display:block;color:#64748b;font-size:11px;font-weight:950;text-transform:uppercase}.production-kpi strong{display:block;margin-top:7px;color:#0f172a;font-size:24px}.production-kpi em{display:block;margin-top:4px;color:#2563eb;font-size:11px;font-style:normal;font-weight:900}.production-panel{background:#fff;border:1px solid #e2e8f0;border-radius:18px;overflow:hidden;box-shadow:0 12px 30px rgba(15,23,42,.05)}.production-panel-head{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:18px 20px;border-bottom:1px solid #e2e8f0}.production-panel-head h3{margin:0;color:#0f172a;font-size:18px}.production-panel-head p{margin:4px 0 0;color:#64748b;font-size:12px}.production-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;padding:16px}.production-card{border:1px solid #e2e8f0;border-radius:15px;padding:14px;background:#f8fafc}.production-card-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.production-code{display:inline-flex;background:#e0ecff;color:#1d4ed8;border-radius:999px;padding:5px 8px;font-size:10px;font-weight:950}.production-card h4{margin:10px 0 4px;color:#0f172a;font-size:15px;line-height:1.35}.production-card .muted{font-size:11px}.production-qty{font-size:20px;font-weight:950;color:#0f172a;text-align:right}.production-qty small{display:block;color:#64748b;font-size:10px;font-weight:900}.production-bar{height:9px;background:#e2e8f0;border-radius:999px;overflow:hidden;margin-top:13px}.production-bar span{display:block;height:100%;background:linear-gradient(90deg,#16a34a,#2563eb);border-radius:999px}.production-meta{display:flex;justify-content:space-between;margin-top:8px;color:#64748b;font-size:11px;font-weight:800}.production-table{padding:0 16px 16px}.production-table .rm-table{table-layout:fixed}.production-table th,.production-table td{font-size:12px;padding:10px}.production-table .rm-product{word-break:break-word}.production-ratio{display:flex;align-items:center;gap:8px}.production-ratio i{display:block;flex:1;height:7px;background:#e2e8f0;border-radius:999px;overflow:hidden}.production-ratio i b{display:block;height:100%;background:#2563eb}@media(max-width:1050px){.production-grid,.production-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.production-hero{align-items:flex-start}}@media(max-width:720px){.production-hero{display:block;padding:20px}.production-period{text-align:left;margin-top:14px}.production-grid,.production-kpis{grid-template-columns:1fr}.production-table th:nth-child(1),.production-table td:nth-child(1){display:none}.production-table th,.production-table td{font-size:11px;padding:8px 6px}.production-qty{text-align:left}}
+.rm-page,.recipe-mode,.expense-mode,.product-mode{max-width:1440px;width:100%;box-sizing:border-box}
 </style>
 </head>
 <body>
@@ -722,7 +852,14 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
         <div class="rm-panel"><h3>Ürün Maliyet Tablosu</h3><div class="rm-table-wrap"><table class="rm-table cost-fit"><thead><tr><th>Ürün</th><th>Hammadde</th><th>720</th><th>730</th><th>760</th><th>770</th><th>Toplam</th><th>Değişim</th><th>Detay</th></tr></thead><tbody><?php foreach($urunMaliyetleri as $u): ?><tr onclick="location.href='?tab=ozet&donem=<?php echo rm_e($donem); ?>&urun_id=<?php echo (int)$u['id']; ?>'"><td class="rm-product"><?php echo rm_e($u['urun_adi']); ?></td><td class="num"><?php echo rm_money($u['hammadde']); ?></td><td class="num"><?php echo rm_money($u['g720']); ?></td><td class="num"><?php echo rm_money($u['g730']); ?></td><td class="num"><?php echo rm_money($u['g760']); ?></td><td class="num"><?php echo rm_money($u['g770']); ?></td><td class="num"><b><?php echo rm_money($u['toplam']); ?></b></td><td><span class="green">%0,00</span></td><td><button class="rm-btn" type="button">Aç</button></td></tr><?php endforeach; ?></tbody></table></div></div>
         <aside class="rm-panel">
             <div class="rm-detail-head"><div><h3><?php echo rm_e($selected['urun_adi'] ?? 'Ürün seçin'); ?></h3><span class="muted"><?php echo rm_e($currentDonem['donem_adi']); ?></span></div><button class="calc-info-btn" type="button" onclick="document.getElementById('calcModal').classList.add('show')">Nasıl hesaplandı</button></div>
-            <div class="rm-break"><?php foreach($detaylar as $d): ?><div class="rm-break-row"><span><?php echo rm_e($d['kalem_adi']); ?></span><b><?php echo rm_money($d['tutar']); ?></b></div><?php endforeach; ?></div>
+            <?php
+                $hammaddeDetaylari = array_values(array_filter($detaylar, fn($d) => (string)$d['kategori'] === 'Hammadde'));
+                $giderDetaylari = array_values(array_filter($detaylar, fn($d) => (string)$d['kategori'] !== 'Hammadde'));
+            ?>
+            <h4 class="side-subtitle">Hammadde maliyeti detayı</h4>
+            <div class="rm-break"><?php foreach($hammaddeDetaylari as $d): ?><div class="rm-break-row"><span><?php echo rm_e($d['kalem_adi']); ?><small><?php echo rm_e($d['aciklama'] ?? ''); ?></small></span><b><?php echo rm_money($d['tutar']); ?></b></div><?php endforeach; ?></div>
+            <h4 class="side-subtitle">Genel gider payları</h4>
+            <div class="rm-break"><?php foreach($giderDetaylari as $d): ?><div class="rm-break-row"><span><?php echo rm_e($d['kalem_adi']); ?><small><?php echo rm_e($d['aciklama'] ?? ''); ?></small></span><b><?php echo rm_money($d['tutar']); ?></b></div><?php endforeach; ?></div>
             <div class="rm-total"><span>Koli Başına Maliyet</span><strong><?php echo rm_money($selected['toplam'] ?? 0); ?></strong></div>
             <div class="rm-break" style="margin-top:12px"><div class="rm-break-row"><span>Nakliyeli</span><b><?php echo rm_money($selected['toplam'] ?? 0); ?></b></div><div class="rm-break-row"><span>Nakliyesiz</span><b><?php echo rm_money(($selected['toplam'] ?? 0) - (float)$selectedNd['nakliye_tl_koli']); ?></b></div><div class="rm-break-row"><span>Nakliyesiz + DEKAP</span><b><?php echo rm_money(($selected['toplam'] ?? 0) - (float)$selectedNd['nakliye_tl_koli'] + (float)$selectedNd['dekap_tl_koli']); ?></b></div><div class="rm-break-row"><span>Nakliye + DEKAP Dahil</span><b><?php echo rm_money(($selected['toplam'] ?? 0) + (float)$selectedNd['dekap_tl_koli']); ?></b></div></div>
         </aside>
@@ -962,6 +1099,46 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
     <?php endif; ?>
 
     <?php if($tab==='receteler'): ?>
+    <style>
+    .bom-matrix{min-width:1080px;table-layout:fixed}
+    .bom-matrix th,.bom-matrix td{font-size:10px;padding:6px 5px}
+    .bom-matrix input,.bom-matrix select{min-width:0;width:100%;height:32px!important;padding:5px!important;font-size:10px!important}
+    .bom-matrix td:first-child select{min-width:0}
+    .bom-tl,.bom-price-view,.bom-total,.bom-fire-total{font-weight:950;color:#0f172a;white-space:nowrap;text-align:right}
+    .bom-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;padding:14px 22px;background:#f8fafc;border-top:1px solid #e5e7eb}
+    .bom-summary div{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:12px}
+    .bom-summary span{display:block;color:#64748b;font-size:11px;font-weight:900}
+    .bom-summary strong{display:block;margin-top:4px;color:#0f172a;font-size:18px}
+    .recipe-popup{display:none;position:fixed;inset:0;z-index:80;background:rgba(15,23,42,.42);align-items:stretch;justify-content:flex-end;overflow:hidden}
+    .recipe-popup.show{display:flex}
+    .recipe-popup .bom-editor{width:min(1180px,calc(100vw - 285px));height:92vh;max-height:92vh;margin:22px 22px 22px 0;border-radius:18px;overflow:auto;box-shadow:-24px 0 55px rgba(15,23,42,.24)}
+    .recipe-popup.dragging .bom-editor{user-select:none;cursor:grabbing}
+    .recipe-popup-close{border:0;background:#0f172a;color:#fff;border-radius:10px;padding:10px 13px;font-weight:950;cursor:pointer}
+    .recipe-inline .recipe-popup-close{display:none}
+    .recipe-popup .rm-table-wrap{padding:12px;overflow:auto}
+    .recipe-popup .bom-head{padding:16px;position:sticky;top:0;z-index:3;cursor:grab}
+    .recipe-popup .bom-summary{position:sticky;bottom:0;z-index:2}
+    .bom-row-actions{display:flex;gap:6px;align-items:center;justify-content:center}
+    .detail-btn{border:1px solid #bfdbfe;background:#eff6ff;color:#1d4ed8;border-radius:8px;padding:6px 8px;font-size:10px;font-weight:950;cursor:pointer}
+    .bom-detail-modal{display:none;position:fixed;inset:0;z-index:120;background:rgba(15,23,42,.42);align-items:center;justify-content:center;padding:16px}
+    .bom-detail-modal.show{display:flex}
+    .bom-detail-box{width:min(560px,94vw);background:#fff;border-radius:16px;border:1px solid #dbe3ee;box-shadow:0 24px 70px rgba(15,23,42,.28);overflow:hidden}
+    .bom-detail-head{display:flex;justify-content:space-between;align-items:center;background:#0f172a;color:#fff;padding:14px 16px}
+    .bom-detail-head h3{margin:0;font-size:16px}.bom-detail-head button{border:0;background:#334155;color:#fff;border-radius:8px;padding:7px 10px;cursor:pointer}
+    .bom-detail-body{padding:16px;font-size:13px;line-height:1.55;color:#334155}.bom-detail-body b{color:#0f172a}.bom-detail-body .result{margin-top:10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px;font-weight:900;color:#0f172a}
+    .bom-detail-table{width:100%;border-collapse:collapse;font-size:12px}.bom-detail-table th{background:#eef2f7;color:#0f172a;text-align:left;padding:9px}.bom-detail-table td{border-bottom:1px solid #e5e7eb;padding:9px;vertical-align:top}.bom-detail-table td:last-child{font-weight:900;color:#0f172a;white-space:nowrap}
+    .pet033-cost-summary{display:grid;grid-template-columns:1.1fr 1fr 1fr 1.1fr;gap:16px;padding:16px;background:#fff;border-bottom:1px solid #e5e7eb}
+    .pet033-cost-card{border:1px solid #dbe3ee;border-radius:14px;padding:16px 18px;background:#f8fafc}
+    .pet033-cost-card span{display:block;color:#64748b;font-size:11px;font-weight:950;text-transform:uppercase}
+    .pet033-cost-card strong{display:block;margin-top:8px;color:#0f172a;font-size:24px;letter-spacing:.02em}
+    .pet033-cost-card small{display:block;margin-top:5px;color:#64748b;font-size:11px}
+    .pet033-cost-card.fire{background:#fffbeb;border-color:#facc15}.pet033-cost-card.fire strong{color:#c2410c}
+    .pet033-cost-card.total{background:#059669;border-color:#059669;box-shadow:0 16px 30px rgba(5,150,105,.2)}
+    .pet033-cost-card.total span,.pet033-cost-card.total small{color:#d1fae5}.pet033-cost-card.total strong{color:#fff}
+    @media(max-width:1100px){.pet033-cost-summary{grid-template-columns:1fr 1fr}}
+    @media(max-width:1100px){.recipe-popup .bom-editor{width:96vw;margin:12px auto;border-radius:16px}}
+    @media(max-width:900px){.bom-summary,.pet033-cost-summary{grid-template-columns:1fr}.recipe-actions label{min-width:100%}}
+    </style>
     <section class="rm-panel">
         <div class="bom-layout">
             <aside>
@@ -969,42 +1146,153 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
                 <div class="bom-products">
                     <?php foreach($urunler as $u): ?>
                     <a class="bom-item <?php echo (int)$u['id']===$selectedId ? 'active' : ''; ?>" href="?tab=receteler&donem=<?php echo rm_e($donem); ?>&urun_id=<?php echo (int)$u['id']; ?>">
-                        <?php $ok = ($bomDurum[(int)$u['id']] ?? 0) > 0; ?><span class="bom-ok <?php echo $ok ? '' : 'missing'; ?>"><?php echo $ok ? '&#10003; v1.0' : '&#9888; Eksik'; ?></span><strong><?php echo rm_e($u['urun_adi']); ?></strong>
+                        <?php $ok = ($bomDurum[(int)$u['id']] ?? 0) > 0; ?><span class="bom-ok <?php echo $ok ? '' : 'missing'; ?>"><?php echo $ok ? '&#10003; Hazır' : '&#9888; Eksik'; ?></span><strong><?php echo rm_e($u['urun_adi']); ?></strong>
                         <span class="bom-code"><?php echo rm_e(rm_urun_kodu_satir($u)); ?></span>
                     </a>
                     <?php endforeach; ?>
                 </div>
             </aside>
+            <?php $isPet033Recipe = $selectedProductCode === 'SU-PET-033'; ?>
+            <div class="recipe-inline" id="recipePopup">
             <form method="POST" class="bom-editor" id="bomForm">
                 <input type="hidden" name="action" value="bom_kaydet" id="bomAction">
                 <input type="hidden" name="urun_id" value="<?php echo (int)$selectedId; ?>">
-                <div class="bom-head">
-                    <div><span class="rm-pill"><?php echo rm_e($selectedProductCode); ?></span><span class="muted" style="margin-left:12px"><?php echo number_format((float)$selectedKoliIci,0,',','.'); ?> Adet / Koli Ambalaj Standard?</span><div class="bom-title"><?php echo rm_e($selectedProductName ?: '?r?n se?in'); ?> Re?ete Detay?</div></div>
-                    <div class="bom-actions"><label>Versiyon<br><input name="versiyon" value="<?php echo rm_e($activeBom['versiyon'] ?? 'v1.0'); ?>" style="width:90px;text-align:center;font-weight:900"></label><label>A??klama<br><input name="aciklama" value="<?php echo rm_e($activeBom['aciklama'] ?? ''); ?>"></label></div>
+                <input type="hidden" name="versiyon" value="<?php echo rm_e($donem); ?>">
+                <div class="bom-head recipe-bom-head">
+                    <div>
+                        <div class="recipe-badges">
+                            <span class="rm-pill"><?php echo rm_e($isPet033Recipe ? 'UR-033-STD' : $selectedProductCode); ?></span>
+                            <span class="rm-pill"><?php echo rm_e($currentDonem['donem_adi']); ?></span>
+                            <span class="rm-pill">Koli İçi Adet: <?php echo number_format((float)$selectedKoliIci,0,',','.'); ?> Şişe</span>
+                        </div>
+                        <div class="bom-title"><?php echo rm_e($isPet033Recipe ? '0,33 lt Standart - Hammadde ve Reçete Hücre Matrisi' : (($selectedProductName ?: 'Ürün seçin') . ' Reçetesi')); ?></div>
+                        <p class="muted recipe-note">Birim miktarı ve birim fiyat girildiğinde satır toplamı otomatik hesaplanır.</p>
+                    </div>
+                    <div class="bom-actions recipe-actions">
+                        <label>Açıklama<br><input name="aciklama" value="<?php echo rm_e($activeBom['aciklama'] ?? ''); ?>"></label>
+                        <button type="button" class="recipe-popup-close" onclick="document.getElementById('recipePopup').classList.remove('show')">Kapat</button>
+                        <button type="submit" class="primary-add">Reçeteyi Kaydet</button>
+                    </div>
                 </div>
-                <div class="rm-table-wrap"><table class="bom-table"><thead><tr><th>Hammadde / Malzeme</th><th>Tüketim Miktarı</th><th>Tüketim Birimi</th><th>Koli İçi Adet</th><th>Fire Oranı (%)</th><th>Sil</th></tr></thead><tbody id="bomRows">
+                <?php if($isPet033Recipe): ?>
+                <div class="pet033-cost-summary">
+                    <div class="pet033-cost-card"><span>Şişe Başı Hammadde</span><strong id="petBottleCost">0,00 TL</strong><small><?php echo number_format((float)$selectedKoliIci,0,',','.'); ?>'e bölünerek şişe payı</small></div>
+                    <div class="pet033-cost-card"><span>Koli Maliyeti (Net)</span><strong id="petKoliNet">0,00 TL</strong><small>x <?php echo number_format((float)$selectedKoliIci,0,',','.'); ?> şişe toplamı</small></div>
+                    <div class="pet033-cost-card fire"><span>Fire Payı</span><strong id="petFirePay">0,00 TL</strong><small id="petFireLabel">Zayiat / fire eklemesi</small></div>
+                    <div class="pet033-cost-card total"><span>Fireli Hammadde / Koli</span><strong id="petFireTotal">0,00 TL</strong><small>Gerçek birim hammadde maliyeti</small></div>
+                </div>
+                <?php endif; ?>
+                <div class="rm-table-wrap"><table class="bom-table bom-matrix"><thead><tr><th>Hammadde / Malzeme</th><th>Alış Fiyatı</th><th>Para Cinsi</th><th>Döviz Kuru</th><th>TL'ye Çevrilmiş</th><th>Bölen</th><th>Birim Fiyat TL</th><th>Kullanım Miktarı</th><th>Birim</th><th>Kolideki Adet</th><th>Koli Fiyatı</th><th>Fire %</th><th>Fireli Koli</th><th>İşlem</th></tr></thead><tbody id="bomRows">
                     <?php foreach($bomKalemleri as $b): ?>
+                    <?php $alisFiyati = (float)($b['alis_fiyati'] ?? 0); if($alisFiyati == 0 && (float)($b['birim_fiyat'] ?? 0) > 0){ $alisFiyati = (float)$b['birim_fiyat']; } ?>
                     <tr>
                         <td><select name="hammadde_id[]"><?php foreach($hammaddeler as $h): ?><option value="<?php echo (int)$h['id']; ?>" <?php echo (int)$h['id']===(int)$b['hammadde_id'] ? 'selected' : ''; ?>><?php echo rm_e($h['kalem_adi']); ?></option><?php endforeach; ?></select></td>
+                        <td><input class="bom-alis" name="alis_fiyati[]" value="<?php echo number_format($alisFiyati,6,',','.'); ?>"></td>
+                        <td><select class="bom-currency" name="para_cinsi[]"><?php $pc=$b['para_cinsi'] ?? 'TL'; ?><option <?php echo $pc==='TL'?'selected':''; ?>>TL</option><option <?php echo $pc==='USD'?'selected':''; ?>>USD</option><option <?php echo $pc==='EUR'?'selected':''; ?>>EUR</option></select></td>
+                        <td><input class="bom-kur" name="doviz_kuru[]" value="<?php echo number_format(max((float)($b['doviz_kuru'] ?? 1),1),6,',','.'); ?>"></td>
+                        <td class="bom-tl">₺0,00</td>
+                        <td><input class="bom-bolen" name="bolen[]" value="<?php echo number_format(max((float)($b['bolen'] ?? 1),1),6,',','.'); ?>"></td>
+                        <td class="bom-price-view">₺0,00</td>
                         <td><input class="bom-num" name="tuketim_miktari[]" value="<?php echo number_format((float)$b['tuketim_miktari'],6,',','.'); ?>"></td>
                         <td><select class="bom-unit" name="tuketim_birimi[]"><option <?php echo $b['tuketim_birimi']==='gr/adet' ? 'selected' : ''; ?>>gr/adet</option><option <?php echo in_array($b['tuketim_birimi'], ['adet/adet','adet/koli'], true) ? 'selected' : ''; ?>>adet/adet</option><option <?php echo $b['tuketim_birimi']==='gr/koli' ? 'selected' : ''; ?>>gr/koli</option><option <?php echo $b['tuketim_birimi']==='kg/koli' ? 'selected' : ''; ?>>kg/koli</option></select></td>
                         <td><input class="bom-koli" name="koli_ici_adet[]" value="<?php echo number_format((float)$b['koli_ici_adet'],2,',','.'); ?>"></td>
+                        <td class="bom-total">₺0,00</td>
                         <td><input class="bom-fire" name="fire_orani[]" value="<?php echo number_format((float)$b['fire_orani'],2,',','.'); ?>"></td>
-                        <td><button type="button" class="trash-btn" title="Sil" onclick="this.closest('tr').remove();calcBom();">&times;</button></td>
+                        <td class="bom-fire-total">₺0,00</td>
+                        <td><div class="bom-row-actions"><button type="button" class="detail-btn" onclick="showBomDetail(this)">Detay</button><button type="button" class="trash-btn" title="Sil" onclick="this.closest('tr').remove();calcBom();">&times;</button></div></td>
                     </tr>
                     <?php endforeach; ?>
                 </tbody></table></div>
-                <div class="bom-footer"><button type="button" class="add-material" onclick="addBomRow();">+ Reçeteye Malzeme Kalemi Ekle</button><span class="bom-count">Toplam <?php echo count($bomKalemleri); ?> Hammadde Girdisi</span></div>
+                <div class="bom-summary"><div><span>TL Çevrim Toplamı</span><strong id="bomTlSum">₺0,00</strong></div><div><span>Koli Fiyatı</span><strong id="bomKoliSum">₺0,00</strong></div><div><span>Fireli Koli Fiyatı</span><strong id="bomFireSum">₺0,00</strong></div></div>
+                <div class="bom-footer"><button type="button" class="add-material" onclick="addBomRow();">+ Reçeteye Malzeme Kalemi Ekle</button><button type="submit" class="primary-add">DEĞİŞİKLİKLERİ KAYDET</button><span class="bom-count">Toplam <?php echo count($bomKalemleri); ?> Hammadde Girdisi</span></div>
             </form>
+            </div>
         </div>
     </section>
-    <template id="bomTpl"><tr><td><select name="hammadde_id[]"><?php foreach($hammaddeler as $h): ?><option value="<?php echo (int)$h['id']; ?>"><?php echo rm_e($h['kalem_adi']); ?></option><?php endforeach; ?></select></td><td><input class="bom-num" name="tuketim_miktari[]" value="0"></td><td><select class="bom-unit" name="tuketim_birimi[]"><option>gr/adet</option><option>adet/adet</option><option>gr/koli</option><option>kg/koli</option></select></td><td><input class="bom-koli" name="koli_ici_adet[]" value="1"></td><td><input class="bom-fire" name="fire_orani[]" value="0"></td><td><button type="button" class="trash-btn" title="Sil" onclick="this.closest('tr').remove();calcBom();">&times;</button></td></tr></template>
+    <template id="bomTpl"><tr><td><select name="hammadde_id[]"><?php foreach($hammaddeler as $h): ?><option value="<?php echo (int)$h['id']; ?>"><?php echo rm_e($h['kalem_adi']); ?></option><?php endforeach; ?></select></td><td><input class="bom-alis" name="alis_fiyati[]" value="0"></td><td><select class="bom-currency" name="para_cinsi[]"><option>TL</option><option>USD</option><option>EUR</option></select></td><td><input class="bom-kur" name="doviz_kuru[]" value="1"></td><td class="bom-tl">₺0,00</td><td><input class="bom-bolen" name="bolen[]" value="1"></td><td class="bom-price-view">₺0,00</td><td><input class="bom-num" name="tuketim_miktari[]" value="0"></td><td><select class="bom-unit" name="tuketim_birimi[]"><option>gr/adet</option><option>adet/adet</option><option>gr/koli</option><option>kg/koli</option></select></td><td><input class="bom-koli" name="koli_ici_adet[]" value="1"></td><td class="bom-total">₺0,00</td><td><input class="bom-fire" name="fire_orani[]" value="0"></td><td class="bom-fire-total">₺0,00</td><td><div class="bom-row-actions"><button type="button" class="detail-btn" onclick="showBomDetail(this)">Detay</button><button type="button" class="trash-btn" title="Sil" onclick="this.closest('tr').remove();calcBom();">&times;</button></div></td></tr></template>
+    <div class="bom-detail-modal" id="bomDetailModal"><div class="bom-detail-box"><div class="bom-detail-head"><h3>Hesaplama Detayı</h3><button type="button" onclick="closeBomDetail()">Kapat</button></div><div class="bom-detail-body" id="bomDetailBody"></div></div></div>
     <script>
     function trNum(v){ v=(v||'').toString().replace(/\./g,'').replace(',','.'); return parseFloat(v)||0; }
-    function fmt(v){ return v.toLocaleString('tr-TR',{maximumFractionDigits:3}); }
-    function calcBom(){}
+    function fmt(v,d){ return '₺' + v.toLocaleString('tr-TR',{minimumFractionDigits:d||2,maximumFractionDigits:d||2}); }
+    function calcBom(){
+        var tlSum=0,koliSum=0,fireSum=0, fireWeighted=0;
+        document.querySelectorAll('#bomRows tr').forEach(function(row){
+            var alis = trNum((row.querySelector('.bom-alis') || {}).value);
+            var kur = trNum((row.querySelector('.bom-kur') || {}).value) || 1;
+            var bolen = trNum((row.querySelector('.bom-bolen') || {}).value) || 1;
+            var miktar = trNum((row.querySelector('.bom-num') || {}).value);
+            var koli = trNum((row.querySelector('.bom-koli') || {}).value);
+            var fire = trNum((row.querySelector('.bom-fire') || {}).value);
+            var tl = alis * kur;
+            var birim = tl / bolen;
+            var toplam = birim * miktar * koli;
+            var fireli = toplam * (1 + fire / 100);
+            tlSum += tl; koliSum += toplam; fireSum += fireli; fireWeighted += toplam * fire;
+            if(row.querySelector('.bom-tl')){ row.querySelector('.bom-tl').textContent = fmt(tl,4); }
+            if(row.querySelector('.bom-price-view')){ row.querySelector('.bom-price-view').textContent = fmt(birim,6); }
+            if(row.querySelector('.bom-total')){ row.querySelector('.bom-total').textContent = fmt(toplam,4); }
+            if(row.querySelector('.bom-fire-total')){ row.querySelector('.bom-fire-total').textContent = fmt(fireli,4); }
+        });
+        if(document.getElementById('bomTlSum')){ document.getElementById('bomTlSum').textContent = fmt(tlSum,2); }
+        if(document.getElementById('bomKoliSum')){ document.getElementById('bomKoliSum').textContent = fmt(koliSum,2); }
+        if(document.getElementById('bomFireSum')){ document.getElementById('bomFireSum').textContent = fmt(fireSum,2); }
+        var bottleCount = <?php echo max((float)$selectedKoliIci, 1); ?>;
+        var firePay = fireSum - koliSum;
+        var fireRate = koliSum > 0 ? fireWeighted / koliSum : 0;
+        if(document.getElementById('petBottleCost')){ document.getElementById('petBottleCost').textContent = (fireSum / bottleCount).toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' TL'; }
+        if(document.getElementById('petKoliNet')){ document.getElementById('petKoliNet').textContent = koliSum.toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' TL'; }
+        if(document.getElementById('petFirePay')){ document.getElementById('petFirePay').textContent = '+' + firePay.toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' TL'; }
+        if(document.getElementById('petFireLabel')){ document.getElementById('petFireLabel').textContent = 'Fire payı (%' + fireRate.toLocaleString('tr-TR',{minimumFractionDigits:1,maximumFractionDigits:2}) + ')'; }
+        if(document.getElementById('petFireTotal')){ document.getElementById('petFireTotal').textContent = fireSum.toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' TL'; }
+    }
     function addBomRow(){ document.getElementById('bomRows').insertAdjacentHTML('beforeend', document.getElementById('bomTpl').innerHTML); calcBom(); }
+    function showBomDetail(btn){
+        calcBom();
+        var row = btn.closest('tr');
+        var material = row.querySelector('select[name="hammadde_id[]"] option:checked').textContent.trim();
+        var alis = trNum(row.querySelector('.bom-alis').value);
+        var kur = trNum(row.querySelector('.bom-kur').value) || 1;
+        var bolen = trNum(row.querySelector('.bom-bolen').value) || 1;
+        var miktar = trNum(row.querySelector('.bom-num').value);
+        var koli = trNum(row.querySelector('.bom-koli').value);
+        var fire = trNum(row.querySelector('.bom-fire').value);
+        var para = row.querySelector('.bom-currency').value;
+        var tl = alis * kur;
+        var birim = tl / bolen;
+        var koliFiyat = birim * miktar * koli;
+        var fireli = koliFiyat * (1 + fire / 100);
+        var unitName = (row.querySelector('.bom-unit') || {}).value || 'birim';
+        var baseUnit = unitName.indexOf('gr') === 0 ? 'gr' : 'adet';
+        var buyUnit = bolen >= 1000 ? 'kg' : 'adet';
+        document.getElementById('bomDetailBody').innerHTML =
+            '<p><b>Malzeme:</b> ' + material + '</p>' +
+            '<table class="bom-detail-table"><thead><tr><th>Adım</th><th>Açıklama</th><th>İşlem</th><th>Sonuç</th></tr></thead><tbody>' +
+            '<tr><td>1. Hammadde fiyatı</td><td>1 ' + buyUnit + ' malzemenin alış fiyatı</td><td>' + alis.toLocaleString('tr-TR') + ' ' + para + '</td><td>—</td></tr>' +
+            '<tr><td>2. TL çevrimi</td><td>Fiyatı güncel kur ile TL’ye çevir</td><td>' + alis.toLocaleString('tr-TR') + ' × ' + kur.toLocaleString('tr-TR') + '</td><td>' + fmt(tl,4) + ' /' + buyUnit + '</td></tr>' +
+            '<tr><td>3. Birim fiyat</td><td>Alış birimini reçete birimine indir</td><td>' + tl.toLocaleString('tr-TR',{minimumFractionDigits:4,maximumFractionDigits:4}) + ' ÷ ' + bolen.toLocaleString('tr-TR') + '</td><td>' + fmt(birim,6) + ' /' + baseUnit + '</td></tr>' +
+            '<tr><td>4. Şişe maliyeti</td><td>Bir şişenin ihtiyacı olan miktar ile çarp</td><td>' + birim.toLocaleString('tr-TR',{minimumFractionDigits:6,maximumFractionDigits:6}) + ' × ' + miktar.toLocaleString('tr-TR') + '</td><td>' + fmt(birim * miktar,4) + ' /şişe</td></tr>' +
+            '<tr><td>5. Koli fiyatı</td><td>Bir koli ' + koli.toLocaleString('tr-TR') + ' adet olduğu için çarp</td><td>' + birim.toLocaleString('tr-TR',{minimumFractionDigits:6,maximumFractionDigits:6}) + ' × ' + miktar.toLocaleString('tr-TR') + ' × ' + koli.toLocaleString('tr-TR') + '</td><td>' + fmt(koliFiyat,4) + ' /koli</td></tr>' +
+            '<tr><td>6. Fireli koli fiyatı</td><td>Üretim fire payı eklenir</td><td>' + koliFiyat.toLocaleString('tr-TR',{minimumFractionDigits:4,maximumFractionDigits:4}) + ' × (1 + %' + fire.toLocaleString('tr-TR') + ')</td><td>' + fmt(fireli,4) + ' /koli</td></tr>' +
+            '</tbody></table>';
+        document.getElementById('bomDetailModal').classList.add('show');
+    }
+    function closeBomDetail(){ document.getElementById('bomDetailModal').classList.remove('show'); }
     document.addEventListener('input', calcBom); document.addEventListener('DOMContentLoaded', calcBom);
+    (function(){
+        var popup=document.getElementById('recipePopup'), box=popup ? popup.querySelector('.bom-editor') : null, head=box ? box.querySelector('.bom-head') : null;
+        if(!popup || !box || !head || !popup.classList.contains('recipe-popup')) return;
+        var drag=false,sx=0,sy=0,ox=0,oy=0;
+        head.addEventListener('mousedown',function(e){
+            if(e.target.closest('input,select,button')) return;
+            drag=true; sx=e.clientX; sy=e.clientY; ox=parseFloat(box.dataset.x||0); oy=parseFloat(box.dataset.y||0); popup.classList.add('dragging'); e.preventDefault();
+        });
+        document.addEventListener('mousemove',function(e){
+            if(!drag) return;
+            var x=ox+e.clientX-sx, y=oy+e.clientY-sy;
+            box.dataset.x=x; box.dataset.y=y; box.style.transform='translate('+x+'px,'+y+'px)';
+        });
+        document.addEventListener('mouseup',function(){ drag=false; popup.classList.remove('dragging'); });
+    })();
     </script>
     <?php endif; ?>
 
@@ -1054,31 +1342,31 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
     </section>
     <?php endif; ?>
 
-    <?php if($tab==='giderler'): $costTab = $_GET['cost'] ?? 'tum'; if(!in_array($costTab, ['tum','hammadde','genel','nakliye'], true)){ $costTab='tum'; } ?>
+    <?php if($tab==='giderler'): $costTab = $_GET['cost'] ?? 'tum'; if($costTab === 'hammadde'){ $costTab = 'koli_maliyeti'; } if(!in_array($costTab, ['tum','koli_maliyeti','genel','nakliye'], true)){ $costTab='tum'; } ?>
     <nav class="cost-tabs">
         <a class="<?php echo $costTab==='tum'?'active':''; ?>" href="?tab=giderler&cost=tum&donem=<?php echo rm_e($donem); ?>">Tüm Giderler</a>
-        <a class="<?php echo $costTab==='hammadde'?'active':''; ?>" href="?tab=giderler&cost=hammadde&donem=<?php echo rm_e($donem); ?>">Hammadde & Ambalaj</a>
+        <a class="<?php echo $costTab==='koli_maliyeti'?'active':''; ?>" href="?tab=giderler&cost=koli_maliyeti&donem=<?php echo rm_e($donem); ?>">Koli Maliyeti</a>
         <a class="<?php echo $costTab==='genel'?'active':''; ?>" href="?tab=giderler&cost=genel&donem=<?php echo rm_e($donem); ?>">Genel Giderler</a>
         <a class="<?php echo $costTab==='nakliye'?'active':''; ?>" href="?tab=giderler&cost=nakliye&donem=<?php echo rm_e($donem); ?>">Nakliye / DEKAP</a>
     </nav>
     <section class="cost-subsection <?php echo $costTab==='tum'?'active':''; ?>">
         <section class="rm-kpis">
-            <div class="rm-card"><span>Hammadde & Ambalaj</span><strong><?php echo count($hammaddeler); ?> Kalem</strong><em class="rm-change">Ay bazlı fiyat</em></div>
+            <div class="rm-card"><span>Koli Maliyeti</span><strong><?php echo count($hammaddeler); ?> Kalem</strong><em class="rm-change">Adet / ton bazlı giriş</em></div>
             <div class="rm-card"><span>Genel Giderler</span><strong>720 / 730 / 760 / 770</strong><em class="rm-change">Dağıtım anahtarı</em></div>
             <div class="rm-card"><span>Nakliye / DEKAP</span><strong><?php echo count($urunMaliyetleri); ?> ürün</strong><em class="rm-change">Koli bazlı</em></div>
             <div class="rm-card"><span>Dönem</span><strong><?php echo rm_e($currentDonem['donem_adi']); ?></strong><em class="rm-change">FIFO fiyat mantığı</em></div>
         </section>
         <section class="rm-grid">
             <div class="rm-panel">
-                <h3>Hammadde & Ambalaj Kalemleri</h3>
+                <h3>Koli Maliyeti Kalemleri</h3>
                 <div class="rm-table-wrap"><table class="rm-table"><thead><tr><th>#</th><th>Malzeme</th><th>Birim</th><th>Ay İçi Fiyat Mantığı</th></tr></thead><tbody>
-                    <?php foreach($hammaddeler as $i=>$h): ?><tr><td><?php echo $i+1; ?></td><td class="rm-product"><?php echo rm_e($h['kalem_adi']); ?></td><td><?php echo rm_e($h['birim']); ?></td><td>Faturalar ay içinde birden fazla girilebilir; ilk giren ilk çıkar mantığıyla izlenir.</td></tr><?php endforeach; ?>
+                    <?php foreach($hammaddeler as $i=>$h): ?><tr><td><?php echo $i+1; ?></td><td class="rm-product"><?php echo rm_e($h['kalem_adi']); ?></td><td><?php echo rm_e($h['birim']); ?></td><td>Adet veya ton bazlı fiyat girilir; ürün reçetesine göre adet ve koli maliyetine çevrilir.</td></tr><?php endforeach; ?>
                 </tbody></table></div>
             </div>
             <aside class="rm-panel">
                 <h3>Tüm Gider Başlıkları</h3>
                 <div class="rm-break">
-                    <div class="rm-break-row"><span>Hammadde & Ambalaj</span><b><?php echo count($hammaddeler); ?> kalem</b></div>
+                    <div class="rm-break-row"><span>Koli Maliyeti</span><b>Hammadde & ambalaj</b></div>
                     <div class="rm-break-row"><span>720 Direkt İşçilik</span><b>Genel gider</b></div>
                     <div class="rm-break-row"><span>730 Genel Üretim</span><b>Genel gider</b></div>
                     <div class="rm-break-row"><span>760 Pazarlama Satış Dağıtım</span><b>Genel gider</b></div>
@@ -1089,15 +1377,15 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
             </aside>
         </section>
     </section>
-    <section class="cost-subsection <?php echo $costTab==='hammadde'?'active':''; ?>">
+    <section class="cost-subsection <?php echo $costTab==='koli_maliyeti'?'active':''; ?>">
         <div class="cost-page">
             <div class="price-hero">
-                <div><span class="price-kicker"><?php echo rm_e(rm_upper((string)$currentDonem['donem_adi'])); ?> FİYATLANDIRMA PANELİ</span><h2>Hammadde & Ambalaj Alış Fiyatları</h2><p>Bu ekranda tanımlanan fiyatlar reçete maliyetleri ve mamul maliyet kartları tarafından otomatik kullanılır. Ay içinde birden fazla fatura girilebilir; maliyetlendirme ilk giren ilk çıkar mantığıyla izlenir.</p></div>
+                <div><span class="price-kicker"><?php echo rm_e(rm_upper((string)$currentDonem['donem_adi'])); ?> KOLİ MALİYETİ PANELİ</span><h2>Hammadde & Ambalaj Koli Maliyeti</h2><p>Malzemeler adet, kg veya ton bazlı fiyatlanabilir. Sistem bu fiyatları ürün reçetesindeki tüketim miktarına göre adet ve koli maliyetine çevirip reçeteye aktarır.</p></div>
                 <div class="currency-card"><div class="currency-grid"><label>USD Dolar Kuru (TL)<input value="<?php echo $kurOzet['usd'] > 0 ? number_format($kurOzet['usd'],2,',','.') : '36,50'; ?>"></label><label>EUR Euro Kuru (TL)<input value="<?php echo $kurOzet['eur'] > 0 ? number_format($kurOzet['eur'],2,',','.') : '39,80'; ?>"></label></div><div style="display:flex;gap:10px;margin-top:18px"><button class="method-btn active" type="button">Sorgulanıyor...</button><button class="primary-add" type="button">Kurları Kaydet</button></div></div>
             </div>
             <div class="price-kpis"><div class="rm-card"><span>Toplam Aktif Malzeme</span><strong><?php echo count($hammaddeler); ?> Kalem</strong><em class="rm-change">Reçetelerde kullanılan</em></div><div class="rm-card"><span>Para Birimi Dağılımı</span><strong><?php echo count(array_filter($fiyatlar, function($f){ return str_contains((string)$f['ton_fiyati'],'$'); })); ?> USD</strong><em class="rm-change"><?php echo count(array_filter($fiyatlar, function($f){ return str_contains((string)$f['ton_fiyati'],'€'); })); ?> EUR / <?php echo count($fiyatlar); ?> kayıt</em></div><div class="rm-card"><span>Hızlı Aktarım</span><strong>Önceki Ay</strong><em class="rm-change">Fiyatları bu aya kopyala</em></div><div class="rm-card dark"><span>Toplu Kaydet</span><strong>Tüm Fiyatlar</strong><em class="rm-change">Reçeteyi senkronize et</em></div></div>
             <div class="price-tools"><input id="matSearch" placeholder="Malzeme adı veya kodu ile filtrele..."><div class="price-filter"><span class="fifo-note">Görünüm:</span><button class="filter-pill active" type="button">Tüm Malzemeler (<?php echo count($hammaddeler); ?>)</button><button class="filter-pill" type="button">USD ($)</button><button class="filter-pill" type="button">EUR (€)</button><button class="filter-pill" type="button">Çoklu Fatura Girdili</button></div></div>
-            <div class="price-list"><div class="price-list-head"><h3><?php echo rm_e(rm_upper((string)$currentDonem['donem_adi'])); ?> AKTİF FİYAT ÇİZELGESİ</h3><span><?php echo count($hammaddeler); ?> Malzeme Listeleniyor</span></div><div class="rm-table-wrap"><table><thead><tr><th>#</th><th>Malzeme Kodu & Adı</th><th>Fatura Alış Fiyatı</th><th>Alış Birimi</th><th>Para Birimi</th><th>Uygulanan Kur</th><th>Net TL Birim Fiyatı</th><th>Ay İçi Fiyatlar</th><th>İşlem</th></tr></thead><tbody>
+            <div class="price-list"><div class="price-list-head"><h3><?php echo rm_e(rm_upper((string)$currentDonem['donem_adi'])); ?> KOLİ MALİYETİ ÇİZELGESİ</h3><span><?php echo count($hammaddeler); ?> Malzeme Listeleniyor</span></div><div class="rm-table-wrap"><table><thead><tr><th>#</th><th>Malzeme Kodu & Adı</th><th>Fatura Alış Fiyatı</th><th>Alış Birimi</th><th>Para Birimi</th><th>Uygulanan Kur</th><th>Net TL Birim Fiyatı</th><th>Ay İçi Fiyatlar</th><th>İşlem</th></tr></thead><tbody>
                 <?php foreach($hammaddeler as $i=>$h): $last=$fiyatHareketleri[$i % max(1,count($fiyatHareketleri))] ?? ['ton_fiyati'=>'0','tl_adet'=>0,'doviz_adet'=>'']; ?>
                 <tr class="mat-row" data-name="<?php echo rm_e(rm_lower($h['kalem_adi'].' '.$h['kategori'])); ?>"><td><?php echo $i+1; ?></td><td><strong><?php echo rm_e($h['kalem_adi']); ?></strong><br><span class="bom-code">Kod: HM-<?php echo (int)$h['id']; ?> · <?php echo rm_e($h['kategori']); ?></span></td><td><input class="price-input" value="<?php echo rm_e($last['ton_fiyati']); ?>"></td><td><input class="price-input" value="<?php echo rm_e($h['birim']); ?>"></td><td><select class="price-input"><option>TL</option><option <?php echo str_contains((string)$last['ton_fiyati'],'$') ? 'selected' : ''; ?>>USD ($)</option><option <?php echo str_contains((string)$last['ton_fiyati'],'€') ? 'selected' : ''; ?>>EUR (€)</option></select></td><td><?php echo $kurOzet['usd'] > 0 ? number_format($kurOzet['usd'],4,',','.') : '-'; ?> TL</td><td class="tl-cell"><?php echo rm_money($last['tl_adet']); ?><br><small><?php echo rm_e($last['doviz_adet'] ?? ''); ?></small></td><td><button class="invoice-btn" type="button">+ Fatura Ekle</button><br><span class="fifo-note">FIFO ay içi giriş</span></td><td><button class="primary-add" type="button">Kaydet</button></td></tr>
                 <?php endforeach; ?>
@@ -1143,7 +1431,7 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
             var total = 0;
             document.querySelectorAll('.expense-input').forEach(function(i){ total += num(i.value); });
             document.getElementById('expenseTotal').textContent = money(total, 0) + ' TL';
-            document.getElementById('expensePerBox').textContent = money(production  total / production : 0, 2) + ' TL / Koli';
+            document.getElementById('expensePerBox').textContent = money(production ? total / production : 0, 2) + ' TL / Koli';
         }
         document.querySelectorAll('.expense-input').forEach(function(i){ i.addEventListener('input', calc); });
         document.querySelectorAll('.method-btn').forEach(function(b){ b.addEventListener('click', function(){ document.querySelectorAll('.method-btn').forEach(function(x){ x.classList.remove('active'); }); b.classList.add('active'); }); });
