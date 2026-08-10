@@ -84,6 +84,67 @@ function rm_kalem_id(PDO $db, string $kategori, string $ad, string $birim, float
     $q->execute([$kategori, $ad]);
     return (int)$q->fetchColumn();
 }
+function rm_recete_template_download(): void
+{
+    header('Content-Type: application/vnd.ms-excel; charset=UTF-8');
+    header('Content-Disposition: attachment; filename="recete_ornek_sablon.xls"');
+    echo "\xEF\xBB\xBF";
+    $rows = [
+        ['Preform / Cam Şişe','1,38','USD','47,7168','1000','9,2','gr/adet','24','3'],
+        ['Kapak','205','TL','1','1000','1','adet/adet','24','1,5'],
+        ['Etiket','170','TL','1','1000','1','adet/adet','24','2'],
+        ['Shrink Film','64','TL','1','1000','26','gr/koli','1','3,5'],
+        ['Strech Film','70','TL','1','1000','8,8','gr/koli','1','2'],
+        ['Palet Ara Seperatör','22','TL','1','116','5','adet/koli','1','3'],
+    ];
+    echo '<html><head><meta charset="UTF-8"><style>
+        table{border-collapse:collapse;font-family:Arial,sans-serif;font-size:11pt}
+        th{background:#0f172a;color:#fff;font-weight:bold;text-align:center}
+        th,td{border:1px solid #9ca3af;padding:8px;vertical-align:middle}
+        td.num{text-align:right} .note{background:#eff6ff;font-weight:bold}
+    </style></head><body>';
+    echo '<table>';
+    echo '<tr><td class="note" colspan="9">Reçete Excel Şablonu - Satırları doldurup aynı dosyayı yükleyebilirsiniz.</td></tr>';
+    echo '<tr><th>Hammadde / Malzeme</th><th>Alış Fiyatı</th><th>Para Cinsi</th><th>Döviz Kuru</th><th>Bölen</th><th>Kullanım Miktarı</th><th>Birim</th><th>Kolideki Adet</th><th>Fire %</th></tr>';
+    foreach($rows as $r){
+        echo '<tr>';
+        foreach($r as $i=>$v){ echo '<td'.($i>0 && $i!==2 && $i!==6 ? ' class="num"' : '').'>'.rm_e($v).'</td>'; }
+        echo '</tr>';
+    }
+    echo '</table></body></html>';
+    exit;
+}
+function rm_read_recete_upload(array $file): array
+{
+    if(empty($file['tmp_name']) || !is_uploaded_file($file['tmp_name'])){ throw new RuntimeException('Excel dosyası seçilmedi.'); }
+    $ext = strtolower(pathinfo((string)$file['name'], PATHINFO_EXTENSION));
+    $rows = [];
+    if(in_array($ext, ['xlsx','xlsm'], true)){
+        if(!class_exists('ZipArchive')){ throw new RuntimeException('XLSX okumak için PHP ZipArchive eklentisi gerekli. Örnek .xls şablonunu doldurup yükleyebilirsiniz.'); }
+        require_once __DIR__ . '/vendor/autoload.php';
+        $sheet = \PhpOffice\PhpSpreadsheet\IOFactory::load((string)$file['tmp_name'])->getActiveSheet();
+        for($r=2; $r <= $sheet->getHighestRow(); $r++){
+            $row = [];
+            for($c=1; $c<=9; $c++){
+                $cell = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($c) . $r;
+                $row[] = trim((string)$sheet->getCell($cell)->getFormattedValue());
+            }
+            if(trim(implode('', $row)) !== ''){ $rows[] = $row; }
+        }
+        return $rows;
+    }
+    $first = (string)file_get_contents((string)$file['tmp_name'], false, null, 0, 512);
+    $delim = substr_count($first, "\t") >= substr_count($first, ';') ? "\t" : ';';
+    $fh = fopen((string)$file['tmp_name'], 'r');
+    if(!$fh){ throw new RuntimeException('Excel dosyası okunamadı.'); }
+    fgetcsv($fh, 0, $delim, '"', '\\');
+    while(($row = fgetcsv($fh, 0, $delim, '"', '\\')) !== false){
+        $row = array_pad(array_map('trim', $row), 9, '');
+        if(trim(implode('', $row)) !== ''){ $rows[] = array_slice($row, 0, 9); }
+    }
+    fclose($fh);
+    return $rows;
+}
 function rm_stok_sync(PDO $db, string $donem, int $urunId): void
 {
     $depoId = (int)$db->query("SELECT id FROM maliyet_depolar ORDER BY id LIMIT 1")->fetchColumn();
@@ -109,6 +170,8 @@ function rm_stok_sync(PDO $db, string $donem, int $urunId): void
             ->execute([$donem,$depoId,$urunId,(float)$r['giren'],(float)$r['sevk'],(float)$r['fire'],'Stok hareketlerinden otomatik güncellendi']);
     }
 }
+
+if(isset($_GET['recete_sablon'])){ rm_recete_template_download(); }
 
 $db->exec("CREATE TABLE IF NOT EXISTS maliyet_urunler (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -271,7 +334,9 @@ $db->exec("CREATE TABLE IF NOT EXISTS maliyet_silinen_urunler (
     deleted_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci");
 
-$db->exec("INSERT INTO recete_donemler (donem,donem_adi,toplam_uretim,durum,son_hesaplama) VALUES ('2026-04','Nisan 2026',600000,'Açık',NOW()) ON DUPLICATE KEY UPDATE donem_adi=VALUES(donem_adi), durum=VALUES(durum)");
+$aylar2026 = [1=>'Ocak',2=>'Şubat',3=>'Mart',4=>'Nisan',5=>'Mayıs',6=>'Haziran',7=>'Temmuz',8=>'Ağustos',9=>'Eylül',10=>'Ekim',11=>'Kasım',12=>'Aralık'];
+$donemIns = $db->prepare("INSERT INTO recete_donemler (donem,donem_adi,toplam_uretim,durum,son_hesaplama) VALUES (?,?,0,'Açık',NULL) ON DUPLICATE KEY UPDATE donem_adi=VALUES(donem_adi), durum=VALUES(durum)");
+foreach($aylar2026 as $m=>$ad){ $donemIns->execute([sprintf('2026-%02d',$m), $ad.' 2026']); }
 $urunSeed = [
     ['SU-PET-033','0,33 L Pet Şişe Su','PET Şişeler','PET Şişe',24],
     ['SU-PET-050','0,50 L Pet Şişe Su','PET Şişeler','PET Şişe',24],
@@ -464,6 +529,27 @@ if($pet033ExcelId > 0){
     }
 }
 
+$summaryBomIns = $db->prepare("INSERT INTO recete_bom (urun_id,donem,versiyon,aciklama,aktif) VALUES (?,'2026-04','2026-04',?,1) ON DUPLICATE KEY UPDATE aciklama=VALUES(aciklama), aktif=1");
+$summaryBomGet = $db->prepare("SELECT id FROM recete_bom WHERE urun_id=? AND donem='2026-04' AND versiyon='2026-04' LIMIT 1");
+$summaryBomKalemIns = $db->prepare("INSERT INTO recete_bom_kalemleri (recete_id,hammadde_id,alis_fiyati,para_cinsi,doviz_kuru,bolen,tuketim_miktari,tuketim_birimi,birim_fiyat,koli_ici_adet,fire_orani) VALUES (?,?,?,?,?,?,?,?,?,?,?)");
+foreach($excelNisanProducts as $p){
+    if($p[0] === 'SU-PET-033'){ continue; }
+    $deletedProductQ->execute([$p[0]]);
+    if($deletedProductQ->fetchColumn()){ continue; }
+    $uidQ = $db->prepare("SELECT id FROM maliyet_urunler WHERE urun_kodu=? LIMIT 1");
+    $uidQ->execute([$p[0]]);
+    $uid = (int)$uidQ->fetchColumn();
+    if($uid <= 0){ continue; }
+    $summaryBomIns->execute([$uid, $p[8].' Excel Nisan 2026 toplam reçete fiyatı']);
+    $summaryBomGet->execute([$uid]);
+    $bomId = (int)$summaryBomGet->fetchColumn();
+    if($bomId <= 0){ continue; }
+    $db->prepare("DELETE FROM recete_bom_kalemleri WHERE recete_id=?")->execute([$bomId]);
+    $kid = rm_kalem_id($db, 'Hammadde', 'Hammadde Toplamı', 'Koli', 0);
+    $netHammadde = ((float)$p[6]) / 1.03;
+    $summaryBomKalemIns->execute([$bomId,$kid,$netHammadde,'TL',1,1,1,'adet/koli',$netHammadde,1,3]);
+}
+
 $tab = (string)($_GET['tab'] ?? 'ozet');
 if(!in_array($tab, ['ozet','urunler','hammaddeler','fiyatlar','receteler','uretim','giderler','nakliye','stok_hareketleri'], true)){ $tab = 'ozet'; }
 $donem = (string)($_GET['donem'] ?? '2026-04');
@@ -548,6 +634,40 @@ try {
             $db->prepare("DELETE FROM maliyet_urunler WHERE id=?")->execute([$urunId]);
             $tab = 'urunler';
             $message = 'Ürün silindi.';
+        } elseif($action === 'bom_excel_yukle'){
+            $urunId = (int)($_POST['urun_id'] ?? 0);
+            if($urunId <= 0){ throw new RuntimeException('Ürün seçimi eksik.'); }
+            $rows = rm_read_recete_upload($_FILES['recete_excel'] ?? []);
+            if(!$rows){ throw new RuntimeException('Excel içinde aktarılacak reçete satırı bulunamadı.'); }
+            $aciklama = trim((string)($_POST['aciklama'] ?? 'Excel reçete aktarımı'));
+            $db->prepare("INSERT INTO recete_bom (urun_id,donem,versiyon,aciklama,aktif) VALUES (?,?,?,?,1) ON DUPLICATE KEY UPDATE aciklama=VALUES(aciklama), aktif=1")
+                ->execute([$urunId,$donem,$donem,$aciklama]);
+            $q = $db->prepare("SELECT id FROM recete_bom WHERE urun_id=? AND donem=? AND versiyon=? LIMIT 1");
+            $q->execute([$urunId,$donem,$donem]);
+            $receteId = (int)$q->fetchColumn();
+            if($receteId <= 0){ throw new RuntimeException('Reçete kaydı oluşturulamadı.'); }
+            $db->prepare("DELETE FROM recete_bom_kalemleri WHERE recete_id=?")->execute([$receteId]);
+            $ins = $db->prepare("INSERT INTO recete_bom_kalemleri (recete_id,hammadde_id,alis_fiyati,para_cinsi,doviz_kuru,bolen,tuketim_miktari,tuketim_birimi,birim_fiyat,koli_ici_adet,fire_orani) VALUES (?,?,?,?,?,?,?,?,?,?,?)");
+            $count = 0;
+            foreach($rows as $r){
+                $ad = trim((string)($r[0] ?? ''));
+                if($ad === ''){ continue; }
+                $alis = rm_num($r[1] ?? 0);
+                $para = strtoupper(trim((string)($r[2] ?? 'TL')));
+                if(!in_array($para, ['TL','USD','EUR'], true)){ $para = 'TL'; }
+                $kur = max(rm_num($r[3] ?? 1), 0.000001);
+                $bolen = max(rm_num($r[4] ?? 1), 0.000001);
+                $miktar = rm_num($r[5] ?? 0);
+                $birim = trim((string)($r[6] ?? 'adet/koli'));
+                $koli = rm_num($r[7] ?? 1);
+                $fire = rm_num($r[8] ?? 0);
+                $kid = rm_kalem_id($db, 'Hammadde', $ad, str_contains($birim, 'gr') || str_contains($birim, 'kg') ? 'Kg' : 'Adet', 0);
+                $ins->execute([$receteId,$kid,$alis,$para,$kur,$bolen,$miktar,$birim,($alis*$kur)/$bolen,$koli,$fire]);
+                $count++;
+            }
+            $selectedId = $urunId;
+            $tab = 'receteler';
+            $message = $count . ' reçete satırı Excelden aktarıldı.';
         } elseif($action === 'bom_kaydet' || $action === 'bom_kopyala'){
             $urunId = (int)($_POST['urun_id'] ?? 0);
             $versiyon = trim((string)($_POST['versiyon'] ?? $donem));
@@ -1136,6 +1256,10 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
     .recipe-product-btn strong{display:block;font-size:12px;line-height:1.25;white-space:normal}
     .recipe-product-btn .bom-code{font-size:9px}
     .recipe-product-btn .bom-ok{float:none;display:inline-block;margin-top:6px}
+    .template-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid #bfdbfe;background:#eff6ff;color:#1d4ed8;border-radius:10px;padding:10px 12px;font-size:12px;font-weight:950;text-decoration:none;cursor:pointer}
+    .template-btn.dark{background:#0f172a;border-color:#0f172a;color:#fff}
+    .excel-upload{display:inline-flex!important;align-items:center;justify-content:center;min-width:auto!important;border:1px solid #dbe3ee;background:#fff;color:#334155;border-radius:10px;padding:10px 12px;font-size:12px;font-weight:950;cursor:pointer}
+    .excel-upload input{display:none}
     .pet033-cost-summary{display:grid;grid-template-columns:1.1fr 1fr 1fr 1.1fr;gap:16px;padding:16px;background:#fff;border-bottom:1px solid #e5e7eb}
     .pet033-cost-card{border:1px solid #dbe3ee;border-radius:14px;padding:16px 18px;background:#f8fafc}
     .pet033-cost-card span{display:block;color:#64748b;font-size:11px;font-weight:950;text-transform:uppercase}
@@ -1173,7 +1297,7 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
             </aside>
             <?php $isPet033Recipe = $selectedProductCode === 'SU-PET-033'; ?>
             <div class="recipe-inline" id="recipePopup">
-            <form method="POST" class="bom-editor" id="bomForm">
+            <form method="POST" class="bom-editor" id="bomForm" enctype="multipart/form-data">
                 <input type="hidden" name="action" value="bom_kaydet" id="bomAction">
                 <input type="hidden" name="urun_id" value="<?php echo (int)$selectedId; ?>">
                 <input type="hidden" name="versiyon" value="<?php echo rm_e($donem); ?>">
@@ -1188,6 +1312,9 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
                         <p class="muted recipe-note">Birim miktarı ve birim fiyat girildiğinde satır toplamı otomatik hesaplanır.</p>
                     </div>
                     <div class="bom-actions recipe-actions">
+                        <a class="template-btn" href="?tab=receteler&donem=<?php echo rm_e($donem); ?>&recete_sablon=1">Örnek Excel</a>
+                        <label class="excel-upload">Excel Yükle<input type="file" name="recete_excel" accept=".xls,.xlsx,.xlsm,.csv,.txt"></label>
+                        <button type="submit" class="template-btn dark" onclick="document.getElementById('bomAction').value='bom_excel_yukle'">Exceli Aktar</button>
                         <label>Açıklama<br><input name="aciklama" value="<?php echo rm_e($activeBom['aciklama'] ?? ''); ?>"></label>
                         <button type="button" class="recipe-popup-close" onclick="document.getElementById('recipePopup').classList.remove('show')">Kapat</button>
                         <button type="submit" class="primary-add">Reçeteyi Kaydet</button>
