@@ -615,6 +615,9 @@ foreach($urunMaliyetleri as $u){
 }
 $totalProduction = $usedQty > 0 ? $usedQty : (float)($currentDonem['toplam_uretim'] ?? 0);
 $avgCost = $usedQty > 0 ? $weightedTotal / $usedQty : 0;
+$uretimToplam = array_sum(array_map(fn($u) => (float)$u['koli_miktari'], $uretimler));
+$uretimAktif = count(array_filter($uretimler, fn($u) => (float)$u['koli_miktari'] > 0));
+$uretimEnYuksek = $uretimler ? max(array_map(fn($u) => (float)$u['koli_miktari'], $uretimler)) : 0;
 $warnings = [];
 if(!$fiyatlar){ $warnings[] = 'Hammadde fiyatları tanımlanmamış.'; }
 if(!$urunMaliyetleri){ $warnings[] = 'Aktif reçete maliyeti bulunamadı.'; }
@@ -696,6 +699,7 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
 .product-catalogue.list-view .product-module{display:grid;grid-template-columns:minmax(240px,1.3fr) minmax(300px,1fr) minmax(300px,1.15fr);align-items:center}.product-catalogue.list-view .product-module-head{grid-column:1;padding-bottom:4px}.product-catalogue.list-view .product-module-body{grid-column:1;padding-top:0}.product-catalogue.list-view .product-specs{position:absolute;left:-9999px}.product-catalogue.list-view .product-flow{grid-column:2;margin:0;border:0}.product-catalogue.list-view .product-card-actions{grid-column:3;border-top:0;border-left:1px solid #eef2f7;border-radius:0 17px 17px 0;background:#fff}
 @media(max-width:1250px){.product-catalogue{grid-template-columns:repeat(2,minmax(0,1fr))}.product-controlbar{grid-template-columns:1fr}.view-switch{justify-self:start}.product-catalogue.list-view .product-module{grid-template-columns:1fr 1fr}.product-catalogue.list-view .product-card-actions{grid-column:1/-1;border-left:0;border-top:1px solid #eef2f7}}
 @media(max-width:760px){.product-overview{display:block}.product-overview .primary-add{width:100%;margin-top:16px}.product-summary{grid-template-columns:1fr 1fr}.product-catalogue{grid-template-columns:1fr}.product-catalogue.list-view .product-module{display:flex}.product-catalogue.list-view .product-specs{position:static}.product-catalogue.list-view .product-card-actions{border-left:0}.product-filters{margin-right:-4px}.view-switch{display:none}}
+.production-workspace{display:grid;gap:16px}.production-hero{display:flex;justify-content:space-between;gap:18px;align-items:center;background:linear-gradient(125deg,#0f172a,#1d4ed8);color:#fff;border-radius:20px;padding:24px 28px;box-shadow:0 18px 42px rgba(15,23,42,.18)}.production-hero small{display:inline-flex;background:rgba(96,165,250,.22);border:1px solid rgba(191,219,254,.3);border-radius:999px;padding:7px 11px;color:#bfdbfe;font-size:11px;font-weight:950;letter-spacing:.08em;text-transform:uppercase}.production-hero h2{margin:10px 0 6px;font-size:28px}.production-hero p{margin:0;color:#dbeafe;font-size:13px}.production-period{min-width:170px;text-align:center;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.22);border-radius:16px;padding:14px}.production-period span{display:block;color:#bfdbfe;font-size:11px;font-weight:900}.production-period strong{display:block;margin-top:4px;font-size:20px}.production-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.production-kpi{background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:16px 18px;box-shadow:0 10px 24px rgba(15,23,42,.045)}.production-kpi span{display:block;color:#64748b;font-size:11px;font-weight:950;text-transform:uppercase}.production-kpi strong{display:block;margin-top:7px;color:#0f172a;font-size:24px}.production-kpi em{display:block;margin-top:4px;color:#2563eb;font-size:11px;font-style:normal;font-weight:900}.production-panel{background:#fff;border:1px solid #e2e8f0;border-radius:18px;overflow:hidden;box-shadow:0 12px 30px rgba(15,23,42,.05)}.production-panel-head{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:18px 20px;border-bottom:1px solid #e2e8f0}.production-panel-head h3{margin:0;color:#0f172a;font-size:18px}.production-panel-head p{margin:4px 0 0;color:#64748b;font-size:12px}.production-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;padding:16px}.production-card{border:1px solid #e2e8f0;border-radius:15px;padding:14px;background:#f8fafc}.production-card-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.production-code{display:inline-flex;background:#e0ecff;color:#1d4ed8;border-radius:999px;padding:5px 8px;font-size:10px;font-weight:950}.production-card h4{margin:10px 0 4px;color:#0f172a;font-size:15px;line-height:1.35}.production-card .muted{font-size:11px}.production-qty{font-size:20px;font-weight:950;color:#0f172a;text-align:right}.production-qty small{display:block;color:#64748b;font-size:10px;font-weight:900}.production-bar{height:9px;background:#e2e8f0;border-radius:999px;overflow:hidden;margin-top:13px}.production-bar span{display:block;height:100%;background:linear-gradient(90deg,#16a34a,#2563eb);border-radius:999px}.production-meta{display:flex;justify-content:space-between;margin-top:8px;color:#64748b;font-size:11px;font-weight:800}.production-table{padding:0 16px 16px}.production-table .rm-table{table-layout:fixed}.production-table th,.production-table td{font-size:12px;padding:10px}.production-table .rm-product{word-break:break-word}.production-ratio{display:flex;align-items:center;gap:8px}.production-ratio i{display:block;flex:1;height:7px;background:#e2e8f0;border-radius:999px;overflow:hidden}.production-ratio i b{display:block;height:100%;background:#2563eb}@media(max-width:1050px){.production-grid,.production-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.production-hero{align-items:flex-start}}@media(max-width:720px){.production-hero{display:block;padding:20px}.production-period{text-align:left;margin-top:14px}.production-grid,.production-kpis{grid-template-columns:1fr}.production-table th:nth-child(1),.production-table td:nth-child(1){display:none}.production-table th,.production-table td{font-size:11px;padding:8px 6px}.production-qty{text-align:left}}
 </style>
 </head>
 <body>
@@ -1004,7 +1008,49 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
     <?php endif; ?>
 
     <?php if($tab==='uretim'): ?>
-    <section class="rm-panel"><h3>Üretim</h3><div class="rm-table-wrap"><table class="rm-table"><thead><tr><th>Dönem</th><th>Kod</th><th>Ürün</th><th>Koli Miktarı</th><th>Dağılım Oranı</th></tr></thead><tbody><?php foreach($uretimler as $u): $rate=$totalProduction>0 ? ((float)$u['koli_miktari']/$totalProduction*100) : 0; ?><tr><td><?php echo rm_e($u['donem']); ?></td><td><?php echo rm_e($u['urun_kodu'] ?? ''); ?></td><td class="rm-product"><?php echo rm_e($u['urun_adi']); ?></td><td class="num"><?php echo number_format((float)$u['koli_miktari'],0,',','.'); ?></td><td class="num"><?php echo number_format($rate,2,',','.'); ?>%</td></tr><?php endforeach; ?></tbody></table></div></section>
+    <section class="production-workspace">
+        <div class="production-hero">
+            <div>
+                <small>Dönemsel üretim paneli</small>
+                <h2><?php echo rm_e($currentDonem['donem_adi']); ?> Üretim Takibi</h2>
+                <p>Ürün bazlı koli miktarlarını, dönem toplamını ve üretim dağılımını tek ekranda izleyin.</p>
+            </div>
+            <div class="production-period"><span>Dönem Durumu</span><strong><?php echo rm_e($currentDonem['durum']); ?></strong></div>
+        </div>
+        <div class="production-kpis">
+            <div class="production-kpi"><span>Dönem Toplamı</span><strong><?php echo number_format($uretimToplam,0,',','.'); ?></strong><em>koli</em></div>
+            <div class="production-kpi"><span>Aktif Ürün</span><strong><?php echo (int)$uretimAktif; ?></strong><em>üretim girilmiş</em></div>
+            <div class="production-kpi"><span>En Yüksek Ürün</span><strong><?php echo number_format($uretimEnYuksek,0,',','.'); ?></strong><em>koli</em></div>
+            <div class="production-kpi"><span>Ortalama</span><strong><?php echo $uretimAktif>0 ? number_format($uretimToplam/$uretimAktif,0,',','.') : '0'; ?></strong><em>koli / aktif ürün</em></div>
+        </div>
+        <div class="production-panel">
+            <div class="production-panel-head">
+                <div><h3>Ürün Bazlı Üretim</h3><p><?php echo rm_e($currentDonem['donem_adi']); ?> dönemine ait modüler üretim dağılımı.</p></div>
+                <span class="rm-pill"><?php echo count($uretimler); ?> ürün</span>
+            </div>
+            <div class="production-grid">
+                <?php foreach($uretimler as $u): $qty=(float)$u['koli_miktari']; $rate=$uretimToplam>0 ? ($qty/$uretimToplam*100) : 0; ?>
+                <article class="production-card">
+                    <div class="production-card-top">
+                        <span class="production-code"><?php echo rm_e($u['urun_kodu'] ?? '-'); ?></span>
+                        <div class="production-qty"><?php echo number_format($qty,0,',','.'); ?><small>koli</small></div>
+                    </div>
+                    <h4><?php echo rm_e($u['urun_adi']); ?></h4>
+                    <span class="muted"><?php echo rm_e($u['donem']); ?></span>
+                    <div class="production-bar"><span style="width:<?php echo min(100, $rate); ?>%"></span></div>
+                    <div class="production-meta"><span>Dağılım</span><b><?php echo number_format($rate,2,',','.'); ?>%</b></div>
+                </article>
+                <?php endforeach; ?>
+            </div>
+            <div class="production-table">
+                <div class="rm-table-wrap"><table class="rm-table"><thead><tr><th>Dönem</th><th>Kod</th><th>Ürün</th><th>Koli Miktarı</th><th>Dağılım</th></tr></thead><tbody>
+                    <?php foreach($uretimler as $u): $qty=(float)$u['koli_miktari']; $rate=$uretimToplam>0 ? ($qty/$uretimToplam*100) : 0; ?>
+                    <tr><td><?php echo rm_e($u['donem']); ?></td><td><?php echo rm_e($u['urun_kodu'] ?? ''); ?></td><td class="rm-product"><?php echo rm_e($u['urun_adi']); ?></td><td class="num"><?php echo number_format($qty,0,',','.'); ?></td><td><div class="production-ratio"><i><b style="width:<?php echo min(100, $rate); ?>%"></b></i><span><?php echo number_format($rate,2,',','.'); ?>%</span></div></td></tr>
+                    <?php endforeach; ?>
+                </tbody></table></div>
+            </div>
+        </div>
+    </section>
     <?php endif; ?>
 
     <?php if($tab==='giderler'): $costTab = $_GET['cost'] ?? 'tum'; if(!in_array($costTab, ['tum','hammadde','genel','nakliye'], true)){ $costTab='tum'; } ?>
