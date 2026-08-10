@@ -672,6 +672,30 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
     .cost-fit td:nth-child(n+3):nth-child(-n+6){display:none}
     .cost-fit th,.cost-fit td{font-size:10px;padding:7px 5px}
 }
+/* Products workspace: one component surface for catalogue, recipe and cost actions. */
+.product-workspace{display:grid;gap:16px}
+.product-overview{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;padding:22px 24px;background:#fff;border:1px solid #e2e8f0;border-radius:18px;box-shadow:0 12px 30px rgba(15,23,42,.05)}
+.product-overview small{display:block;margin-bottom:7px;color:#2563eb;font-size:11px;font-weight:950;letter-spacing:.08em;text-transform:uppercase}
+.product-overview h2{margin:0;color:#0f172a;font-size:24px}.product-overview p{max-width:680px;margin:7px 0 0;color:#64748b;font-size:13px;line-height:1.55}
+.product-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.summary-tile{position:relative;overflow:hidden;background:#fff;border:1px solid #e2e8f0;border-radius:15px;padding:16px 18px}
+.summary-tile:after{content:'';position:absolute;right:-14px;bottom:-18px;width:58px;height:58px;border-radius:50%;background:#eff6ff}
+.summary-tile span{display:block;color:#64748b;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.04em}.summary-tile strong{display:block;margin-top:7px;color:#0f172a;font-size:25px}.summary-tile.alert strong{color:#c2410c}
+.product-controlbar{display:grid;grid-template-columns:minmax(240px,1.2fr) minmax(0,2fr) auto;align-items:center;gap:12px;padding:12px;background:#fff;border:1px solid #e2e8f0;border-radius:15px}
+.product-searchbox{position:relative}.product-searchbox:before{content:'Ara';position:absolute;left:13px;top:50%;transform:translateY(-50%);font-size:10px;font-weight:950;color:#2563eb;text-transform:uppercase}.product-searchbox input{width:100%;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:11px;padding:11px 12px 11px 48px;font-size:13px}
+.product-filters{display:flex;gap:7px;overflow:auto;padding-bottom:1px}.product-filter{white-space:nowrap;border:1px solid #dbe3ee;background:#f8fafc;color:#475569;border-radius:999px;padding:8px 11px;font-size:11px;font-weight:900;cursor:pointer}.product-filter.active{border-color:#2563eb;background:#2563eb;color:#fff}
+.view-switch{display:flex;border:1px solid #dbe3ee;border-radius:10px;padding:3px}.view-switch button{border:0;background:transparent;color:#64748b;border-radius:7px;padding:7px 10px;font-size:11px;font-weight:900;cursor:pointer}.view-switch button.active{background:#eaf2ff;color:#1d4ed8}
+.product-catalogue{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.product-catalogue.list-view{grid-template-columns:1fr}
+.product-module{display:flex;flex-direction:column;min-width:0;background:#fff;border:1px solid #e2e8f0;border-radius:17px;box-shadow:0 10px 24px rgba(15,23,42,.045);transition:.18s ease}.product-module:hover{border-color:#bfdbfe;transform:translateY(-2px);box-shadow:0 16px 30px rgba(37,99,235,.09)}
+.product-module-head{display:flex;justify-content:space-between;gap:12px;padding:16px 16px 12px}.product-code{display:inline-flex;background:#eff6ff;color:#1d4ed8;border-radius:999px;padding:5px 8px;font-size:10px;font-weight:950;letter-spacing:.03em}.recipe-state{font-size:10px;font-weight:950;border-radius:999px;padding:5px 8px;background:#dcfce7;color:#047857}.recipe-state.missing{background:#fff7ed;color:#c2410c}
+.product-module-body{padding:0 16px 15px}.product-module-body h3{margin:0;color:#0f172a;font-size:16px;line-height:1.35}.product-group-label{display:block;margin-top:5px;color:#64748b;font-size:11px;font-weight:800}
+.product-specs{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:15px}.product-spec{min-width:0;background:#f8fafc;border:1px solid #eef2f7;border-radius:10px;padding:9px}.product-spec span{display:block;color:#94a3b8;font-size:9px;font-weight:950;text-transform:uppercase}.product-spec strong{display:block;overflow:hidden;margin-top:4px;color:#334155;font-size:11px;text-overflow:ellipsis;white-space:nowrap}
+.product-flow{display:grid;grid-template-columns:repeat(4,1fr);margin-top:auto;border-top:1px solid #eef2f7}.product-flow a,.product-flow button{display:block;border:0;border-right:1px solid #eef2f7;background:#fff;color:#475569;padding:11px 5px;text-align:center;text-decoration:none;font-size:10px;font-weight:900;cursor:pointer}.product-flow>*:last-child{border-right:0}.product-flow a:hover,.product-flow button:hover{background:#eff6ff;color:#1d4ed8}
+.product-card-actions{display:flex;gap:7px;padding:10px 12px;background:#f8fafc;border-top:1px solid #eef2f7;border-radius:0 0 17px 17px}.product-card-actions button{flex:1;border:1px solid #dbe3ee;border-radius:9px;background:#fff;color:#475569;padding:8px;font-size:10px;font-weight:900;cursor:pointer}.product-card-actions button.delete{flex:0 0 auto;color:#dc2626;border-color:#fecaca;background:#fff7f7}
+.product-empty{display:none;grid-column:1/-1;padding:40px;text-align:center;background:#fff;border:1px dashed #cbd5e1;border-radius:16px;color:#64748b}.product-empty strong{display:block;margin-bottom:5px;color:#0f172a}
+.product-catalogue.list-view .product-module{display:grid;grid-template-columns:minmax(240px,1.3fr) minmax(300px,1fr) minmax(300px,1.15fr);align-items:center}.product-catalogue.list-view .product-module-head{grid-column:1;padding-bottom:4px}.product-catalogue.list-view .product-module-body{grid-column:1;padding-top:0}.product-catalogue.list-view .product-specs{position:absolute;left:-9999px}.product-catalogue.list-view .product-flow{grid-column:2;margin:0;border:0}.product-catalogue.list-view .product-card-actions{grid-column:3;border-top:0;border-left:1px solid #eef2f7;border-radius:0 17px 17px 0;background:#fff}
+@media(max-width:1250px){.product-catalogue{grid-template-columns:repeat(2,minmax(0,1fr))}.product-controlbar{grid-template-columns:1fr}.view-switch{justify-self:start}.product-catalogue.list-view .product-module{grid-template-columns:1fr 1fr}.product-catalogue.list-view .product-card-actions{grid-column:1/-1;border-left:0;border-top:1px solid #eef2f7}}
+@media(max-width:760px){.product-overview{display:block}.product-overview .primary-add{width:100%;margin-top:16px}.product-summary{grid-template-columns:1fr 1fr}.product-catalogue{grid-template-columns:1fr}.product-catalogue.list-view .product-module{display:flex}.product-catalogue.list-view .product-specs{position:static}.product-catalogue.list-view .product-card-actions{border-left:0}.product-filters{margin-right:-4px}.view-switch{display:none}}
 </style>
 </head>
 <body>
@@ -737,32 +761,35 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
     <?php endif; ?>
 
     <?php if($tab==='urunler'): ?>
-    <section class="product-list-card">
-        <div class="product-list-top">
-            <h3>KAYITLI ÜRÜN LİSTESİ (<?php echo count($urunler); ?>)</h3>
-            <div class="product-list-actions">
-                <input class="product-search" id="productSearchModern" placeholder="Ürün adı, kod ara...">
-                <button class="primary-add" type="button" onclick="openProductCard()">+ Yeni Ürün</button>
-            </div>
+    <section class="product-workspace">
+        <div class="product-overview">
+            <div><small>Ürün merkezi</small><h2>Ürün portföyü</h2><p>Ürün kartlarını yönetin; reçete, fiyat, üretim ve koli maliyeti adımlarına tek noktadan geçin.</p></div>
+            <button class="primary-add" type="button" onclick="openProductCard()">+ Yeni Ürün</button>
         </div>
-        <div class="rm-table-wrap" style="padding:0">
-            <table class="product-list-table">
-                <thead><tr><th>Ürün Kodu</th><th>Ürün Adı</th><th>Varyant</th><th>Hacim</th><th>Koli İçi Adet</th><th>Ambalaj Tipi</th><th>Durum</th><th style="text-align:right">İşlemler</th></tr></thead>
-                <tbody>
-                <?php foreach($urunler as $u): $code=rm_urun_kodu_satir($u); $hacim=rm_urun_hacim($u); $varyant=rm_urun_varyant($u); ?>
-                    <tr class="product-modern-row" data-search="<?php echo rm_e(rm_lower($code.' '.$u['urun_adi'].' '.$varyant.' '.$u['ambalaj_tipi'])); ?>">
-                        <td class="code-text"><?php echo rm_e($code); ?></td>
-                        <td class="product-name"><?php echo rm_e($u['urun_adi']); ?></td>
-                        <td><?php echo rm_e($varyant); ?></td>
-                        <td><strong><?php echo rm_e($hacim); ?></strong></td>
-                        <td><strong><?php echo number_format((float)$u['koli_ici_adet'],0,',','.'); ?> Adet</strong></td>
-                        <td><?php echo rm_e($u['ambalaj_tipi']); ?></td>
-                        <td><span class="active-badge">Aktif</span></td>
-                        <td><div class="product-icon-actions"><button class="product-icon" type="button" title="Düzelt" data-id="<?php echo (int)$u['id']; ?>" data-code="<?php echo rm_e($code); ?>" data-name="<?php echo rm_e($u['urun_adi']); ?>" data-variant="<?php echo rm_e($u['urun_grubu']); ?>" data-hacim="<?php echo rm_e($hacim); ?>" data-koli="<?php echo number_format((float)$u['koli_ici_adet'],0,',','.'); ?>" data-ambalaj="<?php echo rm_e($u['ambalaj_tipi']); ?>" onclick="openProductCard(this)">Düzelt</button><button class="product-icon delete" type="button" title="Sil" data-id="<?php echo (int)$u['id']; ?>" data-code="<?php echo rm_e($code); ?>" data-name="<?php echo rm_e($u['urun_adi']); ?>" onclick="confirmDeleteBtn(this)">Sil</button></div></td>
-                    </tr>
-                <?php endforeach; ?>
-                </tbody>
-            </table>
+        <div class="product-summary" aria-label="Ürün özeti">
+            <div class="summary-tile"><span>Toplam ürün</span><strong><?php echo (int)$urunKpi['toplam']; ?></strong></div>
+            <div class="summary-tile"><span>Aktif ürün</span><strong><?php echo (int)$urunKpi['aktif']; ?></strong></div>
+            <div class="summary-tile"><span>Ürün grubu</span><strong><?php echo (int)$urunKpi['grup']; ?></strong></div>
+            <div class="summary-tile alert"><span>Eksik reçete</span><strong><?php echo (int)$urunKpi['eksik']; ?></strong></div>
+        </div>
+        <div class="product-controlbar">
+            <label class="product-searchbox"><input id="productSearchModern" type="search" placeholder="Ürün adı, kod veya ambalaj tipi..." aria-label="Ürünlerde ara"></label>
+            <div class="product-filters" aria-label="Ürün grupları">
+                <button class="product-filter active" type="button" data-group="">Tümü <span><?php echo count($urunler); ?></span></button>
+                <?php foreach($urunGruplari as $key=>$g): ?><button class="product-filter" type="button" data-group="<?php echo rm_e($key); ?>"><?php echo rm_e($g['baslik']); ?> <span><?php echo count($g['urunler']); ?></span></button><?php endforeach; ?>
+            </div>
+            <div class="view-switch" aria-label="Görünüm seçimi"><button class="active" type="button" data-view="grid">Kartlar</button><button type="button" data-view="list">Liste</button></div>
+        </div>
+        <div class="product-catalogue" id="productCatalogue">
+            <?php foreach($urunler as $u): $code=rm_urun_kodu_satir($u); $hacim=rm_urun_hacim($u); $varyant=rm_urun_varyant($u); $group=rm_urun_grubu($u); $hasRecipe=(int)($bomDurum[(int)$u['id']] ?? 0)>0; ?>
+            <article class="product-module" data-group="<?php echo rm_e($group[0]); ?>" data-search="<?php echo rm_e(rm_lower($code.' '.$u['urun_adi'].' '.$varyant.' '.$u['ambalaj_tipi'].' '.$group[1])); ?>">
+                <div class="product-module-head"><span class="product-code"><?php echo rm_e($code); ?></span><span class="recipe-state <?php echo $hasRecipe?'':'missing'; ?>"><?php echo $hasRecipe?'Reçete hazır':'Reçete eksik'; ?></span></div>
+                <div class="product-module-body"><h3><?php echo rm_e($u['urun_adi']); ?></h3><span class="product-group-label"><?php echo rm_e($group[1].' · '.$varyant); ?></span><div class="product-specs"><div class="product-spec"><span>Hacim</span><strong><?php echo rm_e($hacim ?: '-'); ?></strong></div><div class="product-spec"><span>Koli içi</span><strong><?php echo number_format((float)$u['koli_ici_adet'],0,',','.'); ?> adet</strong></div><div class="product-spec"><span>Ambalaj</span><strong><?php echo rm_e($u['ambalaj_tipi']); ?></strong></div></div></div>
+                <nav class="product-flow" aria-label="<?php echo rm_e($u['urun_adi']); ?> modülleri"><a href="?tab=receteler&amp;donem=<?php echo rm_e($donem); ?>&amp;urun_id=<?php echo (int)$u['id']; ?>">Reçete</a><button type="button" data-name="<?php echo rm_e($u['urun_adi']); ?>" onclick="openPriceModal(this)">Fiyat</button><a href="?tab=uretim&amp;donem=<?php echo rm_e($donem); ?>">Üretim</a><a href="?tab=ozet&amp;donem=<?php echo rm_e($donem); ?>&amp;urun_id=<?php echo (int)$u['id']; ?>">Maliyet</a></nav>
+                <div class="product-card-actions"><button type="button" data-id="<?php echo (int)$u['id']; ?>" data-code="<?php echo rm_e($code); ?>" data-name="<?php echo rm_e($u['urun_adi']); ?>" data-variant="<?php echo rm_e($u['urun_grubu']); ?>" data-hacim="<?php echo rm_e($hacim); ?>" data-koli="<?php echo number_format((float)$u['koli_ici_adet'],0,',','.'); ?>" data-ambalaj="<?php echo rm_e($u['ambalaj_tipi']); ?>" onclick="openProductCard(this)">Ürün kartını düzenle</button><button class="delete" type="button" aria-label="Ürünü sil" data-id="<?php echo (int)$u['id']; ?>" data-code="<?php echo rm_e($code); ?>" data-name="<?php echo rm_e($u['urun_adi']); ?>" onclick="confirmDeleteBtn(this)">Sil</button></div>
+            </article>
+            <?php endforeach; ?>
+            <div class="product-empty" id="productEmpty"><strong>Uygun ürün bulunamadı</strong>Arama kelimesini veya ürün grubu filtresini değiştirin.</div>
         </div>
     </section>
     <div class="product-modal" id="productCardModal">
@@ -784,79 +811,6 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
             </form>
         </div>
     </div>
-    <section class="product-head">
-        <div><h1>Ürün Tanımları</h1><p>Sistemde maliyet hesaplamasına tabi tutulacak ambalajlı ürünlerin listesi</p></div>
-        <button class="primary-add" type="button" onclick="openProductForm('')">+ Yeni Ürün Ekle</button>
-    </section>
-    <section class="product-kpis">
-        <div class="product-kpi"><span>Toplam Ürün</span><strong><?php echo (int)$urunKpi['toplam']; ?></strong></div>
-        <div class="product-kpi"><span>Aktif Ürün</span><strong><?php echo (int)$urunKpi['aktif']; ?></strong></div>
-        <div class="product-kpi"><span>Ürün Grubu</span><strong><?php echo (int)$urunKpi['grup']; ?></strong></div>
-        <div class="product-kpi"><span>Eksik Reçete</span><strong><?php echo (int)$urunKpi['eksik']; ?></strong></div>
-    </section>
-    <section class="product-add" id="productForm">
-        <form method="POST" class="rm-form">
-            <input type="hidden" name="action" value="urun_kaydet">
-            <div class="rm-field"><label>Ürün Kodu</label><input name="urun_kodu" placeholder="SU-PET-033"></div>
-            <div class="rm-field"><label>Ürün Adı</label><input name="urun_adi" required></div>
-            <div class="rm-field"><label>Ürün Grubu</label><select name="urun_grubu" id="addGroup"><option>PET Şişeler</option><option>Bidon / Büyük Hacimli</option><option>Cam Ürünler</option><option>Damacana</option><option>Bardak</option></select></div>
-            <div class="rm-field"><label>Ambalaj Tipi</label><input name="ambalaj_tipi" value="PET"></div>
-            <div class="rm-field"><label>Koli İçi</label><input name="koli_ici_adet" value="24"></div>
-            <div class="rm-field"><label>&nbsp;</label><button class="primary-add">Kaydet</button></div>
-        </form>
-    </section>
-    <section class="product-tools">
-        <input id="productSearch" placeholder="Ürün adı, kod ara...">
-        <select id="groupFilter"><option value="">Gruplar</option><?php foreach($urunGruplari as $key=>$g): ?><option value="<?php echo rm_e($key); ?>"><?php echo rm_e($g['baslik']); ?></option><?php endforeach; ?></select>
-        <select id="statusFilter"><option value="">Durum</option><option value="aktif">Aktif</option><option value="pasif">Pasif</option></select>
-        <select id="sortProducts"><option value="az">Ürün Adı A-Z</option><option value="za">Ürün Adı Z-A</option><option value="kod">Ürün Kodu</option><option value="hacim">Hacim</option></select>
-    </section>
-    <section class="product-groups">
-        <?php foreach($urunGruplari as $key=>$g): ?>
-        <details class="product-group" open data-group="<?php echo rm_e($key); ?>">
-            <summary>
-                <div class="group-title"><strong><?php echo rm_e($g['baslik']); ?></strong><span><?php echo rm_e($g['aciklama']); ?></span></div>
-                <button class="mini-add" type="button" onclick="event.preventDefault();openProductForm('<?php echo rm_e($g['baslik']); ?>')">+ Ürün Ekle</button>
-                <span class="group-count"><?php echo count($g['urunler']); ?> ürün</span>
-            </summary>
-            <div class="rm-table-wrap">
-                <table class="product-table"><thead><tr><th>Ürün Kodu</th><th>Ürün Adı</th><th>Varyant</th><th>Hacim</th><th>Koli İçi</th><th>Durum</th><th>İşlemler</th></tr></thead><tbody>
-                <?php foreach($g['urunler'] as $u): $code = rm_urun_kodu_satir($u); ?>
-                    <tr class="product-row" data-group="<?php echo rm_e($key); ?>" data-status="aktif" data-name="<?php echo rm_e(rm_lower($u['urun_adi'].' '.$code)); ?>" data-code="<?php echo rm_e($code); ?>" data-hacim="<?php echo rm_e($u['urun_adi']); ?>">
-                        <td><span class="code-pill"><?php echo rm_e($code); ?></span></td>
-                        <td><strong><?php echo rm_e($u['urun_adi']); ?></strong></td>
-                        <td><?php echo rm_e($u['urun_grubu']); ?></td>
-                        <td><?php echo rm_e($u['urun_adi']); ?></td>
-                        <td><?php echo number_format((float)$u['koli_ici_adet'],2,',','.'); ?></td>
-                        <td><span class="status-pill">Aktif</span></td>
-                        <td><div class="row-actions"><button class="icon-btn" type="button" onclick="editProduct(this)">Düzenle</button><button class="icon-btn" type="button" data-name="<?php echo rm_e($u['urun_adi']); ?>" onclick="openPriceModal(this)">Fiyat</button><button class="delete-btn" type="button" data-id="<?php echo (int)$u['id']; ?>" data-code="<?php echo rm_e($code); ?>" data-name="<?php echo rm_e($u['urun_adi']); ?>" onclick="confirmDeleteBtn(this)">Sil</button></div></td>
-                    </tr>
-                    <tr class="edit-row"><td colspan="7"><form method="POST" class="rm-form"><input type="hidden" name="action" value="urun_guncelle"><input type="hidden" name="urun_id" value="<?php echo (int)$u['id']; ?>"><div class="rm-field"><label>Ürün Kodu</label><input name="urun_kodu" value="<?php echo rm_e($code); ?>"></div><div class="rm-field"><label>Ürün Adı</label><input name="urun_adi" value="<?php echo rm_e($u['urun_adi']); ?>"></div><div class="rm-field"><label>Ürün Grubu</label><input name="urun_grubu" value="<?php echo rm_e($u['urun_grubu']); ?>"></div><div class="rm-field"><label>Ambalaj Tipi</label><input name="ambalaj_tipi" value="<?php echo rm_e($u['ambalaj_tipi']); ?>"></div><div class="rm-field"><label>Koli İçi</label><input name="koli_ici_adet" value="<?php echo number_format((float)$u['koli_ici_adet'],2,',','.'); ?>"></div><div class="rm-field"><label>&nbsp;</label><button class="primary-add">Kaydet</button> <button class="icon-btn" type="button" onclick="cancelEdit(this)">Vazgeç</button></div></form></td></tr>
-                <?php endforeach; ?>
-                </tbody></table>
-            </div>
-            <div class="price-panel" style="margin:12px 16px 16px">
-                <div class="price-head">
-                    <div><h3>Fiyat Geçmişi</h3><p>Bu gruba ait ürün fiyatlarını buradan izleyebilir, satırdaki Fiyat butonuyla ekleyip düzeltebilirsiniz.</p></div>
-                    <div class="rate-boxes">
-                        <div class="rate-box"><span>USD/TL</span><strong><?php echo $kurOzet['usd'] > 0 ? number_format($kurOzet['usd'],4,',','.') : '-'; ?></strong></div>
-                        <div class="rate-box"><span>EUR/TL</span><strong><?php echo $kurOzet['eur'] > 0 ? number_format($kurOzet['eur'],4,',','.') : '-'; ?></strong></div>
-                    </div>
-                </div>
-                <div class="rm-table-wrap">
-                    <table class="product-table"><thead><tr><th>Tarih</th><th>Kategori</th><th>Ürün / Malzeme</th><th>Döviz Fiyatı</th><th>Döviz Adet</th><th>TL Birim</th><th>Hareket</th><th>İşlem</th></tr></thead><tbody>
-                    <?php $groupPrices = $fiyatlarByGroup[$key] ?? []; if(!$groupPrices): ?><tr><td colspan="8">Bu grup için fiyat geçmişi yok.</td></tr><?php endif; ?>
-                    <?php foreach(array_slice($groupPrices,0,24) as $f): $mv=(float)$f['hareket']; ?>
-                        <tr>
-                            <td><?php echo rm_e($f['fiyat_tarihi']); ?></td><td><?php echo rm_e($f['kategori']); ?></td><td><strong><?php echo rm_e($f['urun_adi']); ?></strong></td><td><?php echo rm_e($f['ton_fiyati']); ?></td><td><?php echo rm_e($f['doviz_adet']); ?></td><td class="num"><?php echo rm_money($f['tl_adet']); ?></td><td class="num <?php echo $mv>0 ? 'move-up' : ($mv<0 ? 'move-down' : ''); ?>"><?php echo $mv==0 ? '-' : (($mv>0 ? '+' : '').rm_money($mv)); ?></td><td><button type="button" class="icon-btn" data-name="<?php echo rm_e($f['urun_adi']); ?>" data-date="<?php echo rm_e($f['fiyat_tarihi']); ?>" data-cat="<?php echo rm_e($f['kategori']); ?>" data-ton="<?php echo rm_e($f['ton_fiyati']); ?>" data-doviz="<?php echo rm_e($f['doviz_adet']); ?>" data-tl="<?php echo number_format((float)$f['tl_adet'],2,',','.'); ?>" data-c033="<?php echo number_format((float)($f['cam_sise_033'] ?? 0),2,',','.'); ?>" data-c075="<?php echo number_format((float)($f['cam_sise_075'] ?? 0),2,',','.'); ?>" onclick="openPriceModal(this);fillPriceForm(this)">Düzelt</button></td>
-                        </tr>
-                    <?php endforeach; ?>
-                    </tbody></table>
-                </div>
-            </div>
-        </details>
-        <?php endforeach; ?>
-    </section>
     <div class="price-modal" id="priceModal">
         <div class="price-box">
             <div class="price-box-head"><div><h3 id="priceTitle">Fiyat Ekle / Düzelt</h3><p>Fiyatı kaydedin; aynı tarih ve ürün varsa kayıt güncellenir. Hareketler aşağıda görünür.</p></div><button class="icon-btn" type="button" onclick="closePriceModal()">Kapat</button></div>
@@ -886,7 +840,6 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
     </div>
     <div class="confirm-modal" id="deleteModal"><div class="confirm-box"><h3>Ürünü Sil</h3><p>Bu ürünü silmek istediğinizden emin misiniz?</p><p><strong id="delName"></strong><br><span class="code-pill" id="delCode"></span></p><form method="POST" class="confirm-actions"><input type="hidden" name="action" value="urun_sil"><input type="hidden" name="urun_id" id="delId"><button class="icon-btn" type="button" onclick="closeDelete()">Vazgeç</button><button class="delete-btn">Ürünü Sil</button></form></div></div>
     <script>
-    function openProductForm(group){ var f=document.getElementById('productForm'); f.classList.add('show'); if(group){ document.getElementById('addGroup').value=group; } f.scrollIntoView({behavior:'smooth',block:'center'}); }
     function openProductCard(btn){
         var m=document.getElementById('productCardModal');
         document.getElementById('productAction').value=btn ? 'urun_guncelle' : 'urun_kaydet';
@@ -900,13 +853,25 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
         m.classList.add('show');
     }
     function closeProductCard(){ document.getElementById('productCardModal').classList.remove('show'); }
-    var psModern=document.getElementById('productSearchModern');
-    if(psModern){ psModern.addEventListener('input', function(){
-        var q=this.value.toLocaleLowerCase('tr-TR');
-        document.querySelectorAll('.product-modern-row').forEach(function(r){ r.style.display = (!q || r.dataset.search.indexOf(q)>-1) ? '' : 'none'; });
-    }); }
-    function editProduct(btn){ btn.closest('tr').classList.add('editing'); }
-    function cancelEdit(btn){ btn.closest('tr').previousElementSibling.classList.remove('editing'); }
+    var psModern=document.getElementById('productSearchModern'), activeProductGroup='';
+    function filterProductModules(){
+        var q=psModern ? psModern.value.toLocaleLowerCase('tr-TR').trim() : '', visible=0;
+        document.querySelectorAll('.product-module').forEach(function(card){
+            var matchText=!q || card.dataset.search.indexOf(q)>-1;
+            var matchGroup=!activeProductGroup || card.dataset.group===activeProductGroup;
+            var show=matchText && matchGroup; card.style.display=show ? '' : 'none'; if(show) visible++;
+        });
+        var empty=document.getElementById('productEmpty'); if(empty){ empty.style.display=visible ? 'none' : 'block'; }
+    }
+    if(psModern){ psModern.addEventListener('input', filterProductModules); }
+    document.querySelectorAll('.product-filter').forEach(function(btn){ btn.addEventListener('click',function(){
+        document.querySelectorAll('.product-filter').forEach(function(b){ b.classList.remove('active'); });
+        this.classList.add('active'); activeProductGroup=this.dataset.group||''; filterProductModules();
+    }); });
+    document.querySelectorAll('.view-switch button').forEach(function(btn){ btn.addEventListener('click',function(){
+        document.querySelectorAll('.view-switch button').forEach(function(b){ b.classList.remove('active'); }); this.classList.add('active');
+        var catalogue=document.getElementById('productCatalogue'); if(catalogue){ catalogue.classList.toggle('list-view',this.dataset.view==='list'); }
+    }); });
     function confirmDeleteBtn(btn){ document.getElementById('delId').value=btn.dataset.id; document.getElementById('delCode').textContent=btn.dataset.code; document.getElementById('delName').textContent=btn.dataset.name; document.getElementById('deleteModal').classList.add('show'); }
     function closeDelete(){ document.getElementById('deleteModal').classList.remove('show'); }
     function openPriceModal(btn){
@@ -930,30 +895,6 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
         f.cam_sise_075.value=btn.dataset.c075||'0,00';
         f.scrollIntoView({behavior:'smooth',block:'center'});
     }
-    function filterProducts(){
-        var q=(document.getElementById('productSearch').value||'').toLocaleLowerCase('tr-TR'), gf=document.getElementById('groupFilter').value, sf=document.getElementById('statusFilter').value;
-        document.querySelectorAll('.product-group').forEach(function(g){
-            var any=false;
-            g.querySelectorAll('.product-row').forEach(function(r){
-                var ok=(!q || r.dataset.name.toLocaleLowerCase('tr-TR').indexOf(q)>-1) && (!gf || r.dataset.group===gf) && (!sf || r.dataset.status===sf);
-                r.style.display=ok'':'none';
-                if(r.nextElementSibling && r.nextElementSibling.classList.contains('edit-row')) r.nextElementSibling.style.display='none';
-                if(ok) any=true;
-            });
-            g.style.display=any'':'none';
-            if(q && any) g.open=true;
-        });
-    }
-    ['productSearch','groupFilter','statusFilter'].forEach(function(id){ document.getElementById(id).addEventListener('input',filterProducts); document.getElementById(id).addEventListener('change',filterProducts); });
-    document.getElementById('sortProducts').addEventListener('change', function(){
-        var mode=this.value;
-        document.querySelectorAll('.product-table tbody').forEach(function(tb){
-            Array.from(tb.querySelectorAll('.product-row')).sort(function(a,b){
-                var av=mode==='kod'a.dataset.code:(mode==='hacim'a.dataset.hacim:a.dataset.name), bv=mode==='kod'b.dataset.code:(mode==='hacim'b.dataset.hacim:b.dataset.name);
-                return mode==='za'bv.localeCompare(av,'tr'):av.localeCompare(bv,'tr');
-            }).forEach(function(r){ var e=r.nextElementSibling && r.nextElementSibling.classList.contains('edit-row') ? r.nextElementSibling : null; tb.appendChild(r); if(e) tb.appendChild(e); });
-        });
-    });
     </script>
     <?php endif; ?>
 
