@@ -53,6 +53,7 @@ function rm_urun_kodu_satir(array $u): string
 function rm_urun_grubu(array $u): array
 {
     $txt = rm_lower(($u['urun_adi'] ?? '') . ' ' . ($u['urun_grubu'] ?? '') . ' ' . ($u['ambalaj_tipi'] ?? ''));
+    if((string)($u['urun_kodu'] ?? '') === 'SU-PET-500'){ return ['pet','PET ÅiÅŸeler','PET ambalajlÄ± Ã¼rÃ¼nler']; }
     if(str_contains($txt, 'cam')){ return ['cam','Cam Ürünler','Cam ambalajlı ürünler']; }
     if(str_contains($txt, 'damacana') || str_contains($txt, '19')){ return ['damacana','Damacana','Polikarbon damacana ürünleri']; }
     if(str_contains($txt, 'bardak') || str_contains($txt, '200 cc')){ return ['bardak','Bardak','Tek kullanımlık bardak ürünleri']; }
@@ -276,7 +277,7 @@ $urunSeed = [
     ['SU-PET-050','0,50 L Pet Şişe Su','PET Şişeler','PET Şişe',24],
     ['SU-PET-100','1 L Pet Şişe Su','PET Şişeler','PET Şişe',12],
     ['SU-PET-150','1,5 L Pet Şişe Su','PET Şişeler','PET Şişe',6],
-    ['SU-PET-500','5 L Pet Şişe Su','Bidon / Büyük Hacimli','PET Şişe',4],
+    ['SU-PET-500','5 L Pet Şişe Su','PET Şişeler','PET Şişe',4],
     ['SU-CAM-033','0,33 L Cam Şişe Su','Cam Ürünler','Cam Şişe',24],
     ['SU-CAM-075','0,75 L Cam Şişe Su','Cam Ürünler','Cam Şişe',12],
     ['SU-DAM-1900','19 L Damacana Su','Damacana','Damacana',1],
@@ -403,8 +404,8 @@ $excelNisanProducts = [
     ['SU-PET-100','1 L Pet Şişe Su','PET Şişeler','PET Şişe',12,0,27.4595701258,48.2590403758,'1 lt Standart'],
     ['SU-PET-150','1,5 L Pet Şişe Su','PET Şişeler','PET Şişe',12,52193,32.9195491282,53.7190193782,'1,5 lt Standart'],
     ['SU-PET-150-EUR','1,5 L Pet Şişe Su Euro','PET Şişeler','PET Şişe',12,0,33.1141105676,53.9135808176,'1,5 lt Euro'],
-    ['SU-PET-500','5 L Pet Şişe Su','Bidon / Büyük Hacimli','PET Şişe',4,4011,28.5968782821,49.3963485321,'5 lt Standart'],
-    ['SU-PET-500-EUR','5 L Pet Şişe Su Euro','Bidon / Büyük Hacimli','PET Şişe',4,0,34.3197048011,55.1191750511,'5 lt Euro'],
+    ['SU-PET-500','5 L Pet Şişe Su','PET Şişeler','PET Şişe',4,4011,28.5968782821,49.3963485321,'5 lt Standart'],
+    ['SU-PET-500-EUR','5 L Pet Şişe Su Euro','PET Şişeler','PET Şişe',4,0,34.3197048011,55.1191750511,'5 lt Euro'],
     ['SU-CAM-033','0,33 L Cam Şişe Su','Cam Ürünler','Cam Şişe',24,0,58.5394760346,79.3389462846,'Cam Şişe 0,33'],
     ['SU-CAM-075','0,75 L Cam Şişe Su','Cam Ürünler','Cam Şişe',12,0,54.1276587185,74.9271289685,'Cam Şişe 0,75'],
     ['SU-DAM-1900','19 L Damacana Su','Damacana','Damacana',1,109104,3.8487428977,24.6482131477,'19 lt Standart'],
@@ -1127,6 +1128,14 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
     .bom-detail-head h3{margin:0;font-size:16px}.bom-detail-head button{border:0;background:#334155;color:#fff;border-radius:8px;padding:7px 10px;cursor:pointer}
     .bom-detail-body{padding:16px;font-size:13px;line-height:1.55;color:#334155}.bom-detail-body b{color:#0f172a}.bom-detail-body .result{margin-top:10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px;font-weight:900;color:#0f172a}
     .bom-detail-table{width:100%;border-collapse:collapse;font-size:12px}.bom-detail-table th{background:#eef2f7;color:#0f172a;text-align:left;padding:9px}.bom-detail-table td{border-bottom:1px solid #e5e7eb;padding:9px;vertical-align:top}.bom-detail-table td:last-child{font-weight:900;color:#0f172a;white-space:nowrap}
+    .recipe-mode .bom-layout{display:block}
+    .recipe-mode .bom-layout>aside{display:none!important}
+    .recipe-product-strip{display:flex;gap:8px;overflow-x:auto;padding:12px;margin-bottom:12px;background:#fff;border:1px solid #e2e8f0;border-radius:16px;box-shadow:0 10px 24px rgba(15,23,42,.04)}
+    .recipe-product-btn{min-width:150px;max-width:210px;border:1px solid #dbe3ee;border-radius:12px;background:#f8fafc;color:#0f172a;text-decoration:none;padding:10px 12px}
+    .recipe-product-btn.active{background:#eff6ff;border-color:#2563eb;box-shadow:0 0 0 1px #bfdbfe inset}
+    .recipe-product-btn strong{display:block;font-size:12px;line-height:1.25;white-space:normal}
+    .recipe-product-btn .bom-code{font-size:9px}
+    .recipe-product-btn .bom-ok{float:none;display:inline-block;margin-top:6px}
     .pet033-cost-summary{display:grid;grid-template-columns:1.1fr 1fr 1fr 1.1fr;gap:16px;padding:16px;background:#fff;border-bottom:1px solid #e5e7eb}
     .pet033-cost-card{border:1px solid #dbe3ee;border-radius:14px;padding:16px 18px;background:#f8fafc}
     .pet033-cost-card span{display:block;color:#64748b;font-size:11px;font-weight:950;text-transform:uppercase}
@@ -1140,6 +1149,16 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
     @media(max-width:900px){.bom-summary,.pet033-cost-summary{grid-template-columns:1fr}.recipe-actions label{min-width:100%}}
     </style>
     <section class="rm-panel">
+        <div class="recipe-product-strip">
+            <?php foreach($urunler as $u): ?>
+            <a class="recipe-product-btn <?php echo (int)$u['id']===$selectedId ? 'active' : ''; ?>" href="?tab=receteler&donem=<?php echo rm_e($donem); ?>&urun_id=<?php echo (int)$u['id']; ?>">
+                <?php $ok = ($bomDurum[(int)$u['id']] ?? 0) > 0; ?>
+                <strong><?php echo rm_e($u['urun_adi']); ?></strong>
+                <span class="bom-code"><?php echo rm_e(rm_urun_kodu_satir($u)); ?></span>
+                <span class="bom-ok <?php echo $ok ? '' : 'missing'; ?>"><?php echo $ok ? '&#10003; Hazır' : '&#9888; Eksik'; ?></span>
+            </a>
+            <?php endforeach; ?>
+        </div>
         <div class="bom-layout">
             <aside>
                 <h3>ÜRÜN SEÇİMİ (<?php echo count($urunler); ?>)</h3>
@@ -1174,14 +1193,12 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
                         <button type="submit" class="primary-add">Reçeteyi Kaydet</button>
                     </div>
                 </div>
-                <?php if($isPet033Recipe): ?>
                 <div class="pet033-cost-summary">
                     <div class="pet033-cost-card"><span>Şişe Başı Hammadde</span><strong id="petBottleCost">0,00 TL</strong><small><?php echo number_format((float)$selectedKoliIci,0,',','.'); ?>'e bölünerek şişe payı</small></div>
                     <div class="pet033-cost-card"><span>Koli Maliyeti (Net)</span><strong id="petKoliNet">0,00 TL</strong><small>x <?php echo number_format((float)$selectedKoliIci,0,',','.'); ?> şişe toplamı</small></div>
                     <div class="pet033-cost-card fire"><span>Fire Payı</span><strong id="petFirePay">0,00 TL</strong><small id="petFireLabel">Zayiat / fire eklemesi</small></div>
                     <div class="pet033-cost-card total"><span>Fireli Hammadde / Koli</span><strong id="petFireTotal">0,00 TL</strong><small>Gerçek birim hammadde maliyeti</small></div>
                 </div>
-                <?php endif; ?>
                 <div class="rm-table-wrap"><table class="bom-table bom-matrix"><thead><tr><th>Hammadde / Malzeme</th><th>Alış Fiyatı</th><th>Para Cinsi</th><th>Döviz Kuru</th><th>TL'ye Çevrilmiş</th><th>Bölen</th><th>Birim Fiyat TL</th><th>Kullanım Miktarı</th><th>Birim</th><th>Kolideki Adet</th><th>Koli Fiyatı</th><th>Fire %</th><th>Fireli Koli</th><th>İşlem</th></tr></thead><tbody id="bomRows">
                     <?php foreach($bomKalemleri as $b): ?>
                     <?php $alisFiyati = (float)($b['alis_fiyati'] ?? 0); if($alisFiyati == 0 && (float)($b['birim_fiyat'] ?? 0) > 0){ $alisFiyati = (float)$b['birim_fiyat']; } ?>
@@ -1212,7 +1229,11 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
     <template id="bomTpl"><tr><td><select name="hammadde_id[]"><?php foreach($hammaddeler as $h): ?><option value="<?php echo (int)$h['id']; ?>"><?php echo rm_e($h['kalem_adi']); ?></option><?php endforeach; ?></select></td><td><input class="bom-alis" name="alis_fiyati[]" value="0"></td><td><select class="bom-currency" name="para_cinsi[]"><option>TL</option><option>USD</option><option>EUR</option></select></td><td><input class="bom-kur" name="doviz_kuru[]" value="1"></td><td class="bom-tl">₺0,00</td><td><input class="bom-bolen" name="bolen[]" value="1"></td><td class="bom-price-view">₺0,00</td><td><input class="bom-num" name="tuketim_miktari[]" value="0"></td><td><select class="bom-unit" name="tuketim_birimi[]"><option>gr/adet</option><option>adet/adet</option><option>gr/koli</option><option>kg/koli</option></select></td><td><input class="bom-koli" name="koli_ici_adet[]" value="1"></td><td class="bom-total">₺0,00</td><td><input class="bom-fire" name="fire_orani[]" value="0"></td><td class="bom-fire-total">₺0,00</td><td><div class="bom-row-actions"><button type="button" class="detail-btn" onclick="showBomDetail(this)">Detay</button><button type="button" class="trash-btn" title="Sil" onclick="this.closest('tr').remove();calcBom();">&times;</button></div></td></tr></template>
     <div class="bom-detail-modal" id="bomDetailModal"><div class="bom-detail-box"><div class="bom-detail-head"><h3>Hesaplama Detayı</h3><button type="button" onclick="closeBomDetail()">Kapat</button></div><div class="bom-detail-body" id="bomDetailBody"></div></div></div>
     <script>
-    function trNum(v){ v=(v||'').toString().replace(/\./g,'').replace(',','.'); return parseFloat(v)||0; }
+    function trNum(v){
+        v=(v||'').toString().trim().replace(/[^\d,.\-]/g,'');
+        if(v.indexOf(',')>-1){ v=v.replace(/\./g,'').replace(',','.'); }
+        return parseFloat(v)||0;
+    }
     function fmt(v,d){ return '₺' + v.toLocaleString('tr-TR',{minimumFractionDigits:d||2,maximumFractionDigits:d||2}); }
     function calcBom(){
         var tlSum=0,koliSum=0,fireSum=0, fireWeighted=0;
