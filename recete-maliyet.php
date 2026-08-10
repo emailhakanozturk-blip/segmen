@@ -257,15 +257,6 @@ try { $db->exec("ALTER TABLE maliyet_urunler ADD COLUMN urun_kodu VARCHAR(40) NU
 try { $db->exec("ALTER TABLE maliyet_urunler ADD UNIQUE KEY uniq_maliyet_urun_kodu (urun_kodu)"); } catch(Throwable $e) {}
 
 $db->exec("INSERT INTO recete_donemler (donem,donem_adi,toplam_uretim,durum,son_hesaplama) VALUES ('2026-04','Nisan 2026',600000,'Açık',NOW()) ON DUPLICATE KEY UPDATE donem_adi=VALUES(donem_adi), durum=VALUES(durum)");
-$uretimSeed = [
-    ['2026-04','0,33 L Pet Şişe Su',1672], ['2026-04','0,50 L Pet Şişe Su',114548],
-    ['2026-04','1,5 L Pet Şişe Su',52193], ['2026-04','5 L Pet Şişe Su',4011],
-    ['2026-04','19 L Damacana Su',109104], ['2026-04','200 ml Bardak Su',0],
-];
-$uretimIns = $db->prepare("INSERT INTO recete_uretim (donem,urun_adi,koli_miktari) VALUES (?,?,?) ON DUPLICATE KEY UPDATE koli_miktari=VALUES(koli_miktari)");
-foreach($uretimSeed as $u){ $uretimIns->execute($u); }
-$db->exec("UPDATE recete_uretim SET koli_miktari=1672 WHERE donem='2026-04' AND urun_adi LIKE '%0,33%'");
-
 $urunSeed = [
     ['SU-PET-033','0,33 L Pet Şişe Su','PET Şişeler','PET Şişe',24],
     ['SU-PET-050','0,50 L Pet Şişe Su','PET Şişeler','PET Şişe',24],
@@ -577,19 +568,17 @@ if($selectedId > 0){
     $bk->execute([(int)$activeBom['id']]);
     $bomKalemleri = $bk->fetchAll();
 }
-$uretimler = $db->prepare("SELECT * FROM recete_uretim WHERE donem=? ORDER BY urun_adi");
-$uretimler->execute([$donem]);
-$uretimler = $uretimler->fetchAll();
-$uretimByName = [];
-foreach($uretimler as $u){ $uretimByName[rm_lower($u['urun_adi'])] = $u; }
+$uretimStmt = $db->prepare("SELECT urun_id, SUM(miktar) koli_miktari FROM recete_stok_hareketleri WHERE donem=? AND hareket_tipi='uretilen' GROUP BY urun_id");
+$uretimStmt->execute([$donem]);
+$uretimById = [];
+foreach($uretimStmt->fetchAll() as $u){ $uretimById[(int)$u['urun_id']] = (float)$u['koli_miktari']; }
 $uretimler = [];
 foreach($urunler as $u){
-    $old = $uretimByName[rm_lower($u['urun_adi'])] ?? null;
     $uretimler[] = [
         'donem' => $donem,
         'urun_adi' => $u['urun_adi'],
         'urun_kodu' => rm_urun_kodu_satir($u),
-        'koli_miktari' => $old ? (float)$old['koli_miktari'] : 0,
+        'koli_miktari' => $uretimById[(int)$u['id']] ?? 0,
     ];
 }
 $ndStmt = $db->prepare("SELECT * FROM recete_nakliye_dekap WHERE donem=?");
@@ -613,7 +602,7 @@ foreach($urunMaliyetleri as $u){
     $weightedHammadde += $qty * (float)$u['hammadde'];
     $weightedGider += $qty * ((float)$u['g720']+(float)$u['g730']+(float)$u['g760']+(float)$u['g770']);
 }
-$totalProduction = $usedQty > 0 ? $usedQty : (float)($currentDonem['toplam_uretim'] ?? 0);
+$totalProduction = $usedQty;
 $avgCost = $usedQty > 0 ? $weightedTotal / $usedQty : 0;
 $uretimToplam = array_sum(array_map(fn($u) => (float)$u['koli_miktari'], $uretimler));
 $uretimAktif = count(array_filter($uretimler, fn($u) => (float)$u['koli_miktari'] > 0));
