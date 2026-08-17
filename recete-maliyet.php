@@ -1453,7 +1453,7 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
                         <td class="bom-tl">₺0,00</td>
                         <td><input class="bom-bolen" name="bolen[]" value="<?php echo rm_input_num(max((float)($b['bolen'] ?? 1),1)); ?>"></td>
                         <td class="bom-price-view">₺0,00</td>
-                        <td><input class="bom-num" name="tuketim_miktari[]" value="<?php echo number_format((float)$b['tuketim_miktari'],6,',','.'); ?>"></td>
+                        <td><input class="bom-num" name="tuketim_miktari[]" value="<?php echo rm_input_num((float)$b['tuketim_miktari']); ?>"></td>
                         <td><select class="bom-unit" name="tuketim_birimi[]"><option <?php echo $b['tuketim_birimi']==='gr/adet' ? 'selected' : ''; ?>>gr/adet</option><option <?php echo in_array($b['tuketim_birimi'], ['adet/adet','adet/koli'], true) ? 'selected' : ''; ?>>adet/adet</option><option <?php echo $b['tuketim_birimi']==='gr/koli' ? 'selected' : ''; ?>>gr/koli</option><option <?php echo $b['tuketim_birimi']==='kg/koli' ? 'selected' : ''; ?>>kg/koli</option></select></td>
                         <td><input class="bom-koli" name="koli_ici_adet[]" value="<?php echo number_format((float)$b['koli_ici_adet'],2,',','.'); ?>"></td>
                         <td class="bom-total">₺0,00</td>
@@ -1498,17 +1498,17 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
             if(row.querySelector('.bom-total')){ row.querySelector('.bom-total').textContent = fmt(toplam,4); }
             if(row.querySelector('.bom-fire-total')){ row.querySelector('.bom-fire-total').textContent = fmt(fireli,4); }
         });
-        if(document.getElementById('bomTlSum')){ document.getElementById('bomTlSum').textContent = fmt(tlSum,2); }
-        if(document.getElementById('bomKoliSum')){ document.getElementById('bomKoliSum').textContent = fmt(koliSum,2); }
-        if(document.getElementById('bomFireSum')){ document.getElementById('bomFireSum').textContent = fmt(fireSum,2); }
+        if(document.getElementById('bomTlSum')){ document.getElementById('bomTlSum').textContent = fmt(tlSum,4); }
+        if(document.getElementById('bomKoliSum')){ document.getElementById('bomKoliSum').textContent = fmt(koliSum,4); }
+        if(document.getElementById('bomFireSum')){ document.getElementById('bomFireSum').textContent = fmt(fireSum,4); }
         var bottleCount = <?php echo max((float)$selectedKoliIci, 1); ?>;
         var firePay = fireSum - koliSum;
         var fireRate = koliSum > 0 ? fireWeighted / koliSum : 0;
-        if(document.getElementById('petBottleCost')){ document.getElementById('petBottleCost').textContent = (fireSum / bottleCount).toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' TL'; }
-        if(document.getElementById('petKoliNet')){ document.getElementById('petKoliNet').textContent = koliSum.toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' TL'; }
-        if(document.getElementById('petFirePay')){ document.getElementById('petFirePay').textContent = '+' + firePay.toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' TL'; }
+        if(document.getElementById('petBottleCost')){ document.getElementById('petBottleCost').textContent = (fireSum / bottleCount).toLocaleString('tr-TR',{minimumFractionDigits:4,maximumFractionDigits:4}) + ' TL'; }
+        if(document.getElementById('petKoliNet')){ document.getElementById('petKoliNet').textContent = koliSum.toLocaleString('tr-TR',{minimumFractionDigits:4,maximumFractionDigits:4}) + ' TL'; }
+        if(document.getElementById('petFirePay')){ document.getElementById('petFirePay').textContent = '+' + firePay.toLocaleString('tr-TR',{minimumFractionDigits:4,maximumFractionDigits:4}) + ' TL'; }
         if(document.getElementById('petFireLabel')){ document.getElementById('petFireLabel').textContent = 'Fire payı (%' + fireRate.toLocaleString('tr-TR',{minimumFractionDigits:1,maximumFractionDigits:2}) + ')'; }
-        if(document.getElementById('petFireTotal')){ document.getElementById('petFireTotal').textContent = fireSum.toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' TL'; }
+        if(document.getElementById('petFireTotal')){ document.getElementById('petFireTotal').textContent = fireSum.toLocaleString('tr-TR',{minimumFractionDigits:4,maximumFractionDigits:4}) + ' TL'; }
     }
     function addBomRow(){ document.getElementById('bomRows').insertAdjacentHTML('beforeend', document.getElementById('bomTpl').innerHTML); calcBom(); }
     function showBomDetail(btn){
