@@ -199,6 +199,27 @@ function rm_sync_bom_to_maliyet(PDO $db, int $receteId, int $urunId, string $don
         $aciklama = (string)$r['kalem_adi'] . ': (alış x kur / bölen) x kullanım x koli adedi x fire.';
         $ins->execute([$donem,$urunId,(int)$r['hammadde_id'],1,$fire,$fireli,$aciklama]);
     }
+    rm_sync_standard_gider_to_maliyet($db, $urunId, $donem);
+}
+function rm_sync_standard_gider_to_maliyet(PDO $db, int $urunId, string $donem): void
+{
+    if($urunId <= 0 || $donem === ''){ return; }
+    $giderler = [
+        ['730 İŞÇİLİK HARİÇ GİDER', 7.8582, 'Koli başına işçilik hariç gider payı'],
+        ['760 PAZARLAMA GİDERİ', 2.6361, 'Koli başına pazarlama gideri payı'],
+        ['GENEL YÖNETİM GİDERİ', 12.4859, 'Koli başına genel yönetim gideri payı'],
+        ['İŞÇİLİK GİDERİ', 9.1631, 'Koli başına işçilik gideri payı'],
+    ];
+    $names = array_column($giderler, 0);
+    $placeholders = implode(',', array_fill(0, count($names), '?'));
+    $params = array_merge([$donem, $urunId], $names);
+    $db->prepare("DELETE r FROM maliyet_receteler r JOIN maliyet_kalemleri k ON k.id=r.kalem_id WHERE r.donem=? AND r.urun_id=? AND k.kalem_adi IN ($placeholders)")
+        ->execute($params);
+    $ins = $db->prepare("INSERT INTO maliyet_receteler (donem,urun_id,kalem_id,miktar,fire_orani,satir_tutari,aciklama) VALUES (?,?,?,?,?,?,?)");
+    foreach($giderler as $g){
+        $kid = rm_kalem_id($db, 'Genel Gider', $g[0], 'Koli', 0);
+        if($kid > 0){ $ins->execute([$donem,$urunId,$kid,1,0,$g[1],$g[2]]); }
+    }
 }
 
 if(isset($_GET['recete_sablon'])){ rm_recete_template_download(); }
@@ -1431,7 +1452,13 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
     .pet033-cost-card.fire{background:#fffbeb;border-color:#facc15}.pet033-cost-card.fire strong{color:#c2410c}
     .pet033-cost-card.total{background:#059669;border-color:#059669;box-shadow:0 16px 30px rgba(5,150,105,.2)}
     .pet033-cost-card.total span,.pet033-cost-card.total small{color:#d1fae5}.pet033-cost-card.total strong{color:#fff}
-    @media(max-width:1100px){.pet033-cost-summary{grid-template-columns:1fr 1fr}}
+    .recipe-cost-band{display:grid;grid-template-columns:1.1fr repeat(4,.85fr) 1.15fr;gap:10px;padding:14px 16px;background:#f8fafc;border-bottom:1px solid #e5e7eb}
+    .recipe-cost-card{min-width:0;border:1px solid #dbe3ee;border-radius:13px;background:#fff;padding:12px}
+    .recipe-cost-card span{display:block;color:#64748b;font-size:10px;font-weight:950;text-transform:uppercase;letter-spacing:.03em}
+    .recipe-cost-card strong{display:block;margin-top:6px;color:#0f172a;font-size:17px;font-weight:950;font-variant-numeric:tabular-nums}
+    .recipe-cost-card.total{background:#0f172a;border-color:#0f172a}.recipe-cost-card.total span{color:#bfdbfe}.recipe-cost-card.total strong{color:#fff}
+    .recipe-cost-card small{display:block;margin-top:5px;color:#64748b;font-size:10px;line-height:1.35}
+    @media(max-width:1100px){.pet033-cost-summary,.recipe-cost-band{grid-template-columns:1fr 1fr}}
     @media(max-width:1100px){.recipe-popup .bom-editor{width:96vw;margin:12px auto;border-radius:16px}}
     @media(max-width:900px){.bom-summary,.pet033-cost-summary{grid-template-columns:1fr}.recipe-actions label{min-width:100%}}
     </style>
@@ -1500,6 +1527,15 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
                     <div class="pet033-cost-card fire"><span>Fire Payı</span><strong id="petFirePay">0,00 TL</strong><small id="petFireLabel">Zayiat / fire eklemesi</small></div>
                     <div class="pet033-cost-card total"><span>Fireli Hammadde / Koli</span><strong id="petFireTotal">0,00 TL</strong><small>Gerçek birim hammadde maliyeti</small></div>
                 </div>
+                <?php $stdG720=9.1631; $stdG730=7.8582; $stdG760=2.6361; $stdG770=12.4859; $stdGiderToplam=$stdG720+$stdG730+$stdG760+$stdG770; ?>
+                <div class="recipe-cost-band" data-gider-total="<?php echo rm_e($stdGiderToplam); ?>">
+                    <div class="recipe-cost-card"><span>Hammadde Sonucu</span><strong id="recipeHamCost">₺0,0000</strong><small>Reçete satırlarından canlı hesaplanır.</small></div>
+                    <div class="recipe-cost-card"><span>730 İşçilik Hariç</span><strong><?php echo rm_money($stdG730); ?></strong><small>Koli başı gider payı</small></div>
+                    <div class="recipe-cost-card"><span>760 Pazarlama</span><strong><?php echo rm_money($stdG760); ?></strong><small>Koli başı gider payı</small></div>
+                    <div class="recipe-cost-card"><span>Genel Yönetim</span><strong><?php echo rm_money($stdG770); ?></strong><small>Koli başı gider payı</small></div>
+                    <div class="recipe-cost-card"><span>İşçilik Gideri</span><strong><?php echo rm_money($stdG720); ?></strong><small>Koli başı gider payı</small></div>
+                    <div class="recipe-cost-card total"><span>Koli Başına Toplam</span><strong id="recipeGrandCost">₺0,0000</strong><small>Hammadde + gider payları</small></div>
+                </div>
                 <div class="rm-table-wrap"><table class="bom-table bom-matrix"><thead><tr><th>Hammadde / Malzeme</th><th>Alış Fiyatı</th><th>Para Cinsi</th><th>Döviz Kuru</th><th>TL'ye Çevrilmiş</th><th>Bölen</th><th>Birim Fiyat TL</th><th>Kullanım Miktarı</th><th>Birim</th><th>Kolideki Adet</th><th>Koli Fiyatı</th><th>Fire %</th><th>Fireli Koli</th><th>İşlem</th></tr></thead><tbody id="bomRows">
                     <?php foreach($bomKalemleri as $b): ?>
                     <?php $alisFiyati = (float)($b['alis_fiyati'] ?? 0); if($alisFiyati == 0 && (float)($b['birim_fiyat'] ?? 0) > 0){ $alisFiyati = (float)$b['birim_fiyat']; } ?>
@@ -1567,6 +1603,10 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
         if(document.getElementById('petFirePay')){ document.getElementById('petFirePay').textContent = '+' + firePay.toLocaleString('tr-TR',{minimumFractionDigits:4,maximumFractionDigits:4}) + ' TL'; }
         if(document.getElementById('petFireLabel')){ document.getElementById('petFireLabel').textContent = 'Fire payı (%' + fireRate.toLocaleString('tr-TR',{minimumFractionDigits:1,maximumFractionDigits:2}) + ')'; }
         if(document.getElementById('petFireTotal')){ document.getElementById('petFireTotal').textContent = fireSum.toLocaleString('tr-TR',{minimumFractionDigits:4,maximumFractionDigits:4}) + ' TL'; }
+        var costBand = document.querySelector('.recipe-cost-band');
+        var giderTotal = costBand ? trNum(costBand.dataset.giderTotal || '0') : 0;
+        if(document.getElementById('recipeHamCost')){ document.getElementById('recipeHamCost').textContent = fmt(fireSum,4); }
+        if(document.getElementById('recipeGrandCost')){ document.getElementById('recipeGrandCost').textContent = fmt(fireSum + giderTotal,4); }
     }
     function addBomRow(){ document.getElementById('bomRows').insertAdjacentHTML('beforeend', document.getElementById('bomTpl').innerHTML); calcBom(); }
     function showBomDetail(btn){
