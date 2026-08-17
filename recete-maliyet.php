@@ -521,7 +521,7 @@ $excelNisanProducts = [
 $excelUrunIns = $db->prepare("INSERT INTO maliyet_urunler (urun_kodu,urun_adi,urun_grubu,ambalaj_tipi,koli_ici_adet) VALUES (?,?,?,?,?) ON DUPLICATE KEY UPDATE urun_adi=VALUES(urun_adi), urun_grubu=VALUES(urun_grubu), ambalaj_tipi=VALUES(ambalaj_tipi), koli_ici_adet=VALUES(koli_ici_adet)");
 $excelReceteIns = $db->prepare("INSERT INTO maliyet_receteler (donem,urun_id,kalem_id,miktar,fire_orani,satir_tutari,aciklama) VALUES ('2026-04',?,?,?,?,?,?)");
 $excelQtyIns = $db->prepare("INSERT INTO recete_stok_hareketleri (donem,tarih,belge_no,urun_id,hareket_tipi,miktar,cikis_depo,varis_depo,aciklama) VALUES ('2026-04','2026-04-30',?,?, 'uretilen',?,'Dolum Tesisi','Genel Stok','Excel Nisan maliyet şablonundan aktarılmış üretim')");
-$g730 = 1418207.45 / 600000; $g760 = 1912443.69 / 600000; $g770 = 4937883.01 / 600000; $g720 = 4211148 / 600000;
+$g730 = 7.8582; $g760 = 2.6361; $g770 = 12.4859; $g720 = 9.1631;
 $db->exec("UPDATE recete_donemler SET toplam_uretim=600000, durum='Açık', son_hesaplama=NOW() WHERE donem='2026-04'");
 $db->exec("DELETE FROM recete_stok_hareketleri WHERE donem='2026-04' AND hareket_tipi='uretilen'");
 foreach($excelNisanProducts as $p){
@@ -536,10 +536,10 @@ foreach($excelNisanProducts as $p){
     $hamId = rm_kalem_id($db, 'Hammadde', 'Hammadde Toplamı', 'Koli', 0);
     $excelReceteIns->execute([$uid,$hamId,1,3,$p[6],$p[8].': Excel satır 20, fireli hammadde maliyeti. Hammadde koli toplamı + %3 fire.']);
     foreach([
-        ['730 Genel Üretim', $g730, 'R37 / 600.000 koli'],
-        ['760 Pazarlama Satış Dağıtım', $g760, 'R38 / 600.000 koli'],
-        ['770 Genel Yönetim', $g770, 'R39 / 600.000 koli'],
-        ['720 Direkt İşçilik', $g720, 'R40 / 600.000 koli'],
+        ['730 İŞÇİLİK HARİÇ GİDER', $g730, 'Koli başına işçilik hariç gider payı'],
+        ['760 PAZARLAMA GİDERİ', $g760, 'Koli başına pazarlama gideri payı'],
+        ['GENEL YÖNETİM GİDERİ', $g770, 'Koli başına genel yönetim gideri payı'],
+        ['İŞÇİLİK GİDERİ', $g720, 'Koli başına işçilik gideri payı'],
     ] as $g){
         $gid = rm_kalem_id($db, 'Genel Gider', $g[0], 'Koli', 0);
         $excelReceteIns->execute([$uid,$gid,1,0,$g[1],$p[8].': '.$g[2].' formülüyle paylaştırıldı.']);
@@ -764,10 +764,10 @@ $costSql = "
     SELECT
         u.id, u.urun_adi,
         SUM(CASE WHEN k.kategori='Hammadde' THEN COALESCE(NULLIF(r.satir_tutari,0), r.miktar*k.birim_fiyat*(1+r.fire_orani/100)) ELSE 0 END) hammadde,
-        SUM(CASE WHEN k.kalem_adi LIKE '720%' THEN COALESCE(NULLIF(r.satir_tutari,0), r.miktar*k.birim_fiyat*(1+r.fire_orani/100)) ELSE 0 END) g720,
+        SUM(CASE WHEN k.kalem_adi LIKE '720%' OR k.kalem_adi LIKE 'İŞÇİLİK GİDERİ%' THEN COALESCE(NULLIF(r.satir_tutari,0), r.miktar*k.birim_fiyat*(1+r.fire_orani/100)) ELSE 0 END) g720,
         SUM(CASE WHEN k.kalem_adi LIKE '730%' THEN COALESCE(NULLIF(r.satir_tutari,0), r.miktar*k.birim_fiyat*(1+r.fire_orani/100)) ELSE 0 END) g730,
         SUM(CASE WHEN k.kalem_adi LIKE '760%' THEN COALESCE(NULLIF(r.satir_tutari,0), r.miktar*k.birim_fiyat*(1+r.fire_orani/100)) ELSE 0 END) g760,
-        SUM(CASE WHEN k.kalem_adi LIKE 'GENEL Y?NET?M%' OR k.kalem_adi LIKE '770%' THEN COALESCE(NULLIF(r.satir_tutari,0), r.miktar*k.birim_fiyat*(1+r.fire_orani/100)) ELSE 0 END) g770,
+        SUM(CASE WHEN k.kalem_adi LIKE 'GENEL YÖNETİM%' OR k.kalem_adi LIKE 'GENEL Y?NET?M%' OR k.kalem_adi LIKE '770%' THEN COALESCE(NULLIF(r.satir_tutari,0), r.miktar*k.birim_fiyat*(1+r.fire_orani/100)) ELSE 0 END) g770,
         SUM(COALESCE(NULLIF(r.satir_tutari,0), r.miktar*k.birim_fiyat*(1+r.fire_orani/100))) toplam
     FROM maliyet_receteler r
     JOIN maliyet_urunler u ON u.id=r.urun_id
@@ -1632,10 +1632,10 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
                 <h3>Tüm Gider Başlıkları</h3>
                 <div class="rm-break">
                     <div class="rm-break-row"><span>Koli Maliyeti</span><b>Hammadde & ambalaj</b></div>
-                    <div class="rm-break-row"><span>720 Direkt İşçilik</span><b>Genel gider</b></div>
-                    <div class="rm-break-row"><span>730 Genel Üretim</span><b>Genel gider</b></div>
-                    <div class="rm-break-row"><span>760 Pazarlama Satış Dağıtım</span><b>Genel gider</b></div>
-                    <div class="rm-break-row"><span>770 Genel Yönetim</span><b>Genel gider</b></div>
+                    <div class="rm-break-row"><span>730 İŞÇİLİK HARİÇ GİDER</span><b>₺7,8582</b></div>
+                    <div class="rm-break-row"><span>760 PAZARLAMA GİDERİ</span><b>₺2,6361</b></div>
+                    <div class="rm-break-row"><span>GENEL YÖNETİM GİDERİ</span><b>₺12,4859</b></div>
+                    <div class="rm-break-row"><span>İŞÇİLİK GİDERİ</span><b>₺9,1631</b></div>
                     <div class="rm-break-row"><span>Nakliye</span><b>Koli maliyeti</b></div>
                     <div class="rm-break-row"><span>DEKAP</span><b>Koli maliyeti</b></div>
                 </div>
@@ -1662,10 +1662,10 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
     <section class="expense-grid">
         <div class="expense-panel">
             <div class="expense-cards">
-                <div class="expense-card"><label>720 Direkt İşçilik Giderleri (TL)</label><input class="expense-input" value="1.250.000"><p>Fabrika personeli ve mavi yaka direkt işçilik maliyetleri</p></div>
-                <div class="expense-card"><label>730 Genel Üretim Giderleri (TL)</label><input class="expense-input" value="890.000"><p>Elektrik, su, tesis bakım, amortisman vb.</p></div>
-                <div class="expense-card"><label>760 Pazarlama Satış Dağıtım (TL)</label><input class="expense-input" value="420.000"><p>Saha satış, reklam ve pazarlama birimi giderleri</p></div>
-                <div class="expense-card"><label>770 Genel Yönetim Giderleri (TL)</label><input class="expense-input" value="310.000"><p>Merkez ofis, idari personel, muhasebe ve bilgi işlem</p></div>
+                <div class="expense-card"><label>730 İŞÇİLİK HARİÇ GİDER</label><input class="expense-input" value="7,8582"><p>Koli başına işçilik hariç gider payı</p></div>
+                <div class="expense-card"><label>760 PAZARLAMA GİDERİ</label><input class="expense-input" value="2,6361"><p>Koli başına pazarlama gideri payı</p></div>
+                <div class="expense-card"><label>GENEL YÖNETİM GİDERİ</label><input class="expense-input" value="12,4859"><p>Koli başına genel yönetim gideri payı</p></div>
+                <div class="expense-card"><label>İŞÇİLİK GİDERİ</label><input class="expense-input" value="9,1631"><p>Koli başına işçilik gideri payı</p></div>
             </div>
             <div class="method-title">Gider Dağıtım Yöntemi (Maliyet Anahtarı)</div>
             <div class="method-buttons">
@@ -1677,9 +1677,9 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
         </div>
         <aside class="analysis-card">
             <h3>DAĞITIM ANALİZİ SUMMARY</h3>
-            <div class="kpi"><span>Dönem Toplam Genel Gider</span><strong class="amber" id="expenseTotal">2.870.000 TL</strong></div>
-            <div class="kpi"><span>Dönem Toplam Üretim</span><strong id="expenseProduction">380.000 Koli</strong></div>
-            <div class="kpi"><span>Hesaplanan Koli Başına Gider Payı</span><strong class="cyan" id="expensePerBox">7,55 TL / Koli</strong></div>
+            <div class="kpi"><span>Koli Başına Genel Gider Toplamı</span><strong class="amber" id="expenseTotal">32,1433 TL</strong></div>
+            <div class="kpi"><span>Dönem Toplam Üretim</span><strong id="expenseProduction"><?php echo number_format($uretimToplam,0,',','.'); ?> Koli</strong></div>
+            <div class="kpi"><span>Hesaplanan Koli Başına Gider Payı</span><strong class="cyan" id="expensePerBox">32,1433 TL / Koli</strong></div>
             <div class="analysis-note">Giderler seçilen "Koli" anahtarına göre üretilen tüm ürünlerin koli başına maliyetine otomatik eklenir.</div>
         </aside>
     </section>
@@ -1689,14 +1689,13 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
     </section>
     <script>
     (function(){
-        var production = 380000;
         function num(v){ return parseFloat((v || '').toString().replace(/\./g,'').replace(',','.')) || 0; }
         function money(v, d){ return v.toLocaleString('tr-TR',{minimumFractionDigits:d,maximumFractionDigits:d}); }
         function calc(){
             var total = 0;
             document.querySelectorAll('.expense-input').forEach(function(i){ total += num(i.value); });
-            document.getElementById('expenseTotal').textContent = money(total, 0) + ' TL';
-            document.getElementById('expensePerBox').textContent = money(production ? total / production : 0, 2) + ' TL / Koli';
+            document.getElementById('expenseTotal').textContent = money(total, 4) + ' TL';
+            document.getElementById('expensePerBox').textContent = money(total, 4) + ' TL / Koli';
         }
         document.querySelectorAll('.expense-input').forEach(function(i){ i.addEventListener('input', calc); });
         document.querySelectorAll('.method-btn').forEach(function(b){ b.addEventListener('click', function(){ document.querySelectorAll('.method-btn').forEach(function(x){ x.classList.remove('active'); }); b.classList.add('active'); }); });
