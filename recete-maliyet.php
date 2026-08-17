@@ -375,6 +375,40 @@ foreach($kalemSeed as $k){ $kalemIns->execute($k); }
 $fiyatIns = $db->prepare("INSERT INTO maliyet_fiyatlama (fiyat_tarihi,kategori,urun_adi,ton_fiyati,doviz_adet,tl_adet,aciklama) VALUES (?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE tl_adet=VALUES(tl_adet), aciklama=VALUES(aciklama)");
 foreach($kalemSeed as $k){ $fiyatIns->execute(['2026-04-01',$k[0],$k[1],'', '', $k[3], 'Nisan 2026 başlangıç fiyatı']); }
 
+$camHaziranRows = [
+    ['Cam Şişe','Adet',3.8601,3.8601,'TL',1,1,1,'adet/adet',null,3],
+    ['Alüminyum Kapak','Adet',0.6370,0.6370,'TL',1,1,1,'adet/adet',null,1.5],
+    ['Stiker Etiket','Adet',0.9000,0.9000,'TL',1,1,1,'adet/adet',null,2],
+    ['Shrink (KĞ)','Kg',68.0000,68.0000,'TL',1,1000,26,'gr/koli',1,3.5],
+];
+foreach($camHaziranRows as $r){
+    rm_kalem_id($db, 'Hammadde', $r[0], $r[1], $r[2]);
+    $fiyatIns->execute(['2026-06-01','Hammadde',$r[0],'','',$r[2],'Haziran 2026 cam şişe birim maliyeti']);
+}
+$camBomIns = $db->prepare("INSERT INTO recete_bom (urun_id,donem,versiyon,aciklama,aktif) VALUES (?,'2026-06','2026-06','Haziran 2026 cam şişe reçetesi',1) ON DUPLICATE KEY UPDATE aciklama=VALUES(aciklama), aktif=1");
+$camBomGet = $db->prepare("SELECT id FROM recete_bom WHERE urun_id=? AND donem='2026-06' AND versiyon='2026-06' LIMIT 1");
+$camBomSum = $db->prepare("SELECT COUNT(*) satir, COALESCE(SUM(k.alis_fiyati),0) toplam FROM recete_bom_kalemleri k WHERE k.recete_id=?");
+$camBomKalemIns = $db->prepare("INSERT INTO recete_bom_kalemleri (recete_id,hammadde_id,alis_fiyati,para_cinsi,doviz_kuru,bolen,tuketim_miktari,tuketim_birimi,birim_fiyat,koli_ici_adet,fire_orani) VALUES (?,?,?,?,?,?,?,?,?,?,?)");
+foreach(['SU-CAM-033','SU-CAM-075'] as $camKod){
+    $camUrunQ = $db->prepare("SELECT id,koli_ici_adet FROM maliyet_urunler WHERE urun_kodu=? LIMIT 1");
+    $camUrunQ->execute([$camKod]);
+    $camUrun = $camUrunQ->fetch();
+    if(!$camUrun){ continue; }
+    $camBomIns->execute([(int)$camUrun['id']]);
+    $camBomGet->execute([(int)$camUrun['id']]);
+    $camBomId = (int)$camBomGet->fetchColumn();
+    if($camBomId <= 0){ continue; }
+    $camBomSum->execute([$camBomId]);
+    $camBomState = $camBomSum->fetch();
+    if((int)($camBomState['satir'] ?? 0) > 0 && (float)($camBomState['toplam'] ?? 0) > 0){ continue; }
+    $db->prepare("DELETE FROM recete_bom_kalemleri WHERE recete_id=?")->execute([$camBomId]);
+    foreach($camHaziranRows as $r){
+        $hId = rm_kalem_id($db, 'Hammadde', $r[0], $r[1], $r[2]);
+        $koliAdet = $r[9] === null ? (float)$camUrun['koli_ici_adet'] : (float)$r[9];
+        $camBomKalemIns->execute([$camBomId,$hId,$r[3],$r[4],$r[5],$r[6],$r[7],$r[8],0,$koliAdet,$r[10]]);
+    }
+}
+
 $pet033Id = (int)$db->query("SELECT id FROM maliyet_urunler WHERE urun_kodu='SU-PET-033' LIMIT 1")->fetchColumn();
 if($pet033Id > 0){
     $usdKur = 36.50;
