@@ -35,6 +35,24 @@ function rm_input_num($value, int $dec = 6): string
     $d = abs($v - round($v)) < 0.000001 ? 0 : $dec;
     return number_format($v, $d, ',', '.');
 }
+function rm_gider_values(PDO $db, string $donem): array
+{
+    $defaults = ['g730'=>7.8582,'g760'=>2.6361,'g770'=>12.4859,'g720'=>9.1631];
+    try {
+        $q = $db->prepare("SELECT * FROM recete_gider_ayarlari WHERE donem=? LIMIT 1");
+        $q->execute([$donem]);
+        $row = $q->fetch();
+        if($row){
+            return [
+                'g730'=>(float)$row['g730'],
+                'g760'=>(float)$row['g760'],
+                'g770'=>(float)$row['g770'],
+                'g720'=>(float)$row['g720'],
+            ];
+        }
+    } catch(Throwable $e) {}
+    return $defaults;
+}
 function rm_urun_kodu(string $name, int $id): string
 {
     $n = strtolower(str_replace(['?','I','?','?','?','?','?'], ['i','i','?','?','?','?','?'], $name));
@@ -205,11 +223,12 @@ function rm_sync_bom_to_maliyet(PDO $db, int $receteId, int $urunId, string $don
 function rm_sync_standard_gider_to_maliyet(PDO $db, int $urunId, string $donem): void
 {
     if($urunId <= 0 || $donem === ''){ return; }
+    $gv = rm_gider_values($db, $donem);
     $giderler = [
-        ['730 İŞÇİLİK HARİÇ GİDER', 7.8582, 'Koli başına işçilik hariç gider payı'],
-        ['760 PAZARLAMA GİDERİ', 2.6361, 'Koli başına pazarlama gideri payı'],
-        ['GENEL YÖNETİM GİDERİ', 12.4859, 'Koli başına genel yönetim gideri payı'],
-        ['İŞÇİLİK GİDERİ', 9.1631, 'Koli başına işçilik gideri payı'],
+        ['730 İŞÇİLİK HARİÇ GİDER', $gv['g730'], 'Koli başına işçilik hariç gider payı'],
+        ['760 PAZARLAMA GİDERİ', $gv['g760'], 'Koli başına pazarlama gideri payı'],
+        ['GENEL YÖNETİM GİDERİ', $gv['g770'], 'Koli başına genel yönetim gideri payı'],
+        ['İŞÇİLİK GİDERİ', $gv['g720'], 'Koli başına işçilik gideri payı'],
     ];
     $names = array_column($giderler, 0);
     $placeholders = implode(',', array_fill(0, count($names), '?'));
@@ -339,6 +358,19 @@ $db->exec("CREATE TABLE IF NOT EXISTS recete_nakliye_dekap (
     dekap_tl_koli DECIMAL(15,4) NOT NULL DEFAULT 0,
     UNIQUE KEY uniq_recete_nd (donem, urun_adi)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci");
+
+$db->exec("CREATE TABLE IF NOT EXISTS recete_gider_ayarlari (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    donem VARCHAR(20) NOT NULL UNIQUE,
+    g730 DECIMAL(15,4) NOT NULL DEFAULT 7.8582,
+    g760 DECIMAL(15,4) NOT NULL DEFAULT 2.6361,
+    g770 DECIMAL(15,4) NOT NULL DEFAULT 12.4859,
+    g720 DECIMAL(15,4) NOT NULL DEFAULT 9.1631,
+    updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci");
+
+$db->prepare("INSERT IGNORE INTO recete_gider_ayarlari (donem,g730,g760,g770,g720) VALUES (?,7.8582,2.6361,12.4859,9.1631)")
+    ->execute([$donem ?? '2026-04']);
 
 $db->exec("CREATE TABLE IF NOT EXISTS recete_bom (
     id INT AUTO_INCREMENT PRIMARY KEY,
