@@ -266,6 +266,12 @@ function rm_seed_cam033_fixed_cost(PDO $db, string $donem): void
     $bomQ->execute([$urunId,$donem,$donem]);
     $bomId = (int)$bomQ->fetchColumn();
     if($bomId <= 0){ return; }
+    $hasRows = $db->prepare("SELECT COUNT(*) FROM recete_bom_kalemleri WHERE recete_id=?");
+    $hasRows->execute([$bomId]);
+    if((int)$hasRows->fetchColumn() > 0){
+        rm_sync_bom_to_maliyet($db, $bomId, $urunId, $donem);
+        return;
+    }
     $db->prepare("DELETE FROM recete_bom_kalemleri WHERE recete_id=?")->execute([$bomId]);
     $ins = $db->prepare("INSERT INTO recete_bom_kalemleri (recete_id,hammadde_id,alis_fiyati,para_cinsi,doviz_kuru,bolen,tuketim_miktari,tuketim_birimi,birim_fiyat,koli_ici_adet,fire_orani) VALUES (?,?,?,?,?,?,?,?,?,?,?)");
     foreach($camRows as $r){
@@ -1599,7 +1605,7 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
                         <button type="submit" class="template-btn dark" onclick="document.getElementById('bomAction').value='bom_excel_yukle'">Exceli Aktar</button>
                         <label>Açıklama<br><input name="aciklama" value="<?php echo rm_e($activeBom['aciklama'] ?? ''); ?>"></label>
                         <button type="button" class="recipe-popup-close" onclick="document.getElementById('recipePopup').classList.remove('show')">Kapat</button>
-                        <button type="submit" class="primary-add">Reçeteyi Kaydet</button>
+                        <button type="submit" class="primary-add" onclick="document.getElementById('bomAction').value='bom_kaydet'">Reçeteyi Kaydet</button>
                     </div>
                 </div>
                 <div class="excel-format-box">
@@ -1664,7 +1670,7 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
                     <?php endforeach; ?>
                 </tbody></table></div>
                 <div class="bom-summary"><div><span>TL Çevrim Toplamı</span><strong id="bomTlSum">₺0,00</strong></div><div><span>Koli Fiyatı</span><strong id="bomKoliSum">₺0,00</strong></div><div><span>Fireli Koli Fiyatı</span><strong id="bomFireSum">₺0,00</strong></div></div>
-                <div class="bom-footer"><button type="button" class="add-material" onclick="addBomRow();">+ Reçeteye Malzeme Kalemi Ekle</button><button type="submit" class="primary-add">DEĞİŞİKLİKLERİ KAYDET</button><span class="bom-count">Toplam <?php echo count($bomKalemleri); ?> Hammadde Girdisi</span></div>
+                <div class="bom-footer"><button type="button" class="add-material" onclick="addBomRow();">+ Reçeteye Malzeme Kalemi Ekle</button><button type="submit" class="primary-add" onclick="document.getElementById('bomAction').value='bom_kaydet'">DEĞİŞİKLİKLERİ KAYDET</button><span class="bom-count">Toplam <?php echo count($bomKalemleri); ?> Hammadde Girdisi</span></div>
             </form>
             </div>
         </div>
