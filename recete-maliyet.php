@@ -9,6 +9,7 @@ if(!isset($_SESSION['user_id'])){
 
 function rm_e($value): string { return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8'); }
 function rm_money($value): string { return '₺' . number_format((float)$value, 2, ',', '.'); }
+function rm_money4($value): string { return '₺' . number_format((float)$value, 4, ',', '.'); }
 if(!function_exists('str_contains')){
     function str_contains($haystack, $needle){ return $needle === '' || strpos((string)$haystack, (string)$needle) !== false; }
 }
@@ -220,6 +221,28 @@ function rm_sync_standard_gider_to_maliyet(PDO $db, int $urunId, string $donem):
         $kid = rm_kalem_id($db, 'Genel Gider', $g[0], 'Koli', 0);
         if($kid > 0){ $ins->execute([$donem,$urunId,$kid,1,0,$g[1],$g[2]]); }
     }
+}
+function rm_seed_cam033_fixed_cost(PDO $db, string $donem): void
+{
+    $urunQ = $db->prepare("SELECT id FROM maliyet_urunler WHERE urun_kodu='SU-CAM-033' LIMIT 1");
+    $urunQ->execute();
+    $urunId = (int)$urunQ->fetchColumn();
+    if($urunId <= 0 || $donem === ''){ return; }
+    $hammadde = 58.8458;
+    $netHammadde = $hammadde / 1.03;
+    $bomIns = $db->prepare("INSERT INTO recete_bom (urun_id,donem,versiyon,aciklama,aktif) VALUES (?,?,?,'0,33 L Cam Şişe Su maliyet reçetesi',1) ON DUPLICATE KEY UPDATE aciklama=VALUES(aciklama), aktif=1");
+    $bomIns->execute([$urunId,$donem,$donem]);
+    $bomQ = $db->prepare("SELECT id FROM recete_bom WHERE urun_id=? AND donem=? AND versiyon=? LIMIT 1");
+    $bomQ->execute([$urunId,$donem,$donem]);
+    $bomId = (int)$bomQ->fetchColumn();
+    if($bomId <= 0){ return; }
+    $db->prepare("DELETE FROM recete_bom_kalemleri WHERE recete_id=?")->execute([$bomId]);
+    $kid = rm_kalem_id($db, 'Hammadde', 'Hammadde Toplamı', 'Koli', 0);
+    $db->prepare("INSERT INTO recete_bom_kalemleri (recete_id,hammadde_id,alis_fiyati,para_cinsi,doviz_kuru,bolen,tuketim_miktari,tuketim_birimi,birim_fiyat,koli_ici_adet,fire_orani) VALUES (?,?,?,?,?,?,?,?,?,?,?)")
+        ->execute([$bomId,$kid,$netHammadde,'TL',1,1,1,'adet/koli',$netHammadde,1,3]);
+    rm_sync_bom_to_maliyet($db, $bomId, $urunId, $donem);
+    $db->prepare("INSERT INTO recete_nakliye_dekap (donem,urun_adi,nakliye_tl_koli,dekap_tl_koli) VALUES (?,'0,33 L Cam Şişe Su',3.74,6.36) ON DUPLICATE KEY UPDATE nakliye_tl_koli=VALUES(nakliye_tl_koli), dekap_tl_koli=VALUES(dekap_tl_koli)")
+        ->execute([$donem]);
 }
 
 if(isset($_GET['recete_sablon'])){ rm_recete_template_download(); }
@@ -556,7 +579,7 @@ $excelNisanProducts = [
     ['SU-PET-150-EUR','1,5 L Pet Şişe Su Euro','PET Şişeler','PET Şişe',12,0,33.1141105676,53.9135808176,'1,5 lt Euro'],
     ['SU-PET-500','5 L Pet Şişe Su','PET Şişeler','PET Şişe',4,4011,28.5968782821,49.3963485321,'5 lt Standart'],
     ['SU-PET-500-EUR','5 L Pet Şişe Su Euro','PET Şişeler','PET Şişe',4,0,34.3197048011,55.1191750511,'5 lt Euro'],
-    ['SU-CAM-033','0,33 L Cam Şişe Su','Cam Ürünler','Cam Şişe',24,0,58.5394760346,79.3389462846,'Cam Şişe 0,33'],
+    ['SU-CAM-033','0,33 L Cam Şişe Su','Cam Ürünler','Cam Şişe',24,0,58.8458,90.9891,'Cam Şişe 0,33'],
     ['SU-CAM-075','0,75 L Cam Şişe Su','Cam Ürünler','Cam Şişe',12,0,54.1276587185,74.9271289685,'Cam Şişe 0,75'],
     ['SU-DAM-1900','19 L Damacana Su','Damacana','Damacana',1,109104,3.8487428977,24.6482131477,'19 lt Standart'],
     ['SU-BAR-200','200 ml Bardak Su','Bardak','Plastik bardak',60,0,31.5189188813,52.3183891313,'200 cc Standart'],
@@ -641,6 +664,7 @@ $donem = (string)($_GET['donem'] ?? '2026-04');
 $selectedId = (int)($_POST['urun_id'] ?? ($_GET['urun_id'] ?? 0));
 $message = '';
 $error = '';
+rm_seed_cam033_fixed_cost($db, $donem);
 
 try {
     if(($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST'){
@@ -1131,16 +1155,16 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
                 <table class="cost-modern-table">
                     <thead><tr><th>Kalem</th><th>Tutar</th><th>Kaynak / Hesap</th></tr></thead>
                     <tbody>
-                        <tr><td>Hammadde Tutarı</td><td class="num"><?php echo rm_money($selHammadde); ?></td><td><details><summary>Detay</summary><p>Kaynak: aktif reçete satırları (`recete_bom_kalemleri`) maliyet özetine aktarılır.</p><?php foreach($hammaddeDetaylari as $d): ?><p><?php echo rm_e($d['kalem_adi']); ?>: <?php echo rm_money($d['tutar']); ?> · <?php echo rm_e($d['aciklama'] ?? ''); ?></p><?php endforeach; ?></details></td></tr>
-                        <tr><td>730 İşçilik Hariç Gider</td><td class="num"><?php echo rm_money($selG730); ?></td><td><details><summary>Detay</summary><p>Kaynak: genel gider kalemi. Formül: koli başı gider payı doğrudan ürün maliyetine eklenir.</p></details></td></tr>
-                        <tr><td>760 Pazarlama Gideri</td><td class="num"><?php echo rm_money($selG760); ?></td><td><details><summary>Detay</summary><p>Kaynak: genel gider kalemi. Formül: pazarlama gider payı koli başına eklenir.</p></details></td></tr>
-                        <tr><td>Genel Yönetim Gideri</td><td class="num"><?php echo rm_money($selG770); ?></td><td><details><summary>Detay</summary><p>Kaynak: genel gider kalemi. Formül: yönetim gider payı koli başına eklenir.</p></details></td></tr>
-                        <tr><td>İşçilik Gideri</td><td class="num"><?php echo rm_money($selG720); ?></td><td><details><summary>Detay</summary><p>Kaynak: genel gider kalemi. Formül: işçilik gider payı koli başına eklenir.</p></details></td></tr>
-                        <tr class="cost-total"><td>Koli Başına Maliyet</td><td class="num"><?php echo rm_money($selToplam); ?></td><td><details><summary>Formül</summary><p>Hammadde + 730 + 760 + Genel Yönetim + İşçilik = <?php echo rm_money($selToplam); ?></p></details></td></tr>
-                        <tr class="cost-yellow"><td>Nakliye Dahil Fiyat</td><td class="num"><?php echo rm_money($selToplam); ?></td><td><details><summary>Formül</summary><p>Koli başına maliyet mevcut nakliyeli fiyat olarak alınır.</p></details></td></tr>
-                        <tr class="cost-yellow"><td>Nakliyesiz Fiyat</td><td class="num"><?php echo rm_money($selToplam - $selNakliye); ?></td><td><details><summary>Formül</summary><p>Koli başına maliyet - nakliye (<?php echo rm_money($selNakliye); ?>).</p></details></td></tr>
-                        <tr class="cost-blue"><td>Nakliyesiz + DEKAP Dahil</td><td class="num"><?php echo rm_money($selToplam - $selNakliye + $selDekap); ?></td><td><details><summary>Formül</summary><p>Nakliyesiz fiyat + DEKAP (<?php echo rm_money($selDekap); ?>).</p></details></td></tr>
-                        <tr class="cost-blue"><td>Nakliye + DEKAP Dahil</td><td class="num"><?php echo rm_money($selToplam + $selDekap); ?></td><td><details><summary>Formül</summary><p>Koli başına maliyet + DEKAP (<?php echo rm_money($selDekap); ?>).</p></details></td></tr>
+                        <tr><td>Hammadde Tutarı</td><td class="num"><?php echo rm_money4($selHammadde); ?></td><td><details><summary>Detay</summary><p>Kaynak: aktif reçete satırları (`recete_bom_kalemleri`) maliyet özetine aktarılır.</p><?php foreach($hammaddeDetaylari as $d): ?><p><?php echo rm_e($d['kalem_adi']); ?>: <?php echo rm_money4($d['tutar']); ?> · <?php echo rm_e($d['aciklama'] ?? ''); ?></p><?php endforeach; ?></details></td></tr>
+                        <tr><td>730 İşçilik Hariç Gider</td><td class="num"><?php echo rm_money4($selG730); ?></td><td><details><summary>Detay</summary><p>Kaynak: genel gider kalemi. Formül: koli başı gider payı doğrudan ürün maliyetine eklenir.</p></details></td></tr>
+                        <tr><td>760 Pazarlama Gideri</td><td class="num"><?php echo rm_money4($selG760); ?></td><td><details><summary>Detay</summary><p>Kaynak: genel gider kalemi. Formül: pazarlama gider payı koli başına eklenir.</p></details></td></tr>
+                        <tr><td>Genel Yönetim Gideri</td><td class="num"><?php echo rm_money4($selG770); ?></td><td><details><summary>Detay</summary><p>Kaynak: genel gider kalemi. Formül: yönetim gider payı koli başına eklenir.</p></details></td></tr>
+                        <tr><td>İşçilik Gideri</td><td class="num"><?php echo rm_money4($selG720); ?></td><td><details><summary>Detay</summary><p>Kaynak: genel gider kalemi. Formül: işçilik gider payı koli başına eklenir.</p></details></td></tr>
+                        <tr class="cost-total"><td>Koli Başına Maliyet</td><td class="num"><?php echo rm_money4($selToplam); ?></td><td><details><summary>Formül</summary><p>Hammadde + 730 + 760 + Genel Yönetim + İşçilik = <?php echo rm_money4($selToplam); ?></p></details></td></tr>
+                        <tr class="cost-yellow"><td>Nakliye Dahil Fiyat</td><td class="num"><?php echo rm_money4($selToplam); ?></td><td><details><summary>Formül</summary><p>Koli başına maliyet mevcut nakliyeli fiyat olarak alınır.</p></details></td></tr>
+                        <tr class="cost-yellow"><td>Nakliyesiz Fiyat</td><td class="num"><?php echo rm_money4($selToplam - $selNakliye); ?></td><td><details><summary>Formül</summary><p>Koli başına maliyet - nakliye (<?php echo rm_money4($selNakliye); ?>).</p></details></td></tr>
+                        <tr class="cost-blue"><td>Nakliyesiz + DEKAP Dahil</td><td class="num"><?php echo rm_money4($selToplam - $selNakliye + $selDekap); ?></td><td><details><summary>Formül</summary><p>Nakliyesiz fiyat + DEKAP (<?php echo rm_money4($selDekap); ?>).</p></details></td></tr>
+                        <tr class="cost-blue"><td>Nakliye + DEKAP Dahil</td><td class="num"><?php echo rm_money4($selToplam + $selDekap); ?></td><td><details><summary>Formül</summary><p>Koli başına maliyet + DEKAP (<?php echo rm_money4($selDekap); ?>).</p></details></td></tr>
                     </tbody>
                 </table>
             </div>
@@ -1530,10 +1554,10 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
                 <?php $stdG720=9.1631; $stdG730=7.8582; $stdG760=2.6361; $stdG770=12.4859; $stdGiderToplam=$stdG720+$stdG730+$stdG760+$stdG770; ?>
                 <div class="recipe-cost-band" data-gider-total="<?php echo rm_e($stdGiderToplam); ?>">
                     <div class="recipe-cost-card"><span>Hammadde Sonucu</span><strong id="recipeHamCost">₺0,0000</strong><small>Reçete satırlarından canlı hesaplanır.</small></div>
-                    <div class="recipe-cost-card"><span>730 İşçilik Hariç</span><strong><?php echo rm_money($stdG730); ?></strong><small>Koli başı gider payı</small></div>
-                    <div class="recipe-cost-card"><span>760 Pazarlama</span><strong><?php echo rm_money($stdG760); ?></strong><small>Koli başı gider payı</small></div>
-                    <div class="recipe-cost-card"><span>Genel Yönetim</span><strong><?php echo rm_money($stdG770); ?></strong><small>Koli başı gider payı</small></div>
-                    <div class="recipe-cost-card"><span>İşçilik Gideri</span><strong><?php echo rm_money($stdG720); ?></strong><small>Koli başı gider payı</small></div>
+                    <div class="recipe-cost-card"><span>730 İşçilik Hariç</span><strong><?php echo rm_money4($stdG730); ?></strong><small>Koli başı gider payı</small></div>
+                    <div class="recipe-cost-card"><span>760 Pazarlama</span><strong><?php echo rm_money4($stdG760); ?></strong><small>Koli başı gider payı</small></div>
+                    <div class="recipe-cost-card"><span>Genel Yönetim</span><strong><?php echo rm_money4($stdG770); ?></strong><small>Koli başı gider payı</small></div>
+                    <div class="recipe-cost-card"><span>İşçilik Gideri</span><strong><?php echo rm_money4($stdG720); ?></strong><small>Koli başı gider payı</small></div>
                     <div class="recipe-cost-card total"><span>Koli Başına Toplam</span><strong id="recipeGrandCost">₺0,0000</strong><small>Hammadde + gider payları</small></div>
                 </div>
                 <div class="rm-table-wrap"><table class="bom-table bom-matrix"><thead><tr><th>Hammadde / Malzeme</th><th>Alış Fiyatı</th><th>Para Cinsi</th><th>Döviz Kuru</th><th>TL'ye Çevrilmiş</th><th>Bölen</th><th>Birim Fiyat TL</th><th>Kullanım Miktarı</th><th>Birim</th><th>Kolideki Adet</th><th>Koli Fiyatı</th><th>Fire %</th><th>Fireli Koli</th><th>İşlem</th></tr></thead><tbody id="bomRows">
