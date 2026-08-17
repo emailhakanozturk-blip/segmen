@@ -178,6 +178,28 @@ function rm_stok_sync(PDO $db, string $donem, int $urunId): void
             ->execute([$donem,$depoId,$urunId,(float)$r['giren'],(float)$r['sevk'],(float)$r['fire'],'Stok hareketlerinden otomatik güncellendi']);
     }
 }
+function rm_sync_bom_to_maliyet(PDO $db, int $receteId, int $urunId, string $donem): void
+{
+    if($receteId <= 0 || $urunId <= 0 || $donem === ''){ return; }
+    $db->prepare("DELETE r FROM maliyet_receteler r JOIN maliyet_kalemleri k ON k.id=r.kalem_id WHERE r.donem=? AND r.urun_id=? AND k.kategori='Hammadde'")
+        ->execute([$donem,$urunId]);
+    $rows = $db->prepare("SELECT b.*, k.kalem_adi FROM recete_bom_kalemleri b JOIN maliyet_kalemleri k ON k.id=b.hammadde_id WHERE b.recete_id=? ORDER BY b.id");
+    $rows->execute([$receteId]);
+    $ins = $db->prepare("INSERT INTO maliyet_receteler (donem,urun_id,kalem_id,miktar,fire_orani,satir_tutari,aciklama) VALUES (?,?,?,?,?,?,?)");
+    foreach($rows->fetchAll() as $r){
+        $alis = (float)($r['alis_fiyati'] ?? 0);
+        $kur = (float)($r['doviz_kuru'] ?? 1);
+        $bolen = max((float)($r['bolen'] ?? 1), 0.000001);
+        $miktar = (float)($r['tuketim_miktari'] ?? 0);
+        $koli = (float)($r['koli_ici_adet'] ?? 1);
+        $fire = (float)($r['fire_orani'] ?? 0);
+        $birim = ($alis * $kur) / $bolen;
+        $koliNet = $birim * $miktar * $koli;
+        $fireli = $koliNet * (1 + $fire / 100);
+        $aciklama = (string)$r['kalem_adi'] . ': (alış x kur / bölen) x kullanım x koli adedi x fire.';
+        $ins->execute([$donem,$urunId,(int)$r['hammadde_id'],1,$fire,$fireli,$aciklama]);
+    }
+}
 
 if(isset($_GET['recete_sablon'])){ rm_recete_template_download(); }
 
@@ -748,6 +770,7 @@ try {
                 $db->prepare("INSERT INTO recete_bom_kalemleri (recete_id,hammadde_id,alis_fiyati,para_cinsi,doviz_kuru,bolen,tuketim_miktari,tuketim_birimi,birim_fiyat,koli_ici_adet,fire_orani) VALUES (?,?,?,?,?,?,?,?,?,?,?)")
                     ->execute([$receteId,$hid,$alis,trim((string)($_POST['para_cinsi'][$i] ?? 'TL')),$kur,$bolen,rm_num($_POST['tuketim_miktari'][$i] ?? 0),trim((string)($_POST['tuketim_birimi'][$i] ?? 'adet/koli')),$birimFiyat,rm_num($_POST['koli_ici_adet'][$i] ?? 1),rm_num($_POST['fire_orani'][$i] ?? 0)]);
             }
+            rm_sync_bom_to_maliyet($db, $receteId, $urunId, $donem);
             $selectedId = $urunId;
             $tab = 'ozet';
             $message = 'Reçete kaydedildi. Maliyet özeti açıldı.';
@@ -759,6 +782,10 @@ $donemler = $db->query("SELECT * FROM recete_donemler ORDER BY donem DESC")->fet
 $currentDonem = $db->prepare("SELECT * FROM recete_donemler WHERE donem=?");
 $currentDonem->execute([$donem]);
 $currentDonem = $currentDonem->fetch() ?: ['donem_adi'=>'Nisan 2026','toplam_uretim'=>600000,'durum'=>'Açık','son_hesaplama'=>date('Y-m-d H:i:s')];
+
+$activeBomSync = $db->prepare("SELECT b.id,b.urun_id FROM recete_bom b JOIN recete_bom_kalemleri k ON k.recete_id=b.id WHERE b.donem=? AND b.aktif=1 GROUP BY b.id,b.urun_id");
+$activeBomSync->execute([$donem]);
+foreach($activeBomSync->fetchAll() as $ab){ rm_sync_bom_to_maliyet($db, (int)$ab['id'], (int)$ab['urun_id'], $donem); }
 
 $costSql = "
     SELECT
