@@ -275,7 +275,7 @@ function rm_seed_cam033_fixed_cost(PDO $db, string $donem): void
         $ins->execute([$bomId,$kid,$net,'TL',1,1,1,$unit,$net,1,3]);
     }
     rm_sync_bom_to_maliyet($db, $bomId, $urunId, $donem);
-    $db->prepare("INSERT INTO recete_nakliye_dekap (donem,urun_adi,nakliye_tl_koli,dekap_tl_koli) VALUES (?,'0,33 L Cam Şişe Su',3.74,6.36) ON DUPLICATE KEY UPDATE nakliye_tl_koli=VALUES(nakliye_tl_koli), dekap_tl_koli=VALUES(dekap_tl_koli)")
+    $db->prepare("INSERT INTO recete_nakliye_dekap (donem,urun_adi,nakliye_tl_koli,dekap_tl_koli) VALUES (?,'0,33 L Cam Şişe Su',3.74,6.36) ON DUPLICATE KEY UPDATE urun_adi=VALUES(urun_adi)")
         ->execute([$donem]);
 }
 
@@ -711,6 +711,8 @@ $donem = (string)($_GET['donem'] ?? '2026-04');
 $selectedId = (int)($_POST['urun_id'] ?? ($_GET['urun_id'] ?? 0));
 $message = '';
 $error = '';
+$db->prepare("INSERT IGNORE INTO recete_gider_ayarlari (donem,g730,g760,g770,g720) VALUES (?,7.8582,2.6361,12.4859,9.1631)")
+    ->execute([$donem]);
 rm_seed_cam033_fixed_cost($db, $donem);
 
 try {
@@ -745,6 +747,22 @@ try {
                 ->execute([trim((string)($_POST['fiyat_tarihi'] ?? date('Y-m-d'))), trim((string)($_POST['kategori'] ?? 'Ürün')), $ad, trim((string)($_POST['ton_fiyati'] ?? '')), trim((string)($_POST['doviz_adet'] ?? '')), rm_num($_POST['tl_adet'] ?? 0), rm_num($_POST['cam_sise_033'] ?? 0), rm_num($_POST['cam_sise_075'] ?? 0), trim((string)($_POST['aciklama'] ?? ''))]);
             $tab = 'urunler';
             $message = 'Fiyat kaydedildi.';
+        } elseif($action === 'recete_gider_kaydet'){
+            $urunId = (int)($_POST['urun_id'] ?? 0);
+            $db->prepare("INSERT INTO recete_gider_ayarlari (donem,g730,g760,g770,g720) VALUES (?,?,?,?,?) ON DUPLICATE KEY UPDATE g730=VALUES(g730), g760=VALUES(g760), g770=VALUES(g770), g720=VALUES(g720)")
+                ->execute([$donem, rm_num($_POST['g730'] ?? 0), rm_num($_POST['g760'] ?? 0), rm_num($_POST['g770'] ?? 0), rm_num($_POST['g720'] ?? 0)]);
+            if($urunId > 0){
+                $uq = $db->prepare("SELECT urun_adi FROM maliyet_urunler WHERE id=?");
+                $uq->execute([$urunId]);
+                $urunAdi = (string)$uq->fetchColumn();
+                if($urunAdi !== ''){
+                    $db->prepare("INSERT INTO recete_nakliye_dekap (donem,urun_adi,nakliye_tl_koli,dekap_tl_koli) VALUES (?,?,?,?) ON DUPLICATE KEY UPDATE nakliye_tl_koli=VALUES(nakliye_tl_koli), dekap_tl_koli=VALUES(dekap_tl_koli)")
+                        ->execute([$donem,$urunAdi,rm_num($_POST['nakliye'] ?? 0),rm_num($_POST['dekap'] ?? 0)]);
+                }
+            }
+            $selectedId = $urunId;
+            $tab = 'receteler';
+            $message = 'Reçete giderleri kaydedildi.';
         } elseif($action === 'stok_hareket_kaydet'){
             $urunId = (int)($_POST['urun_id'] ?? 0);
             $tip = trim((string)($_POST['hareket_tipi'] ?? ''));
@@ -1529,7 +1547,10 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
     .recipe-cost-card strong{display:block;margin-top:6px;color:#0f172a;font-size:17px;font-weight:950;font-variant-numeric:tabular-nums}
     .recipe-cost-card.total{background:#0f172a;border-color:#0f172a}.recipe-cost-card.total span{color:#bfdbfe}.recipe-cost-card.total strong{color:#fff}
     .recipe-cost-card small{display:block;margin-top:5px;color:#64748b;font-size:10px;line-height:1.35}
-    @media(max-width:1100px){.pet033-cost-summary,.recipe-cost-band{grid-template-columns:1fr 1fr}}
+    .recipe-gider-panel{margin:14px 16px;background:#fff;border:1px solid #dbe3ee;border-radius:16px;padding:14px;box-shadow:0 10px 24px rgba(15,23,42,.04)}
+    .recipe-gider-head{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:12px}.recipe-gider-head h3{margin:0;color:#0f172a;font-size:16px}.recipe-gider-head p{margin:3px 0 0;color:#64748b;font-size:11px}
+    .recipe-gider-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}.recipe-gider-field label{display:block;margin-bottom:5px;color:#475569;font-size:10px;font-weight:950;text-transform:uppercase}.recipe-gider-field input{width:100%;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:10px;padding:10px;font-weight:900}.recipe-gider-save{align-self:end;border:0;border-radius:10px;background:#2563eb;color:#fff;padding:11px 12px;font-weight:950;cursor:pointer}
+    @media(max-width:1100px){.pet033-cost-summary,.recipe-cost-band,.recipe-gider-grid{grid-template-columns:1fr 1fr}}
     @media(max-width:1100px){.recipe-popup .bom-editor{width:96vw;margin:12px auto;border-radius:16px}}
     @media(max-width:900px){.bom-summary,.pet033-cost-summary{grid-template-columns:1fr}.recipe-actions label{min-width:100%}}
     </style>
@@ -1598,7 +1619,21 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
                     <div class="pet033-cost-card fire"><span>Fire Payı</span><strong id="petFirePay">0,00 TL</strong><small id="petFireLabel">Zayiat / fire eklemesi</small></div>
                     <div class="pet033-cost-card total"><span>Fireli Hammadde / Koli</span><strong id="petFireTotal">0,00 TL</strong><small>Gerçek birim hammadde maliyeti</small></div>
                 </div>
-                <?php $stdG720=9.1631; $stdG730=7.8582; $stdG760=2.6361; $stdG770=12.4859; $stdGiderToplam=$stdG720+$stdG730+$stdG760+$stdG770; ?>
+                <?php $stdGv=rm_gider_values($db,$donem); $stdG720=$stdGv['g720']; $stdG730=$stdGv['g730']; $stdG760=$stdGv['g760']; $stdG770=$stdGv['g770']; $stdNakliye=(float)($selectedNd['nakliye_tl_koli'] ?? 0); $stdDekap=(float)($selectedNd['dekap_tl_koli'] ?? 0); $stdGiderToplam=$stdG720+$stdG730+$stdG760+$stdG770; ?>
+                <div class="recipe-gider-panel">
+                    <div class="recipe-gider-head">
+                        <div><h3>Reçete Giderleri</h3><p>Bu dönem için koli başı gider ve seçili ürüne ait DEKAP değerlerini girin.</p></div>
+                        <button class="recipe-gider-save" type="submit" onclick="document.getElementById('bomAction').value='recete_gider_kaydet'">Giderleri Kaydet</button>
+                    </div>
+                    <div class="recipe-gider-grid">
+                        <div class="recipe-gider-field"><label>730 İşçilik Hariç</label><input name="g730" value="<?php echo rm_input_num($stdG730,4); ?>"></div>
+                        <div class="recipe-gider-field"><label>760 Pazarlama</label><input name="g760" value="<?php echo rm_input_num($stdG760,4); ?>"></div>
+                        <div class="recipe-gider-field"><label>Genel Yönetim</label><input name="g770" value="<?php echo rm_input_num($stdG770,4); ?>"></div>
+                        <div class="recipe-gider-field"><label>İşçilik Gideri</label><input name="g720" value="<?php echo rm_input_num($stdG720,4); ?>"></div>
+                        <div class="recipe-gider-field"><label>Nakliye</label><input name="nakliye" value="<?php echo rm_input_num($stdNakliye,4); ?>"></div>
+                        <div class="recipe-gider-field"><label>DEKAP Gideri</label><input name="dekap" value="<?php echo rm_input_num($stdDekap,4); ?>"></div>
+                    </div>
+                </div>
                 <div class="recipe-cost-band" data-gider-total="<?php echo rm_e($stdGiderToplam); ?>">
                     <div class="recipe-cost-card"><span>Hammadde Sonucu</span><strong id="recipeHamCost">₺0,0000</strong><small>Reçete satırlarından canlı hesaplanır.</small></div>
                     <div class="recipe-cost-card"><span>730 İşçilik Hariç</span><strong><?php echo rm_money4($stdG730); ?></strong><small>Koli başı gider payı</small></div>
@@ -1674,8 +1709,10 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
         if(document.getElementById('petFirePay')){ document.getElementById('petFirePay').textContent = '+' + firePay.toLocaleString('tr-TR',{minimumFractionDigits:4,maximumFractionDigits:4}) + ' TL'; }
         if(document.getElementById('petFireLabel')){ document.getElementById('petFireLabel').textContent = 'Fire payı (%' + fireRate.toLocaleString('tr-TR',{minimumFractionDigits:1,maximumFractionDigits:2}) + ')'; }
         if(document.getElementById('petFireTotal')){ document.getElementById('petFireTotal').textContent = fireSum.toLocaleString('tr-TR',{minimumFractionDigits:4,maximumFractionDigits:4}) + ' TL'; }
-        var costBand = document.querySelector('.recipe-cost-band');
-        var giderTotal = costBand ? trNum(costBand.dataset.giderTotal || '0') : 0;
+        var giderTotal = ['g730','g760','g770','g720'].reduce(function(sum,name){
+            var el = document.querySelector('[name="'+name+'"]');
+            return sum + (el ? trNum(el.value) : 0);
+        }, 0);
         if(document.getElementById('recipeHamCost')){ document.getElementById('recipeHamCost').textContent = fmt(fireSum,4); }
         if(document.getElementById('recipeGrandCost')){ document.getElementById('recipeGrandCost').textContent = fmt(fireSum + giderTotal,4); }
     }
