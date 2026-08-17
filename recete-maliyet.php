@@ -18,13 +18,21 @@ function rm_currency_num($value): float
 {
     $value = str_replace([' ', 'TL', '₺', '$', '€', 'USD', 'EUR'], '', trim((string)$value));
     if(str_contains($value, ',')){ $value = str_replace('.', '', $value); $value = str_replace(',', '.', $value); }
+    elseif(preg_match('/^-?\d{1,3}(\.\d{3})+$/', $value)){ $value = str_replace('.', '', $value); }
     return (float)$value;
 }
 function rm_num($value): float
 {
     $value = str_replace([' ', 'TL', '₺'], '', trim((string)$value));
     if(str_contains($value, ',')){ $value = str_replace('.', '', $value); $value = str_replace(',', '.', $value); }
+    elseif(preg_match('/^-?\d{1,3}(\.\d{3})+$/', $value)){ $value = str_replace('.', '', $value); }
     return (float)$value;
+}
+function rm_input_num($value, int $dec = 6): string
+{
+    $v = (float)$value;
+    $d = abs($v - round($v)) < 0.000001 ? 0 : $dec;
+    return number_format($v, $d, ',', '.');
 }
 function rm_urun_kodu(string $name, int $id): string
 {
@@ -1443,7 +1451,7 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
                         <td><select class="bom-currency" name="para_cinsi[]"><?php $pc=$b['para_cinsi'] ?? 'TL'; ?><option <?php echo $pc==='TL'?'selected':''; ?>>TL</option><option <?php echo $pc==='USD'?'selected':''; ?>>USD</option><option <?php echo $pc==='EUR'?'selected':''; ?>>EUR</option></select></td>
                         <td><input class="bom-kur" name="doviz_kuru[]" value="<?php echo number_format(max((float)($b['doviz_kuru'] ?? 1),1),6,',','.'); ?>"></td>
                         <td class="bom-tl">₺0,00</td>
-                        <td><input class="bom-bolen" name="bolen[]" value="<?php echo number_format(max((float)($b['bolen'] ?? 1),1),6,',','.'); ?>"></td>
+                        <td><input class="bom-bolen" name="bolen[]" value="<?php echo rm_input_num(max((float)($b['bolen'] ?? 1),1)); ?>"></td>
                         <td class="bom-price-view">₺0,00</td>
                         <td><input class="bom-num" name="tuketim_miktari[]" value="<?php echo number_format((float)$b['tuketim_miktari'],6,',','.'); ?>"></td>
                         <td><select class="bom-unit" name="tuketim_birimi[]"><option <?php echo $b['tuketim_birimi']==='gr/adet' ? 'selected' : ''; ?>>gr/adet</option><option <?php echo in_array($b['tuketim_birimi'], ['adet/adet','adet/koli'], true) ? 'selected' : ''; ?>>adet/adet</option><option <?php echo $b['tuketim_birimi']==='gr/koli' ? 'selected' : ''; ?>>gr/koli</option><option <?php echo $b['tuketim_birimi']==='kg/koli' ? 'selected' : ''; ?>>kg/koli</option></select></td>
@@ -1467,6 +1475,7 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
     function trNum(v){
         v=(v||'').toString().trim().replace(/[^\d,.\-]/g,'');
         if(v.indexOf(',')>-1){ v=v.replace(/\./g,'').replace(',','.'); }
+        else if(/^-?\d{1,3}(\.\d{3})+$/.test(v)){ v=v.replace(/\./g,''); }
         return parseFloat(v)||0;
     }
     function fmt(v,d){ return '₺' + v.toLocaleString('tr-TR',{minimumFractionDigits:d||2,maximumFractionDigits:d||2}); }
