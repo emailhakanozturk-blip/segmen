@@ -749,8 +749,8 @@ try {
                     ->execute([$receteId,$hid,$alis,trim((string)($_POST['para_cinsi'][$i] ?? 'TL')),$kur,$bolen,rm_num($_POST['tuketim_miktari'][$i] ?? 0),trim((string)($_POST['tuketim_birimi'][$i] ?? 'adet/koli')),$birimFiyat,rm_num($_POST['koli_ici_adet'][$i] ?? 1),rm_num($_POST['fire_orani'][$i] ?? 0)]);
             }
             $selectedId = $urunId;
-            $tab = 'receteler';
-            $message = 'Reçete kaydedildi.';
+            $tab = 'ozet';
+            $message = 'Reçete kaydedildi. Maliyet özeti açıldı.';
         }
     }
 } catch(Throwable $e){ $error = $e->getMessage(); }
