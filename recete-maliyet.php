@@ -228,8 +228,19 @@ function rm_seed_cam033_fixed_cost(PDO $db, string $donem): void
     $urunQ->execute();
     $urunId = (int)$urunQ->fetchColumn();
     if($urunId <= 0 || $donem === ''){ return; }
-    $hammadde = 58.8458;
-    $netHammadde = $hammadde / 1.03;
+    $camRows = [
+        ['Cam Şişe', 'Adet', 46.3212],
+        ['Alüminyum Kapak', 'Adet', 7.6440],
+        ['Stiker Etiket', 'Adet', 0.9000],
+        ['Shrink (KĞ)', 'Kg', 2.26664064],
+        ['Strech Film', 'Kg', 0],
+        ['Palet Ara Seperatör', 'Adet', 0],
+        ['Emniyet Bandı', 'Adet', 0],
+        ['Karton Koli', 'Adet', 0],
+        ['Koli Seperatör', 'Adet', 0],
+        ['Alt folyo', 'Kg', 0],
+        ['Üst Folyo', 'Kg', 0],
+    ];
     $bomIns = $db->prepare("INSERT INTO recete_bom (urun_id,donem,versiyon,aciklama,aktif) VALUES (?,?,?,'0,33 L Cam Şişe Su maliyet reçetesi',1) ON DUPLICATE KEY UPDATE aciklama=VALUES(aciklama), aktif=1");
     $bomIns->execute([$urunId,$donem,$donem]);
     $bomQ = $db->prepare("SELECT id FROM recete_bom WHERE urun_id=? AND donem=? AND versiyon=? LIMIT 1");
@@ -237,9 +248,13 @@ function rm_seed_cam033_fixed_cost(PDO $db, string $donem): void
     $bomId = (int)$bomQ->fetchColumn();
     if($bomId <= 0){ return; }
     $db->prepare("DELETE FROM recete_bom_kalemleri WHERE recete_id=?")->execute([$bomId]);
-    $kid = rm_kalem_id($db, 'Hammadde', 'Hammadde Toplamı', 'Koli', 0);
-    $db->prepare("INSERT INTO recete_bom_kalemleri (recete_id,hammadde_id,alis_fiyati,para_cinsi,doviz_kuru,bolen,tuketim_miktari,tuketim_birimi,birim_fiyat,koli_ici_adet,fire_orani) VALUES (?,?,?,?,?,?,?,?,?,?,?)")
-        ->execute([$bomId,$kid,$netHammadde,'TL',1,1,1,'adet/koli',$netHammadde,1,3]);
+    $ins = $db->prepare("INSERT INTO recete_bom_kalemleri (recete_id,hammadde_id,alis_fiyati,para_cinsi,doviz_kuru,bolen,tuketim_miktari,tuketim_birimi,birim_fiyat,koli_ici_adet,fire_orani) VALUES (?,?,?,?,?,?,?,?,?,?,?)");
+    foreach($camRows as $r){
+        $kid = rm_kalem_id($db, 'Hammadde', $r[0], $r[1], 0);
+        $net = ((float)$r[2]) / 1.03;
+        $unit = $r[1] === 'Kg' ? 'gr/koli' : 'adet/adet';
+        $ins->execute([$bomId,$kid,$net,'TL',1,1,1,$unit,$net,1,3]);
+    }
     rm_sync_bom_to_maliyet($db, $bomId, $urunId, $donem);
     $db->prepare("INSERT INTO recete_nakliye_dekap (donem,urun_adi,nakliye_tl_koli,dekap_tl_koli) VALUES (?,'0,33 L Cam Şişe Su',3.74,6.36) ON DUPLICATE KEY UPDATE nakliye_tl_koli=VALUES(nakliye_tl_koli), dekap_tl_koli=VALUES(dekap_tl_koli)")
         ->execute([$donem]);
