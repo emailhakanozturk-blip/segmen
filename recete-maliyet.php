@@ -560,7 +560,20 @@ $error = '';
 try {
     if(($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST'){
         $action = (string)($_POST['action'] ?? '');
-        if($action === 'urun_kaydet'){
+        if($action === 'donem_ekle'){
+            $yil = (int)($_POST['donem_yil'] ?? date('Y'));
+            $ay = (int)($_POST['donem_ay'] ?? 0);
+            if($yil < 2020 || $yil > 2100 || $ay < 1 || $ay > 12){ throw new RuntimeException('Geçerli dönem yılı ve ayı seçin.'); }
+            $ayAdlari = [1=>'Ocak',2=>'Şubat',3=>'Mart',4=>'Nisan',5=>'Mayıs',6=>'Haziran',7=>'Temmuz',8=>'Ağustos',9=>'Eylül',10=>'Ekim',11=>'Kasım',12=>'Aralık'];
+            $newDonem = sprintf('%04d-%02d', $yil, $ay);
+            $newDonemAdi = $ayAdlari[$ay] . ' ' . $yil;
+            $toplamUretim = rm_num($_POST['toplam_uretim'] ?? 0);
+            $db->prepare("INSERT INTO recete_donemler (donem,donem_adi,toplam_uretim,durum,son_hesaplama) VALUES (?,?,?,'Açık',NULL) ON DUPLICATE KEY UPDATE donem_adi=VALUES(donem_adi), toplam_uretim=VALUES(toplam_uretim), durum='Açık'")
+                ->execute([$newDonem, $newDonemAdi, $toplamUretim]);
+            $donem = $newDonem;
+            $tab = (string)($_POST['return_tab'] ?? $tab);
+            $message = $newDonemAdi . ' dönemi eklendi.';
+        } elseif($action === 'urun_kaydet'){
             $ad = trim((string)($_POST['urun_adi'] ?? ''));
             if($ad === ''){ throw new RuntimeException('Ürün adı boş olamaz.'); }
             $kod = trim((string)($_POST['urun_kodu'] ?? ''));
@@ -841,6 +854,20 @@ $stokHareketleri = $stokHareketStmt->fetchAll();
 $stokKpi = ['uretilen'=>0,'zincir_market_sevk'=>0,'bayi_sevk'=>0,'birimler_arasi_sevk'=>0,'fire'=>0,'iade_giris'=>0];
 foreach($stokHareketleri as $h){ if(isset($stokKpi[$h['hareket_tipi']])){ $stokKpi[$h['hareket_tipi']] += (float)$h['miktar']; } }
 $stokMevcut = $stokKpi['uretilen'] + $stokKpi['iade_giris'] - $stokKpi['zincir_market_sevk'] - $stokKpi['bayi_sevk'] - $stokKpi['birimler_arasi_sevk'] - $stokKpi['fire'];
+$stokOzetStmt = $db->prepare("
+    SELECT
+        u.id, u.urun_kodu, u.urun_adi, u.ambalaj_tipi, u.koli_ici_adet,
+        COALESCE(SUM(CASE WHEN h.hareket_tipi='uretilen' THEN h.miktar ELSE 0 END),0) uretilen,
+        COALESCE(SUM(CASE WHEN h.hareket_tipi='iade_giris' THEN h.miktar ELSE 0 END),0) iade,
+        COALESCE(SUM(CASE WHEN h.hareket_tipi IN ('birimler_arasi_sevk','bayi_sevk','zincir_market_sevk') THEN h.miktar ELSE 0 END),0) sevk,
+        COALESCE(SUM(CASE WHEN h.hareket_tipi='fire' THEN h.miktar ELSE 0 END),0) fire
+    FROM maliyet_urunler u
+    LEFT JOIN recete_stok_hareketleri h ON h.urun_id=u.id AND h.donem=?
+    GROUP BY u.id,u.urun_kodu,u.urun_adi,u.ambalaj_tipi,u.koli_ici_adet
+    ORDER BY u.urun_adi
+");
+$stokOzetStmt->execute([$donem]);
+$stokUrunOzet = $stokOzetStmt->fetchAll();
 
 $qtyByProduct = [];
 foreach($uretimler as $u){ $qtyByProduct[$u['urun_adi']] = (float)$u['koli_miktari']; }
@@ -940,6 +967,7 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
 @media(max-width:760px){.product-overview{display:block}.product-overview .primary-add{width:100%;margin-top:16px}.product-summary{grid-template-columns:1fr 1fr}.product-catalogue{grid-template-columns:1fr}.product-catalogue.list-view .product-module{display:flex}.product-catalogue.list-view .product-specs{position:static}.product-catalogue.list-view .product-card-actions{border-left:0}.product-filters{margin-right:-4px}.view-switch{display:none}}
 .production-workspace{display:grid;gap:16px}.production-hero{display:flex;justify-content:space-between;gap:18px;align-items:center;background:linear-gradient(125deg,#0f172a,#1d4ed8);color:#fff;border-radius:20px;padding:24px 28px;box-shadow:0 18px 42px rgba(15,23,42,.18)}.production-hero small{display:inline-flex;background:rgba(96,165,250,.22);border:1px solid rgba(191,219,254,.3);border-radius:999px;padding:7px 11px;color:#bfdbfe;font-size:11px;font-weight:950;letter-spacing:.08em;text-transform:uppercase}.production-hero h2{margin:10px 0 6px;font-size:28px}.production-hero p{margin:0;color:#dbeafe;font-size:13px}.production-period{min-width:170px;text-align:center;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.22);border-radius:16px;padding:14px}.production-period span{display:block;color:#bfdbfe;font-size:11px;font-weight:900}.production-period strong{display:block;margin-top:4px;font-size:20px}.production-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.production-kpi{background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:16px 18px;box-shadow:0 10px 24px rgba(15,23,42,.045)}.production-kpi span{display:block;color:#64748b;font-size:11px;font-weight:950;text-transform:uppercase}.production-kpi strong{display:block;margin-top:7px;color:#0f172a;font-size:24px}.production-kpi em{display:block;margin-top:4px;color:#2563eb;font-size:11px;font-style:normal;font-weight:900}.production-panel{background:#fff;border:1px solid #e2e8f0;border-radius:18px;overflow:hidden;box-shadow:0 12px 30px rgba(15,23,42,.05)}.production-panel-head{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:18px 20px;border-bottom:1px solid #e2e8f0}.production-panel-head h3{margin:0;color:#0f172a;font-size:18px}.production-panel-head p{margin:4px 0 0;color:#64748b;font-size:12px}.production-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;padding:16px}.production-card{border:1px solid #e2e8f0;border-radius:15px;padding:14px;background:#f8fafc}.production-card-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.production-code{display:inline-flex;background:#e0ecff;color:#1d4ed8;border-radius:999px;padding:5px 8px;font-size:10px;font-weight:950}.production-card h4{margin:10px 0 4px;color:#0f172a;font-size:15px;line-height:1.35}.production-card .muted{font-size:11px}.production-qty{font-size:20px;font-weight:950;color:#0f172a;text-align:right}.production-qty small{display:block;color:#64748b;font-size:10px;font-weight:900}.production-bar{height:9px;background:#e2e8f0;border-radius:999px;overflow:hidden;margin-top:13px}.production-bar span{display:block;height:100%;background:linear-gradient(90deg,#16a34a,#2563eb);border-radius:999px}.production-meta{display:flex;justify-content:space-between;margin-top:8px;color:#64748b;font-size:11px;font-weight:800}.production-table{padding:0 16px 16px}.production-table .rm-table{table-layout:fixed}.production-table th,.production-table td{font-size:12px;padding:10px}.production-table .rm-product{word-break:break-word}.production-ratio{display:flex;align-items:center;gap:8px}.production-ratio i{display:block;flex:1;height:7px;background:#e2e8f0;border-radius:999px;overflow:hidden}.production-ratio i b{display:block;height:100%;background:#2563eb}@media(max-width:1050px){.production-grid,.production-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.production-hero{align-items:flex-start}}@media(max-width:720px){.production-hero{display:block;padding:20px}.production-period{text-align:left;margin-top:14px}.production-grid,.production-kpis{grid-template-columns:1fr}.production-table th:nth-child(1),.production-table td:nth-child(1){display:none}.production-table th,.production-table td{font-size:11px;padding:8px 6px}.production-qty{text-align:left}}
 .rm-page,.recipe-mode,.expense-mode,.product-mode{max-width:1440px;width:100%;box-sizing:border-box}
+.period-tools{display:flex;gap:10px;align-items:center;justify-content:flex-end;flex-wrap:wrap}.period-add-form{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:12px;padding:8px}.period-add-form label{font-size:12px;font-weight:900;color:#dbeafe}.period-add-form input,.period-add-form select{border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.95);color:#0f172a;border-radius:9px;padding:9px 10px;font-weight:800}.period-add-form input[type=number]{width:86px}.period-add-form input[name=toplam_uretim]{width:118px}.period-add-form button{border:0;border-radius:9px;background:#10b981;color:#fff;padding:9px 12px;font-weight:950;cursor:pointer}@media(max-width:800px){.period-tools{justify-content:flex-start;margin-top:14px}.period-add-form input[name=toplam_uretim]{width:100%}}
 </style>
 </head>
 <body>
@@ -947,7 +975,19 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
 <main class="main rm-page <?php echo $tab==='receteler'?'recipe-mode':''; ?> <?php echo $tab==='giderler'?'expense-mode':''; ?> <?php echo $tab==='urunler'?'product-mode':''; ?>">
     <section class="rm-hero">
         <div><h1>Reçete ve Maliyet</h1><p>Reçete, fiyatlama, üretim ve koli başı maliyet kontrol paneli.</p></div>
-        <form class="rm-filter" method="GET"><input type="hidden" name="tab" value="<?php echo rm_e($tab); ?>"><label>Dönem</label><select name="donem" onchange="this.form.submit()"><?php foreach($donemler as $d): ?><option value="<?php echo rm_e($d['donem']); ?>" <?php echo $donem===$d['donem'] ? 'selected' : ''; ?>><?php echo rm_e($d['donem_adi']); ?></option><?php endforeach; ?></select><span class="rm-pill"><?php echo rm_e($currentDonem['durum']); ?></span></form>
+        <div class="period-tools">
+            <form class="rm-filter" method="GET"><input type="hidden" name="tab" value="<?php echo rm_e($tab); ?>"><label>Dönem</label><select name="donem" onchange="this.form.submit()"><?php foreach($donemler as $d): ?><option value="<?php echo rm_e($d['donem']); ?>" <?php echo $donem===$d['donem'] ? 'selected' : ''; ?>><?php echo rm_e($d['donem_adi']); ?></option><?php endforeach; ?></select><span class="rm-pill"><?php echo rm_e($currentDonem['durum']); ?></span></form>
+            <?php $heroYear = (int)substr($donem,0,4); $heroMonth = (int)substr($donem,5,2); ?>
+            <form class="period-add-form" method="POST">
+                <input type="hidden" name="action" value="donem_ekle">
+                <input type="hidden" name="return_tab" value="<?php echo rm_e($tab); ?>">
+                <label>Ay Ekle</label>
+                <input type="number" name="donem_yil" min="2020" max="2100" value="<?php echo rm_e($heroYear ?: (int)date('Y')); ?>">
+                <select name="donem_ay"><?php foreach($aylar2026 as $m=>$ad): ?><option value="<?php echo (int)$m; ?>" <?php echo $heroMonth===(int)$m ? 'selected' : ''; ?>><?php echo rm_e($ad); ?></option><?php endforeach; ?></select>
+                <input type="text" name="toplam_uretim" placeholder="Üretim">
+                <button type="submit">Ekle</button>
+            </form>
+        </div>
     </section>
     <nav class="rm-tabs">
         <a class="<?php echo $tab==='ozet'?'active':''; ?>" href="?tab=ozet&donem=<?php echo rm_e($donem); ?>">Maliyet Özeti</a>
@@ -1188,7 +1228,25 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
             <div class="stock-kpi fire"><span>Fire / Zayiat</span><strong><?php echo number_format($stokKpi['fire'],0,',','.'); ?></strong></div>
             <div class="stock-kpi dark"><span>Anlık Net Stok</span><strong><?php echo number_format($stokMevcut,0,',','.'); ?></strong></div>
         </section>
-        <section class="stock-tools"><input id="stockSearch" placeholder="Ürün adı, irsaliye no veya depo ara"><select id="stockProduct"><option value="">Tüm Su Ürünleri</option><?php foreach($urunler as $u): ?><option value="<?php echo rm_e(rm_lower($u['urun_adi'])); ?>"><?php echo rm_e($u['urun_adi']); ?></option><?php endforeach; ?></select><select id="stockTip"><option value="">Tüm Hareket Tipleri</option><?php foreach($tipler as $k=>$t): ?><option value="<?php echo rm_e($k); ?>"><?php echo rm_e($t[0]); ?></option><?php endforeach; ?></select></section>
+        <section class="stock-list">
+            <div class="stock-list-head"><div><h3>Ürün Bazlı Stok Tablosu</h3><span><?php echo count($stokUrunOzet); ?> ürün listeleniyor</span></div></div>
+            <div class="rm-table-wrap"><table class="rm-table stock-product-table"><thead><tr><th>Ürün Kodu</th><th>Ürün</th><th>Ambalaj</th><th>Üretilen Miktar</th><th>Sevk Edilen Miktar</th><th>Fire</th><th>İade</th><th>Kalan Stok</th></tr></thead><tbody>
+            <?php foreach($stokUrunOzet as $s): $kalan=(float)$s['uretilen']+(float)$s['iade']-(float)$s['sevk']-(float)$s['fire']; ?>
+                <tr class="stock-product-row" data-name="<?php echo rm_e(rm_lower(($s['urun_kodu'] ?? '').' '.$s['urun_adi'].' '.$s['ambalaj_tipi'])); ?>" data-product="<?php echo rm_e(rm_lower($s['urun_adi'])); ?>" data-tip="<?php echo $kalan > 0 ? 'positive' : 'zero'; ?>">
+                    <td><span class="code-pill"><?php echo rm_e($s['urun_kodu'] ?: ('UR-'.$s['id'])); ?></span></td>
+                    <td><strong><?php echo rm_e($s['urun_adi']); ?></strong><br><span class="bom-code">Koli içi: <?php echo number_format((float)$s['koli_ici_adet'],0,',','.'); ?> adet</span></td>
+                    <td><?php echo rm_e($s['ambalaj_tipi'] ?: '-'); ?></td>
+                    <td class="num"><strong class="stock-amount plus"><?php echo number_format((float)$s['uretilen'],0,',','.'); ?> koli</strong></td>
+                    <td class="num"><strong class="stock-amount minus"><?php echo number_format((float)$s['sevk'],0,',','.'); ?> koli</strong></td>
+                    <td class="num"><strong class="red"><?php echo number_format((float)$s['fire'],0,',','.'); ?> koli</strong></td>
+                    <td class="num"><strong class="green"><?php echo number_format((float)$s['iade'],0,',','.'); ?> koli</strong></td>
+                    <td class="num"><strong class="<?php echo $kalan > 0 ? 'stock-amount plus' : 'stock-amount minus'; ?>"><?php echo number_format($kalan,0,',','.'); ?> koli</strong></td>
+                </tr>
+            <?php endforeach; ?>
+            <?php if(!$stokUrunOzet): ?><tr><td colspan="8"><div class="stock-empty"><strong>Henüz ürün yok.</strong>Ürün tanımları eklendiğinde stok tablosu burada oluşur.</div></td></tr><?php endif; ?>
+            </tbody></table></div>
+        </section>
+        <section class="stock-tools"><input id="stockSearch" placeholder="Ürün adı, ürün kodu veya depo ara"><select id="stockProduct"><option value="">Tüm Su Ürünleri</option><?php foreach($urunler as $u): ?><option value="<?php echo rm_e(rm_lower($u['urun_adi'])); ?>"><?php echo rm_e($u['urun_adi']); ?></option><?php endforeach; ?></select><select id="stockTip"><option value="">Tüm Stoklar</option><option value="positive">Stokta Olanlar</option><option value="zero">Stok Olmayanlar</option></select></section>
         <section class="stock-list">
             <div class="stock-list-head"><div><h3>Hareket Listesi</h3><span>Son <?php echo count($stokHareketleri); ?> kayıt</span></div></div>
             <div class="rm-table-wrap"><table class="rm-table"><thead><tr><th>Tarih</th><th>İrsaliye</th><th>Su Ürünü</th><th>Hareket</th><th>Çıkış / Varış</th><th>Miktar</th><th>Açıklama</th><th>İşlem</th></tr></thead><tbody>
@@ -1210,7 +1268,7 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
     </section>
     <script>
     function setStockType(v){ document.getElementById('stockType').value=v; }
-    function filterStock(){ var q=(document.getElementById('stockSearch').value||'').toLocaleLowerCase('tr-TR'), p=document.getElementById('stockProduct').value, t=document.getElementById('stockTip').value; document.querySelectorAll('.stock-row').forEach(function(r){ var ok=(!q||r.dataset.name.indexOf(q)>-1)&&(!p||r.dataset.product===p)&&(!t||r.dataset.tip===t); r.style.display=ok ? '' : 'none'; }); }
+    function filterStock(){ var q=(document.getElementById('stockSearch').value||'').toLocaleLowerCase('tr-TR'), p=document.getElementById('stockProduct').value, t=document.getElementById('stockTip').value; document.querySelectorAll('.stock-product-row,.stock-row').forEach(function(r){ var ok=(!q||r.dataset.name.indexOf(q)>-1)&&(!p||r.dataset.product===p)&&(!t||r.dataset.tip===t); r.style.display=ok ? '' : 'none'; }); }
     ['stockSearch','stockProduct','stockTip'].forEach(function(id){ document.getElementById(id).addEventListener('input',filterStock); document.getElementById(id).addEventListener('change',filterStock); });
     </script>
     <?php endif; ?>
@@ -1260,6 +1318,11 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
     .template-btn.dark{background:#0f172a;border-color:#0f172a;color:#fff}
     .excel-upload{display:inline-flex!important;align-items:center;justify-content:center;min-width:auto!important;border:1px solid #dbe3ee;background:#fff;color:#334155;border-radius:10px;padding:10px 12px;font-size:12px;font-weight:950;cursor:pointer}
     .excel-upload input{display:none}
+    .excel-format-box{margin:12px 22px 0;background:#f8fafc;border:1px solid #dbe3ee;border-radius:14px;padding:12px}
+    .excel-format-box h4{margin:0 0 8px;color:#0f172a;font-size:13px}
+    .excel-format-table{width:100%;border-collapse:collapse;font-size:11px}
+    .excel-format-table th{background:#0f172a;color:#fff;text-align:left;padding:8px}
+    .excel-format-table td{border:1px solid #e2e8f0;padding:8px;background:#fff}
     .pet033-cost-summary{display:grid;grid-template-columns:1.1fr 1fr 1fr 1.1fr;gap:16px;padding:16px;background:#fff;border-bottom:1px solid #e5e7eb}
     .pet033-cost-card{border:1px solid #dbe3ee;border-radius:14px;padding:16px 18px;background:#f8fafc}
     .pet033-cost-card span{display:block;color:#64748b;font-size:11px;font-weight:950;text-transform:uppercase}
@@ -1319,6 +1382,17 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
                         <button type="button" class="recipe-popup-close" onclick="document.getElementById('recipePopup').classList.remove('show')">Kapat</button>
                         <button type="submit" class="primary-add">Reçeteyi Kaydet</button>
                     </div>
+                </div>
+                <div class="excel-format-box">
+                    <h4>Excel Yükleme Örnek Formatı</h4>
+                    <div class="rm-table-wrap"><table class="excel-format-table">
+                        <thead><tr><th>Hammadde / Malzeme</th><th>Alış Fiyatı</th><th>Para Cinsi</th><th>Döviz Kuru</th><th>Bölen</th><th>Kullanım Miktarı</th><th>Birim</th><th>Kolideki Adet</th><th>Fire %</th></tr></thead>
+                        <tbody>
+                            <tr><td>Preform / Cam Şişe</td><td>1,38</td><td>USD</td><td>47,7168</td><td>1000</td><td>9,2</td><td>gr/adet</td><td>24</td><td>3</td></tr>
+                            <tr><td>Kapak</td><td>205</td><td>TL</td><td>1</td><td>1000</td><td>1</td><td>adet/adet</td><td>24</td><td>1,5</td></tr>
+                            <tr><td>Etiket</td><td>170</td><td>TL</td><td>1</td><td>1000</td><td>1</td><td>adet/adet</td><td>24</td><td>2</td></tr>
+                        </tbody>
+                    </table></div>
                 </div>
                 <div class="pet033-cost-summary">
                     <div class="pet033-cost-card"><span>Şişe Başı Hammadde</span><strong id="petBottleCost">0,00 TL</strong><small><?php echo number_format((float)$selectedKoliIci,0,',','.'); ?>'e bölünerek şişe payı</small></div>
