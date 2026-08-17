@@ -1038,6 +1038,11 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
 .rm-page,.recipe-mode,.expense-mode,.product-mode{max-width:1440px;width:100%;box-sizing:border-box}
 .period-tools{display:flex;gap:10px;align-items:center;justify-content:flex-end;flex-wrap:wrap}.period-add-form{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:12px;padding:8px}.period-add-form label{font-size:12px;font-weight:900;color:#dbeafe}.period-add-form input,.period-add-form select{border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.95);color:#0f172a;border-radius:9px;padding:9px 10px;font-weight:800}.period-add-form input[type=number]{width:86px}.period-add-form input[name=toplam_uretim]{width:118px}.period-add-form button{border:0;border-radius:9px;background:#10b981;color:#fff;padding:9px 12px;font-weight:950;cursor:pointer}@media(max-width:800px){.period-tools{justify-content:flex-start;margin-top:14px}.period-add-form input[name=toplam_uretim]{width:100%}}
 .cost-sheet{border:1px solid #111827;border-radius:8px;overflow:hidden;background:#fff}.cost-sheet-head,.cost-line{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(120px,.8fr);align-items:center}.cost-sheet-head{background:#5b9bd5;color:#06111f;font-weight:950;font-size:14px}.cost-sheet-head span,.cost-sheet-head b,.cost-line span,.cost-line b{padding:10px 12px;border-bottom:1px solid #111827}.cost-sheet-head span,.cost-line span{border-right:1px solid #111827}.cost-line span{font-weight:950;color:#020617}.cost-line b{text-align:right;font-weight:950;color:#020617}.cost-total span,.cost-total b{color:#ef0000}.cost-gap{height:22px;border-bottom:1px solid #111827}.cost-yellow span,.cost-yellow b{background:#fff200}.cost-blue span,.cost-blue b{background:#dbeaf7}.cost-sheet .cost-line:last-child span,.cost-sheet .cost-line:last-child b{border-bottom:0}
+.cost-sheet{border:1px solid #dbe4ef;border-radius:18px;overflow:hidden;background:#fff;box-shadow:0 14px 32px rgba(15,23,42,.07)}
+.cost-sheet-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;padding:16px 18px;background:linear-gradient(135deg,#0f172a,#1d4ed8);color:#fff}
+.cost-sheet-top span{display:block;color:#bfdbfe;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.06em}.cost-sheet-top strong{display:block;margin-top:4px;font-size:17px;line-height:1.25}.cost-sheet-top em{font-style:normal;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22);border-radius:999px;padding:7px 10px;font-size:11px;font-weight:900;color:#eff6ff;white-space:nowrap}
+.cost-modern-table{width:100%;border-collapse:separate;border-spacing:0;font-size:12px}.cost-modern-table th{background:#f8fafc;color:#475569;text-align:left;padding:10px;border-bottom:1px solid #e2e8f0}.cost-modern-table td{padding:11px 10px;border-bottom:1px solid #edf2f7;vertical-align:top}.cost-modern-table tr:last-child td{border-bottom:0}.cost-modern-table td:first-child{font-weight:900;color:#0f172a}.cost-modern-table .num{text-align:right;font-weight:950;color:#0f172a;white-space:nowrap;font-variant-numeric:tabular-nums}
+.cost-modern-table details{font-size:11px;color:#64748b}.cost-modern-table summary{display:inline-flex;cursor:pointer;border:1px solid #bfdbfe;background:#eff6ff;color:#1d4ed8;border-radius:999px;padding:5px 8px;font-weight:900;list-style:none}.cost-modern-table summary::-webkit-details-marker{display:none}.cost-modern-table details[open] summary{margin-bottom:8px;background:#dbeafe}.cost-modern-table details p{margin:5px 0;line-height:1.45}.cost-modern-table .cost-total td{background:#fff7ed;color:#c2410c}.cost-modern-table .cost-total td:first-child,.cost-modern-table .cost-total .num{color:#dc2626}.cost-modern-table .cost-yellow td{background:#fefce8}.cost-modern-table .cost-blue td{background:#eff6ff}
 </style>
 </head>
 <body>
@@ -1098,18 +1103,25 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
                 $selDekap = (float)($selectedNd['dekap_tl_koli'] ?? 0);
             ?>
             <div class="cost-sheet">
-                <div class="cost-sheet-head"><span>MALİYET KALEMLERİ</span><b><?php echo rm_e($selected['urun_adi'] ?? 'Ürün'); ?></b></div>
-                <div class="cost-line"><span>HAMMADDE TUTARI</span><b><?php echo rm_money($selHammadde); ?></b></div>
-                <div class="cost-line"><span>730 İŞÇİLİK HARİÇ GİDER</span><b><?php echo rm_money($selG730); ?></b></div>
-                <div class="cost-line"><span>760 PAZARLAMA GİDERİ</span><b><?php echo rm_money($selG760); ?></b></div>
-                <div class="cost-line"><span>GENEL YÖNETİM GİDERİ</span><b><?php echo rm_money($selG770); ?></b></div>
-                <div class="cost-line"><span>İŞÇİLİK GİDERİ</span><b><?php echo rm_money($selG720); ?></b></div>
-                <div class="cost-line cost-total"><span>KOLİ BAŞINA MALİYET</span><b><?php echo rm_money($selToplam); ?></b></div>
-                <div class="cost-gap"></div>
-                <div class="cost-line cost-yellow"><span>Nakliye Dahil Fiyat</span><b><?php echo rm_money($selToplam); ?></b></div>
-                <div class="cost-line cost-yellow"><span>Nakliyesiz Fiyat</span><b><?php echo rm_money($selToplam - $selNakliye); ?></b></div>
-                <div class="cost-line cost-blue"><span>Nakliyesiz + DEKAP Dahil (TL/Koli)</span><b><?php echo rm_money($selToplam - $selNakliye + $selDekap); ?></b></div>
-                <div class="cost-line cost-blue"><span>Nakliye + DEKAP Dahil (TL/Koli)</span><b><?php echo rm_money($selToplam + $selDekap); ?></b></div>
+                <div class="cost-sheet-top">
+                    <div><span>Maliyet Özeti</span><strong><?php echo rm_e($selected['urun_adi'] ?? 'Ürün'); ?></strong></div>
+                    <em><?php echo rm_e($currentDonem['donem_adi']); ?></em>
+                </div>
+                <table class="cost-modern-table">
+                    <thead><tr><th>Kalem</th><th>Tutar</th><th>Kaynak / Hesap</th></tr></thead>
+                    <tbody>
+                        <tr><td>Hammadde Tutarı</td><td class="num"><?php echo rm_money($selHammadde); ?></td><td><details><summary>Detay</summary><p>Kaynak: aktif reçete satırları (`recete_bom_kalemleri`) maliyet özetine aktarılır.</p><?php foreach($hammaddeDetaylari as $d): ?><p><?php echo rm_e($d['kalem_adi']); ?>: <?php echo rm_money($d['tutar']); ?> · <?php echo rm_e($d['aciklama'] ?? ''); ?></p><?php endforeach; ?></details></td></tr>
+                        <tr><td>730 İşçilik Hariç Gider</td><td class="num"><?php echo rm_money($selG730); ?></td><td><details><summary>Detay</summary><p>Kaynak: genel gider kalemi. Formül: koli başı gider payı doğrudan ürün maliyetine eklenir.</p></details></td></tr>
+                        <tr><td>760 Pazarlama Gideri</td><td class="num"><?php echo rm_money($selG760); ?></td><td><details><summary>Detay</summary><p>Kaynak: genel gider kalemi. Formül: pazarlama gider payı koli başına eklenir.</p></details></td></tr>
+                        <tr><td>Genel Yönetim Gideri</td><td class="num"><?php echo rm_money($selG770); ?></td><td><details><summary>Detay</summary><p>Kaynak: genel gider kalemi. Formül: yönetim gider payı koli başına eklenir.</p></details></td></tr>
+                        <tr><td>İşçilik Gideri</td><td class="num"><?php echo rm_money($selG720); ?></td><td><details><summary>Detay</summary><p>Kaynak: genel gider kalemi. Formül: işçilik gider payı koli başına eklenir.</p></details></td></tr>
+                        <tr class="cost-total"><td>Koli Başına Maliyet</td><td class="num"><?php echo rm_money($selToplam); ?></td><td><details><summary>Formül</summary><p>Hammadde + 730 + 760 + Genel Yönetim + İşçilik = <?php echo rm_money($selToplam); ?></p></details></td></tr>
+                        <tr class="cost-yellow"><td>Nakliye Dahil Fiyat</td><td class="num"><?php echo rm_money($selToplam); ?></td><td><details><summary>Formül</summary><p>Koli başına maliyet mevcut nakliyeli fiyat olarak alınır.</p></details></td></tr>
+                        <tr class="cost-yellow"><td>Nakliyesiz Fiyat</td><td class="num"><?php echo rm_money($selToplam - $selNakliye); ?></td><td><details><summary>Formül</summary><p>Koli başına maliyet - nakliye (<?php echo rm_money($selNakliye); ?>).</p></details></td></tr>
+                        <tr class="cost-blue"><td>Nakliyesiz + DEKAP Dahil</td><td class="num"><?php echo rm_money($selToplam - $selNakliye + $selDekap); ?></td><td><details><summary>Formül</summary><p>Nakliyesiz fiyat + DEKAP (<?php echo rm_money($selDekap); ?>).</p></details></td></tr>
+                        <tr class="cost-blue"><td>Nakliye + DEKAP Dahil</td><td class="num"><?php echo rm_money($selToplam + $selDekap); ?></td><td><details><summary>Formül</summary><p>Koli başına maliyet + DEKAP (<?php echo rm_money($selDekap); ?>).</p></details></td></tr>
+                    </tbody>
+                </table>
             </div>
         </aside>
     </section>
