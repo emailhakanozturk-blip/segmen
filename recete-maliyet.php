@@ -1589,7 +1589,11 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
     .recipe-popup .bom-head{padding:16px;position:sticky;top:0;z-index:3;cursor:grab}
     .recipe-popup .bom-summary{position:sticky;bottom:0;z-index:2}
     .bom-row-actions{display:flex;gap:6px;align-items:center;justify-content:center}
+    .bom-select-col{width:42px!important;text-align:center!important}
+    .bom-select-col input{width:16px!important;height:16px!important;min-width:16px!important;padding:0!important;accent-color:#2563eb}
     .detail-btn{border:1px solid #bfdbfe;background:#eff6ff;color:#1d4ed8;border-radius:8px;padding:6px 8px;font-size:10px;font-weight:950;cursor:pointer}
+    .bom-bulk-delete{border:1px solid #fecaca;background:#fff1f2;color:#dc2626;border-radius:10px;padding:10px 13px;font-weight:950;cursor:pointer}
+    .bom-bulk-delete.dark{background:#dc2626;color:#fff}
     .bom-detail-modal{display:none;position:fixed;inset:0;z-index:120;background:rgba(15,23,42,.42);align-items:center;justify-content:center;padding:16px}
     .bom-detail-modal.show{display:flex}
     .bom-detail-box{width:min(560px,94vw);background:#fff;border-radius:16px;border:1px solid #dbe3ee;box-shadow:0 24px 70px rgba(15,23,42,.28);overflow:hidden}
@@ -1807,10 +1811,11 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
                     <div class="recipe-flow-step"><strong><b>3</b> Birimleştir</strong><span>Bölen ile kg, ton veya paket fiyatı adet/gr maliyetine iner.</span></div>
                     <div class="recipe-flow-step"><strong><b>4</b> Koliye Yansıt</strong><span>Kullanım, koli adedi ve fire eklenerek koli maliyeti çıkar.</span></div>
                 </div>
-                <div class="rm-table-wrap"><table class="bom-table bom-matrix"><thead><tr><th><span>Malzeme</span><small>Reçetede kullanılan kalem</small></th><th><span>Alış Fiyatı</span><small>Fatura veya liste fiyatı</small></th><th><span>Para</span><small>TL / USD / EUR</small></th><th><span>Kur</span><small>Döviz ise TL kuru</small></th><th><span>TL Tutar</span><small>Alış fiyatı x kur</small></th><th><span>Bölen</span><small>Kg/ton/paket çevirimi</small></th><th><span>Birim TL</span><small>1 adet veya 1 gr maliyet</small></th><th><span>Kullanım</span><small>Bir ürün için miktar</small></th><th><span>Birim</span><small>gr/adet, adet/adet...</small></th><th><span>Koli Adedi</span><small>Kolideki ürün sayısı</small></th><th><span>Koli Fiyatı</span><small>Fire öncesi toplam</small></th><th><span>Fire %</span><small>Zayiat oranı</small></th><th><span>Fireli Koli</span><small>Nihai hammadde maliyeti</small></th><th><span>İşlem</span><small>Detay / sil</small></th></tr></thead><tbody id="bomRows">
+                <div class="rm-table-wrap"><table class="bom-table bom-matrix"><thead><tr><th class="bom-select-col"><input type="checkbox" id="bomSelectAll" onchange="toggleBomSelectAll(this)" title="Tümünü seç"></th><th><span>Malzeme</span><small>Reçetede kullanılan kalem</small></th><th><span>Alış Fiyatı</span><small>Fatura veya liste fiyatı</small></th><th><span>Para</span><small>TL / USD / EUR</small></th><th><span>Kur</span><small>Döviz ise TL kuru</small></th><th><span>TL Tutar</span><small>Alış fiyatı x kur</small></th><th><span>Bölen</span><small>Kg/ton/paket çevirimi</small></th><th><span>Birim TL</span><small>1 adet veya 1 gr maliyet</small></th><th><span>Kullanım</span><small>Bir ürün için miktar</small></th><th><span>Birim</span><small>gr/adet, adet/adet...</small></th><th><span>Koli Adedi</span><small>Kolideki ürün sayısı</small></th><th><span>Koli Fiyatı</span><small>Fire öncesi toplam</small></th><th><span>Fire %</span><small>Zayiat oranı</small></th><th><span>Fireli Koli</span><small>Nihai hammadde maliyeti</small></th><th><span>İşlem</span><small>Detay / sil</small></th></tr></thead><tbody id="bomRows">
                     <?php foreach($bomKalemleri as $b): ?>
                     <?php $alisFiyati = (float)($b['alis_fiyati'] ?? 0); if($alisFiyati == 0 && (float)($b['birim_fiyat'] ?? 0) > 0){ $alisFiyati = (float)$b['birim_fiyat']; } ?>
                     <tr>
+                        <td class="bom-select-col"><input type="checkbox" class="bom-select-row"></td>
                         <td><select name="hammadde_id[]"><?php foreach($hammaddeler as $h): ?><option value="<?php echo (int)$h['id']; ?>" <?php echo (int)$h['id']===(int)$b['hammadde_id'] ? 'selected' : ''; ?>><?php echo rm_e($h['kalem_adi']); ?></option><?php endforeach; ?></select></td>
                         <td><input class="bom-alis" name="alis_fiyati[]" value="<?php echo number_format($alisFiyati,6,',','.'); ?>"></td>
                         <td><select class="bom-currency" name="para_cinsi[]"><?php $pc=$b['para_cinsi'] ?? 'TL'; ?><option <?php echo $pc==='TL'?'selected':''; ?>>TL</option><option <?php echo $pc==='USD'?'selected':''; ?>>USD</option><option <?php echo $pc==='EUR'?'selected':''; ?>>EUR</option></select></td>
@@ -1824,17 +1829,17 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
                         <td class="bom-total">₺0,00</td>
                         <td><input class="bom-fire" name="fire_orani[]" value="<?php echo number_format((float)$b['fire_orani'],2,',','.'); ?>"></td>
                         <td class="bom-fire-total">₺0,00</td>
-                        <td><div class="bom-row-actions"><button type="button" class="detail-btn" onclick="showBomDetail(this)">Detay</button><button type="button" class="trash-btn" title="Sil" onclick="this.closest('tr').remove();calcBom();">&times;</button></div></td>
+                        <td><div class="bom-row-actions"><button type="button" class="detail-btn" onclick="showBomDetail(this)">Detay</button><button type="button" class="trash-btn" title="Sil" onclick="this.closest('tr').remove();refreshBomSelectAll();calcBom();">&times;</button></div></td>
                     </tr>
                     <?php endforeach; ?>
                 </tbody></table></div>
                 <div class="bom-summary"><div><span>TL Çevrim Toplamı</span><strong id="bomTlSum">₺0,00</strong></div><div><span>Koli Fiyatı</span><strong id="bomKoliSum">₺0,00</strong></div><div><span>Fireli Koli Fiyatı</span><strong id="bomFireSum">₺0,00</strong></div></div>
-                <div class="bom-footer"><button type="button" class="add-material" onclick="addBomRow();">+ Reçeteye Malzeme Kalemi Ekle</button><button type="submit" class="primary-add" onclick="document.getElementById('bomAction').value='bom_kaydet'">DEĞİŞİKLİKLERİ KAYDET</button><span class="bom-count">Toplam <?php echo count($bomKalemleri); ?> Hammadde Girdisi</span></div>
+                <div class="bom-footer"><button type="button" class="add-material" onclick="addBomRow();">+ Reçeteye Malzeme Kalemi Ekle</button><button type="button" class="bom-bulk-delete" onclick="deleteSelectedBomRows();">Seçilileri Sil</button><button type="button" class="bom-bulk-delete dark" onclick="deleteAllBomRows();">Tümünü Sil</button><button type="submit" class="primary-add" onclick="document.getElementById('bomAction').value='bom_kaydet'">DEĞİŞİKLİKLERİ KAYDET</button><span class="bom-count" id="bomCount">Toplam <?php echo count($bomKalemleri); ?> Hammadde Girdisi</span></div>
             </form>
             </div>
         </div>
     </section>
-    <template id="bomTpl"><tr><td><select name="hammadde_id[]"><?php foreach($hammaddeler as $h): ?><option value="<?php echo (int)$h['id']; ?>"><?php echo rm_e($h['kalem_adi']); ?></option><?php endforeach; ?></select></td><td><input class="bom-alis" name="alis_fiyati[]" value="0"></td><td><select class="bom-currency" name="para_cinsi[]"><option>TL</option><option>USD</option><option>EUR</option></select></td><td><input class="bom-kur" name="doviz_kuru[]" value="1"></td><td class="bom-tl">₺0,00</td><td><input class="bom-bolen" name="bolen[]" value="1"></td><td class="bom-price-view">₺0,00</td><td><input class="bom-num" name="tuketim_miktari[]" value="0"></td><td><select class="bom-unit" name="tuketim_birimi[]"><option>gr/adet</option><option>adet/adet</option><option>gr/koli</option><option>kg/koli</option></select></td><td><input class="bom-koli" name="koli_ici_adet[]" value="1"></td><td class="bom-total">₺0,00</td><td><input class="bom-fire" name="fire_orani[]" value="0"></td><td class="bom-fire-total">₺0,00</td><td><div class="bom-row-actions"><button type="button" class="detail-btn" onclick="showBomDetail(this)">Detay</button><button type="button" class="trash-btn" title="Sil" onclick="this.closest('tr').remove();calcBom();">&times;</button></div></td></tr></template>
+    <template id="bomTpl"><tr><td class="bom-select-col"><input type="checkbox" class="bom-select-row"></td><td><select name="hammadde_id[]"><?php foreach($hammaddeler as $h): ?><option value="<?php echo (int)$h['id']; ?>"><?php echo rm_e($h['kalem_adi']); ?></option><?php endforeach; ?></select></td><td><input class="bom-alis" name="alis_fiyati[]" value="0"></td><td><select class="bom-currency" name="para_cinsi[]"><option>TL</option><option>USD</option><option>EUR</option></select></td><td><input class="bom-kur" name="doviz_kuru[]" value="1"></td><td class="bom-tl">₺0,00</td><td><input class="bom-bolen" name="bolen[]" value="1"></td><td class="bom-price-view">₺0,00</td><td><input class="bom-num" name="tuketim_miktari[]" value="0"></td><td><select class="bom-unit" name="tuketim_birimi[]"><option>gr/adet</option><option>adet/adet</option><option>gr/koli</option><option>kg/koli</option></select></td><td><input class="bom-koli" name="koli_ici_adet[]" value="1"></td><td class="bom-total">₺0,00</td><td><input class="bom-fire" name="fire_orani[]" value="0"></td><td class="bom-fire-total">₺0,00</td><td><div class="bom-row-actions"><button type="button" class="detail-btn" onclick="showBomDetail(this)">Detay</button><button type="button" class="trash-btn" title="Sil" onclick="this.closest('tr').remove();refreshBomSelectAll();calcBom();">&times;</button></div></td></tr></template>
     <div class="bom-detail-modal" id="bomDetailModal"><div class="bom-detail-box"><div class="bom-detail-head"><h3>Hesaplama Detayı</h3><button type="button" onclick="closeBomDetail()">Kapat</button></div><div class="bom-detail-body" id="bomDetailBody"></div></div></div>
     <script>
     function trNum(v){
@@ -1896,8 +1901,40 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
         }, 0);
         if(document.getElementById('recipeHamCost')){ document.getElementById('recipeHamCost').textContent = fmt(fireSum,4); }
         if(document.getElementById('recipeGrandCost')){ document.getElementById('recipeGrandCost').textContent = fmt(fireSum + giderTotal,4); }
+        updateBomCount();
     }
-    function addBomRow(){ document.getElementById('bomRows').insertAdjacentHTML('beforeend', document.getElementById('bomTpl').innerHTML); formatBomInputs(document.getElementById('bomRows').lastElementChild); calcBom(); }
+    function refreshBomSelectAll(){
+        var all = Array.prototype.slice.call(document.querySelectorAll('#bomRows .bom-select-row'));
+        var head = document.getElementById('bomSelectAll');
+        if(!head){ return; }
+        head.checked = all.length > 0 && all.every(function(cb){ return cb.checked; });
+        head.indeterminate = all.some(function(cb){ return cb.checked; }) && !head.checked;
+    }
+    function toggleBomSelectAll(cb){
+        document.querySelectorAll('#bomRows .bom-select-row').forEach(function(rowCb){ rowCb.checked = cb.checked; });
+        refreshBomSelectAll();
+    }
+    function deleteSelectedBomRows(){
+        var selected = document.querySelectorAll('#bomRows .bom-select-row:checked');
+        if(selected.length === 0){ alert('Silmek için en az bir satır seçin.'); return; }
+        if(!confirm(selected.length + ' satır silinsin mi?')){ return; }
+        selected.forEach(function(cb){ cb.closest('tr').remove(); });
+        refreshBomSelectAll();
+        calcBom();
+    }
+    function deleteAllBomRows(){
+        var rows = document.querySelectorAll('#bomRows tr');
+        if(rows.length === 0){ return; }
+        if(!confirm('Tüm reçete satırları silinsin mi?')){ return; }
+        rows.forEach(function(row){ row.remove(); });
+        refreshBomSelectAll();
+        calcBom();
+    }
+    function updateBomCount(){
+        var count = document.querySelectorAll('#bomRows tr').length;
+        if(document.getElementById('bomCount')){ document.getElementById('bomCount').textContent = 'Toplam ' + count + ' Hammadde Girdisi'; }
+    }
+    function addBomRow(){ document.getElementById('bomRows').insertAdjacentHTML('beforeend', document.getElementById('bomTpl').innerHTML); formatBomInputs(document.getElementById('bomRows').lastElementChild); refreshBomSelectAll(); calcBom(); }
     function showBomDetail(btn){
         calcBom();
         var row = btn.closest('tr');
@@ -1930,6 +1967,7 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
     }
     function closeBomDetail(){ document.getElementById('bomDetailModal').classList.remove('show'); }
     document.addEventListener('input', calcBom);
+    document.addEventListener('change', function(e){ if(e.target && e.target.classList.contains('bom-select-row')){ refreshBomSelectAll(); } });
     document.addEventListener('blur', function(e){ if(e.target.matches('.bom-alis,.bom-kur,.bom-bolen,.bom-num,.bom-koli,.bom-fire')){ formatBomInputs(e.target.parentNode); calcBom(); } }, true);
     document.addEventListener('DOMContentLoaded', function(){ formatBomInputs(document); calcBom(); });
     (function(){
