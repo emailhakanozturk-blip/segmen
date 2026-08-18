@@ -37,7 +37,7 @@ function rm_input_num($value, int $dec = 6): string
 }
 function rm_gider_values(PDO $db, string $donem): array
 {
-    $defaults = ['g730'=>7.8582,'g760'=>2.6361,'g770'=>12.4859,'g720'=>9.1631];
+    $defaults = ['g730'=>7.858209,'g760'=>2.636136,'g770'=>12.485855,'g720'=>9.163123];
     try {
         $q = $db->prepare("SELECT * FROM recete_gider_ayarlari WHERE donem=? LIMIT 1");
         $q->execute([$donem]);
@@ -266,17 +266,11 @@ function rm_seed_cam033_fixed_cost(PDO $db, string $donem): void
     $bomQ->execute([$urunId,$donem,$donem]);
     $bomId = (int)$bomQ->fetchColumn();
     if($bomId <= 0){ return; }
-    $hasRows = $db->prepare("SELECT COUNT(*) FROM recete_bom_kalemleri WHERE recete_id=?");
-    $hasRows->execute([$bomId]);
-    if((int)$hasRows->fetchColumn() > 0){
-        rm_sync_bom_to_maliyet($db, $bomId, $urunId, $donem);
-        return;
-    }
     $db->prepare("DELETE FROM recete_bom_kalemleri WHERE recete_id=?")->execute([$bomId]);
     $ins = $db->prepare("INSERT INTO recete_bom_kalemleri (recete_id,hammadde_id,alis_fiyati,para_cinsi,doviz_kuru,bolen,tuketim_miktari,tuketim_birimi,birim_fiyat,koli_ici_adet,fire_orani) VALUES (?,?,?,?,?,?,?,?,?,?,?)");
     foreach($camRows as $r){
         $kid = rm_kalem_id($db, 'Hammadde', $r[0], $r[1], 0);
-        $net = ((float)$r[2]) / 1.03;
+        $net = (float)$r[2];
         $unit = $r[1] === 'Kg' ? 'gr/koli' : 'adet/adet';
         $ins->execute([$bomId,$kid,$net,'TL',1,1,1,$unit,$net,1,3]);
     }
@@ -368,14 +362,26 @@ $db->exec("CREATE TABLE IF NOT EXISTS recete_nakliye_dekap (
 $db->exec("CREATE TABLE IF NOT EXISTS recete_gider_ayarlari (
     id INT AUTO_INCREMENT PRIMARY KEY,
     donem VARCHAR(20) NOT NULL UNIQUE,
-    g730 DECIMAL(15,4) NOT NULL DEFAULT 7.8582,
-    g760 DECIMAL(15,4) NOT NULL DEFAULT 2.6361,
-    g770 DECIMAL(15,4) NOT NULL DEFAULT 12.4859,
-    g720 DECIMAL(15,4) NOT NULL DEFAULT 9.1631,
+    g730 DECIMAL(15,6) NOT NULL DEFAULT 7.858209,
+    g760 DECIMAL(15,6) NOT NULL DEFAULT 2.636136,
+    g770 DECIMAL(15,6) NOT NULL DEFAULT 12.485855,
+    g720 DECIMAL(15,6) NOT NULL DEFAULT 9.163123,
     updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci");
+try { $db->exec("ALTER TABLE recete_gider_ayarlari MODIFY g730 DECIMAL(15,6) NOT NULL DEFAULT 7.858209"); } catch(Throwable $e) {}
+try { $db->exec("ALTER TABLE recete_gider_ayarlari MODIFY g760 DECIMAL(15,6) NOT NULL DEFAULT 2.636136"); } catch(Throwable $e) {}
+try { $db->exec("ALTER TABLE recete_gider_ayarlari MODIFY g770 DECIMAL(15,6) NOT NULL DEFAULT 12.485855"); } catch(Throwable $e) {}
+try { $db->exec("ALTER TABLE recete_gider_ayarlari MODIFY g720 DECIMAL(15,6) NOT NULL DEFAULT 9.163123"); } catch(Throwable $e) {}
 
-$db->prepare("INSERT IGNORE INTO recete_gider_ayarlari (donem,g730,g760,g770,g720) VALUES (?,7.8582,2.6361,12.4859,9.1631)")
+$db->prepare("INSERT IGNORE INTO recete_gider_ayarlari (donem,g730,g760,g770,g720) VALUES (?,7.858209,2.636136,12.485855,9.163123)")
+    ->execute([$donem ?? '2026-04']);
+$db->prepare("UPDATE recete_gider_ayarlari
+    SET g730=7.858209, g760=2.636136, g770=12.485855, g720=9.163123
+    WHERE donem=?
+      AND ABS(g730-7.8582) < 0.0002
+      AND ABS(g760-2.6361) < 0.0002
+      AND ABS(g770-12.4859) < 0.0002
+      AND ABS(g720-9.1631) < 0.0002")
     ->execute([$donem ?? '2026-04']);
 
 $db->exec("CREATE TABLE IF NOT EXISTS recete_bom (
@@ -640,7 +646,7 @@ $excelNisanProducts = [
 $excelUrunIns = $db->prepare("INSERT INTO maliyet_urunler (urun_kodu,urun_adi,urun_grubu,ambalaj_tipi,koli_ici_adet) VALUES (?,?,?,?,?) ON DUPLICATE KEY UPDATE urun_adi=VALUES(urun_adi), urun_grubu=VALUES(urun_grubu), ambalaj_tipi=VALUES(ambalaj_tipi), koli_ici_adet=VALUES(koli_ici_adet)");
 $excelReceteIns = $db->prepare("INSERT INTO maliyet_receteler (donem,urun_id,kalem_id,miktar,fire_orani,satir_tutari,aciklama) VALUES ('2026-04',?,?,?,?,?,?)");
 $excelQtyIns = $db->prepare("INSERT INTO recete_stok_hareketleri (donem,tarih,belge_no,urun_id,hareket_tipi,miktar,cikis_depo,varis_depo,aciklama) VALUES ('2026-04','2026-04-30',?,?, 'uretilen',?,'Dolum Tesisi','Genel Stok','Excel Nisan maliyet şablonundan aktarılmış üretim')");
-$g730 = 7.8582; $g760 = 2.6361; $g770 = 12.4859; $g720 = 9.1631;
+$g730 = 7.858209; $g760 = 2.636136; $g770 = 12.485855; $g720 = 9.163123;
 $db->exec("UPDATE recete_donemler SET toplam_uretim=600000, durum='Açık', son_hesaplama=NOW() WHERE donem='2026-04'");
 $db->exec("DELETE FROM recete_stok_hareketleri WHERE donem='2026-04' AND hareket_tipi='uretilen'");
 foreach($excelNisanProducts as $p){
@@ -717,7 +723,15 @@ $donem = (string)($_GET['donem'] ?? '2026-04');
 $selectedId = (int)($_POST['urun_id'] ?? ($_GET['urun_id'] ?? 0));
 $message = '';
 $error = '';
-$db->prepare("INSERT IGNORE INTO recete_gider_ayarlari (donem,g730,g760,g770,g720) VALUES (?,7.8582,2.6361,12.4859,9.1631)")
+$db->prepare("INSERT IGNORE INTO recete_gider_ayarlari (donem,g730,g760,g770,g720) VALUES (?,7.858209,2.636136,12.485855,9.163123)")
+    ->execute([$donem]);
+$db->prepare("UPDATE recete_gider_ayarlari
+    SET g730=7.858209, g760=2.636136, g770=12.485855, g720=9.163123
+    WHERE donem=?
+      AND ABS(g730-7.8582) < 0.0002
+      AND ABS(g760-2.6361) < 0.0002
+      AND ABS(g770-12.4859) < 0.0002
+      AND ABS(g720-9.1631) < 0.0002")
     ->execute([$donem]);
 rm_seed_cam033_fixed_cost($db, $donem);
 
