@@ -1562,9 +1562,9 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
     .recipe-product-btn strong{display:block;font-size:12px;line-height:1.25;white-space:normal}
     .recipe-product-btn .bom-code{font-size:9px}
     .recipe-product-btn .bom-ok{float:none;display:inline-block;margin-top:6px}
-    .template-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid #bfdbfe;background:#eff6ff;color:#1d4ed8;border-radius:10px;padding:10px 12px;font-size:12px;font-weight:950;text-decoration:none;cursor:pointer}
-    .template-btn.dark{background:#0f172a;border-color:#0f172a;color:#fff}
-    .excel-upload{display:inline-flex!important;align-items:center;justify-content:center;min-width:auto!important;border:1px solid #dbe3ee;background:#fff;color:#334155;border-radius:10px;padding:10px 12px;font-size:12px;font-weight:950;cursor:pointer}
+    .template-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid #bfdbfe;background:#eff6ff;color:#1d4ed8;border-radius:10px;padding:10px 12px;font-size:12px;font-weight:950;text-decoration:none;cursor:pointer;box-shadow:0 8px 18px rgba(37,99,235,.12)}
+    .template-btn.dark{background:#111827;border-color:#111827;color:#fff;box-shadow:0 10px 20px rgba(15,23,42,.22)}
+    .excel-upload{display:inline-flex!important;align-items:center;justify-content:center;min-width:auto!important;border:1px solid #dbeafe;background:#fff;color:#0f172a!important;border-radius:10px;padding:10px 12px;font-size:12px;font-weight:950;cursor:pointer;box-shadow:0 8px 18px rgba(37,99,235,.10)}
     .excel-upload input{display:none}
     .excel-format-box{margin:12px 16px 0;background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:10px 14px;box-shadow:0 8px 20px rgba(15,23,42,.035)}
     .excel-format-box summary{cursor:pointer;color:#0f172a;font-size:13px;font-weight:950;list-style:none}.excel-format-box summary::-webkit-details-marker{display:none}
@@ -1579,18 +1579,21 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
     .pet033-cost-card strong{display:block;margin-top:8px;color:#0f172a;font-size:24px;letter-spacing:.02em}
     .pet033-cost-card small{display:block;margin-top:5px;color:#64748b;font-size:11px}
     .pet033-cost-card.fire{background:#fff8e1;border-color:#f59e0b}.pet033-cost-card.fire strong{color:#c2410c}
-    .pet033-cost-card.total{background:linear-gradient(135deg,#0f172a,#1e1b4b);border-color:#0f172a;box-shadow:0 16px 30px rgba(15,23,42,.22)}
-    .pet033-cost-card.total span,.pet033-cost-card.total small{color:#fde68a}.pet033-cost-card.total strong{color:#fff}
+    .pet033-cost-card.total{background:linear-gradient(135deg,#0f766e,#059669);border-color:#0f766e;box-shadow:0 16px 30px rgba(5,150,105,.22)}
+    .pet033-cost-card.total span,.pet033-cost-card.total small{color:#ecfdf5}.pet033-cost-card.total strong{color:#fff}
     .recipe-cost-band{display:grid;grid-template-columns:1.15fr repeat(4,.85fr) 1.15fr;gap:10px;padding:14px 16px;background:#fff;border-bottom:1px solid #e5e7eb}
     .recipe-cost-card{min-width:0;border:1px solid #e2e8f0;border-radius:16px;background:#fff;padding:12px 13px;box-shadow:0 8px 18px rgba(15,23,42,.035)}
     .recipe-cost-card span{display:block;color:#64748b;font-size:10px;font-weight:950;text-transform:uppercase;letter-spacing:.03em}
     .recipe-cost-card strong{display:block;margin-top:6px;color:#0f172a;font-size:17px;font-weight:950;font-variant-numeric:tabular-nums}
-    .recipe-cost-card.total{background:linear-gradient(135deg,#0f172a,#1e1b4b);border-color:#0f172a}.recipe-cost-card.total span{color:#fde68a}.recipe-cost-card.total strong{color:#fff}
+    .recipe-cost-card.total{background:linear-gradient(135deg,#0f172a,#1e1b4b);border-color:#0f172a;box-shadow:0 14px 26px rgba(15,23,42,.18)}.recipe-cost-card.total span{color:#fde68a}.recipe-cost-card.total strong{color:#fff}
     .recipe-cost-card small{display:block;margin-top:5px;color:#64748b;font-size:10px;line-height:1.35}
     .recipe-mode .bom-editor{border:1px solid #dbe4ef;border-radius:20px;box-shadow:0 18px 42px rgba(15,23,42,.08)}
-    .recipe-mode .recipe-bom-head{background:linear-gradient(135deg,#0f172a,#1e1b4b);border-bottom:1px solid #0f172a;color:#fff}
-    .recipe-mode .recipe-bom-head .bom-title{color:#fff}.recipe-mode .recipe-bom-head .muted{color:#cbd5e1}.recipe-mode .recipe-bom-head .rm-pill{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);color:#fde68a}
-    .recipe-mode .recipe-bom-head .recipe-actions label{color:#e2e8f0}.recipe-mode .recipe-bom-head .recipe-actions input{background:rgba(255,255,255,.96)}
+    .recipe-mode .recipe-bom-head{background:linear-gradient(135deg,#111827 0%,#172554 52%,#1d4ed8 100%);border-bottom:1px solid #0f172a;color:#fff}
+    .recipe-mode .recipe-bom-head .bom-title{color:#fff}.recipe-mode .recipe-bom-head .muted{color:#dbeafe}.recipe-mode .recipe-bom-head .rm-pill{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.24);color:#fef3c7}
+    .recipe-mode .recipe-bom-head .recipe-actions label:not(.excel-upload){color:#f8fafc}.recipe-mode .recipe-bom-head .recipe-actions input{background:#fff;color:#0f172a;border-color:#cbd5e1}
+    .recipe-mode .recipe-bom-head .template-btn{background:#eaf2ff;border-color:#bfdbfe;color:#0f3f9e}
+    .recipe-mode .recipe-bom-head .template-btn.dark{background:#0f172a;border-color:#0f172a;color:#fff}
+    .recipe-mode .recipe-bom-head .primary-add{background:#2563eb;color:#fff;box-shadow:0 10px 22px rgba(37,99,235,.28)}
     .recipe-mode .rm-table-wrap{background:#fff}.recipe-mode .bom-matrix th{background:#eef4fb;color:#172033}.recipe-mode .bom-matrix tr:hover td{background:#f8fbff}
     .recipe-mode .rm-table-wrap{border-top:1px solid #d7e0eb}
     .bom-matrix{border-collapse:collapse!important;background:#fff}
