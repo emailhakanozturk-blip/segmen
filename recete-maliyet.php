@@ -1159,6 +1159,7 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
 .cost-sheet-top span{display:block;color:#bfdbfe;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.06em}.cost-sheet-top strong{display:block;margin-top:4px;font-size:17px;line-height:1.25}.cost-sheet-top em{font-style:normal;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22);border-radius:999px;padding:7px 10px;font-size:11px;font-weight:900;color:#eff6ff;white-space:nowrap}
 .cost-modern-table{width:100%;border-collapse:separate;border-spacing:0;font-size:12px}.cost-modern-table th{background:#f8fafc;color:#475569;text-align:left;padding:10px;border-bottom:1px solid #e2e8f0}.cost-modern-table td{padding:11px 10px;border-bottom:1px solid #edf2f7;vertical-align:top}.cost-modern-table tr:last-child td{border-bottom:0}.cost-modern-table td:first-child{font-weight:900;color:#0f172a}.cost-modern-table .num{text-align:right;font-weight:950;color:#0f172a;white-space:nowrap;font-variant-numeric:tabular-nums}
 .cost-modern-table details{font-size:11px;color:#64748b}.cost-modern-table summary{display:inline-flex;cursor:pointer;border:1px solid #bfdbfe;background:#eff6ff;color:#1d4ed8;border-radius:999px;padding:5px 8px;font-weight:900;list-style:none}.cost-modern-table summary::-webkit-details-marker{display:none}.cost-modern-table details[open] summary{margin-bottom:8px;background:#dbeafe}.cost-modern-table details p{margin:5px 0;line-height:1.45}.cost-modern-table .cost-total td{background:#fff7ed;color:#c2410c}.cost-modern-table .cost-total td:first-child,.cost-modern-table .cost-total .num{color:#dc2626}.cost-modern-table .cost-yellow td{background:#fefce8}.cost-modern-table .cost-blue td{background:#eff6ff}
+.calc-step-box{margin-bottom:16px;border:1px solid #dbe4ef;border-radius:14px;overflow:hidden;background:#fff}.calc-step-title{padding:14px 16px;background:linear-gradient(135deg,#0f172a,#1d4ed8);color:#fff}.calc-step-title h4{margin:0;font-size:16px}.calc-step-title p{margin:5px 0 0;color:#bfdbfe;font-size:12px}.calc-step-table{width:100%;border-collapse:collapse;font-size:12px}.calc-step-table th{background:#f1f5f9;color:#334155;text-align:left;padding:9px}.calc-step-table td{border-top:1px solid #e2e8f0;padding:9px;vertical-align:top}.calc-step-table td:last-child{font-weight:950;color:#0f172a;white-space:nowrap;text-align:right}.calc-step-note{padding:12px 16px;background:#fffbeb;color:#92400e;font-size:12px;line-height:1.55}.calc-step-total td{background:#fef2f2;color:#dc2626;font-weight:950}.calc-step-blue td{background:#eff6ff}.calc-step-yellow td{background:#fefce8}
 </style>
 </head>
 <body>
@@ -1248,6 +1249,34 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
                 <button class="calc-close" type="button" onclick="document.getElementById('calcModal').classList.remove('show')">Kapat</button>
             </div>
             <div class="calc-body">
+                <?php if((string)($selected['urun_adi'] ?? '') === '0,33 L Cam Şişe Su'): ?>
+                <div class="calc-step-box">
+                    <div class="calc-step-title"><h4>0,33 lt Cam Şişe - Koli Başına Nihai Maliyet</h4><p>L sütunu mantığıyla gerçek sayılar ve kaynak hücre açıklamaları.</p></div>
+                    <table class="calc-step-table"><thead><tr><th>Kalem</th><th>Formül</th><th>Kaynak veri</th><th>Sonuç</th></tr></thead><tbody>
+                        <tr><td>Cam şişe</td><td>12 × W6</td><td>W6 = 3,8601 TL/şişe; 12 şişe/koli</td><td>46,3212</td></tr>
+                        <tr><td>Kapak</td><td>12 × W7</td><td>W7 = 0,637 TL/kapak; 12 adet</td><td>7,6440</td></tr>
+                        <tr><td>Kulp</td><td>U12</td><td>48mm kulp fiyatı girilmemiş</td><td>0,0000</td></tr>
+                        <tr><td>Etiket</td><td>W8</td><td>Stiker etiket sabit fiyatı</td><td>0,9000</td></tr>
+                        <tr><td>Shrink Film</td><td>17,6 × U21</td><td>U21 = (2790 / 1.000.000) × 46,16 = 0,1287864</td><td>2,2666</td></tr>
+                        <tr><td>Diğer hammadde</td><td>0</td><td>Streç, seperatör, emniyet bandı, koli ve folyolar L sütununda girilmemiş</td><td>0,0000</td></tr>
+                        <tr class="calc-step-total"><td>Hammadde toplamı</td><td>SUM(L5:L16)</td><td>Koli bazında toplam</td><td>57,1318</td></tr>
+                        <tr><td>Fire</td><td>57,1318 / 100 × 3</td><td>S2 = %3 fire</td><td>1,7140</td></tr>
+                        <tr class="calc-step-total"><td>Fireli hammadde</td><td>57,1318 + 1,7140</td><td>L20</td><td>58,8458</td></tr>
+                    </tbody></table>
+                    <table class="calc-step-table"><thead><tr><th>Gider</th><th>Toplam tutar</th><th>Formül</th><th>Koli başı</th></tr></thead><tbody>
+                        <tr><td>730 İşçilik Hariç Gider</td><td>4.006.861,28</td><td>S37 / B23, B23 = 509.895 koli</td><td>7,8582</td></tr>
+                        <tr><td>760 Pazarlama Gideri</td><td>1.344.152,66</td><td>S38 / B23</td><td>2,6361</td></tr>
+                        <tr><td>770 Genel Yönetim Gideri</td><td>6.366.475,10</td><td>S39 / B23</td><td>12,4859</td></tr>
+                        <tr><td>720 İşçilik Gideri</td><td>4.672.230,79</td><td>S40 / B23</td><td>9,1631</td></tr>
+                        <tr class="calc-step-total"><td>Koli başına maliyet</td><td colspan="2">58,8458 + 7,8582 + 2,6361 + 12,4859 + 9,1631</td><td>90,9891</td></tr>
+                        <tr class="calc-step-yellow"><td>Nakliye dahil fiyat</td><td colspan="2">L34</td><td>90,9891</td></tr>
+                        <tr class="calc-step-yellow"><td>Nakliyesiz fiyat</td><td colspan="2">90,9891 - 3,7400</td><td>87,2491</td></tr>
+                        <tr class="calc-step-blue"><td>Nakliyesiz + DEKAP dahil</td><td colspan="2">87,2491 + 6,3600</td><td>93,6091</td></tr>
+                        <tr class="calc-step-blue"><td>Nakliye + DEKAP dahil</td><td colspan="2">90,9891 + 6,3600</td><td>97,3491</td></tr>
+                    </tbody></table>
+                    <div class="calc-step-note">Bu ürün için ilgili ayda üretim yoksa sonuç fiili gerçekleşen değil, bugün üretilseydi oluşacak teorik koli maliyetidir.</div>
+                </div>
+                <?php endif; ?>
                 <div class="calc-note">Satır tutarı varsa doğrudan alınır. Satır tutarı yoksa formül: miktar x birim fiyat x (1 + fire oranı / 100). Koli başına maliyet, aşağıdaki satır tutarlarının toplamıdır.</div>
                 <table class="calc-table"><thead><tr><th>Kalem</th><th class="num">Miktar</th><th class="num">Birim Fiyat</th><th class="num">Fire</th><th class="num">Satır Tutarı</th><th>Hesap</th></tr></thead><tbody>
                     <?php foreach($detaylar as $d): $manual=(float)($d['satir_tutari'] ?? 0); ?>
