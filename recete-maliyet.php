@@ -712,7 +712,7 @@ foreach($excelNisanProducts as $p){
 }
 
 $tab = (string)($_GET['tab'] ?? 'ozet');
-if(!in_array($tab, ['ozet','urunler','hammaddeler','fiyatlar','receteler','uretim','giderler','nakliye','stok_hareketleri'], true)){ $tab = 'ozet'; }
+if(!in_array($tab, ['ozet','urunler','hammaddeler','fiyatlar','receteler','uretim','nakliye','stok_hareketleri'], true)){ $tab = 'ozet'; }
 $donem = (string)($_GET['donem'] ?? '2026-04');
 $selectedId = (int)($_POST['urun_id'] ?? ($_GET['urun_id'] ?? 0));
 $message = '';
@@ -1160,11 +1160,12 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
 .cost-modern-table{width:100%;border-collapse:separate;border-spacing:0;font-size:12px}.cost-modern-table th{background:#f8fafc;color:#475569;text-align:left;padding:10px;border-bottom:1px solid #e2e8f0}.cost-modern-table td{padding:11px 10px;border-bottom:1px solid #edf2f7;vertical-align:top}.cost-modern-table tr:last-child td{border-bottom:0}.cost-modern-table td:first-child{font-weight:900;color:#0f172a}.cost-modern-table .num{text-align:right;font-weight:950;color:#0f172a;white-space:nowrap;font-variant-numeric:tabular-nums}
 .cost-modern-table details{font-size:11px;color:#64748b}.cost-modern-table summary{display:inline-flex;cursor:pointer;border:1px solid #bfdbfe;background:#eff6ff;color:#1d4ed8;border-radius:999px;padding:5px 8px;font-weight:900;list-style:none}.cost-modern-table summary::-webkit-details-marker{display:none}.cost-modern-table details[open] summary{margin-bottom:8px;background:#dbeafe}.cost-modern-table details p{margin:5px 0;line-height:1.45}.cost-modern-table .cost-total td{background:#fff7ed;color:#c2410c}.cost-modern-table .cost-total td:first-child,.cost-modern-table .cost-total .num{color:#dc2626}.cost-modern-table .cost-yellow td{background:#fefce8}.cost-modern-table .cost-blue td{background:#eff6ff}
 .calc-step-box{margin-bottom:16px;border:1px solid #dbe4ef;border-radius:14px;overflow:hidden;background:#fff}.calc-step-title{padding:14px 16px;background:linear-gradient(135deg,#0f172a,#1d4ed8);color:#fff}.calc-step-title h4{margin:0;font-size:16px}.calc-step-title p{margin:5px 0 0;color:#bfdbfe;font-size:12px}.calc-step-table{width:100%;border-collapse:collapse;font-size:12px}.calc-step-table th{background:#f1f5f9;color:#334155;text-align:left;padding:9px}.calc-step-table td{border-top:1px solid #e2e8f0;padding:9px;vertical-align:top}.calc-step-table td:last-child{font-weight:950;color:#0f172a;white-space:nowrap;text-align:right}.calc-step-note{padding:12px 16px;background:#fffbeb;color:#92400e;font-size:12px;line-height:1.55}.calc-step-total td{background:#fef2f2;color:#dc2626;font-weight:950}.calc-step-blue td{background:#eff6ff}.calc-step-yellow td{background:#fefce8}
+.rm-tabs{grid-template-columns:repeat(5,minmax(120px,1fr))}
 </style>
 </head>
 <body>
 <?php require_once __DIR__ . '/sidebar.php'; ?>
-<main class="main rm-page <?php echo $tab==='receteler'?'recipe-mode':''; ?> <?php echo $tab==='giderler'?'expense-mode':''; ?> <?php echo $tab==='urunler'?'product-mode':''; ?>">
+<main class="main rm-page <?php echo $tab==='receteler'?'recipe-mode':''; ?> <?php echo $tab==='urunler'?'product-mode':''; ?>">
     <section class="rm-hero">
         <div><h1>Reçete ve Maliyet</h1><p>Reçete, fiyatlama, üretim ve koli başı maliyet kontrol paneli.</p></div>
         <div class="period-tools">
@@ -1184,7 +1185,6 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
     <nav class="rm-tabs">
         <a class="<?php echo $tab==='ozet'?'active':''; ?>" href="?tab=ozet&donem=<?php echo rm_e($donem); ?>">Maliyet Özeti</a>
         <a class="<?php echo $tab==='urunler'?'active':''; ?>" href="?tab=urunler&donem=<?php echo rm_e($donem); ?>">Ürünler</a>
-        <a class="<?php echo $tab==='giderler'?'active':''; ?>" href="?tab=giderler&donem=<?php echo rm_e($donem); ?>">Giderler</a>
         <a class="<?php echo $tab==='receteler'?'active':''; ?>" href="?tab=receteler&donem=<?php echo rm_e($donem); ?>">Reçeteler</a>
         <a class="<?php echo $tab==='uretim'?'active':''; ?>" href="?tab=uretim&donem=<?php echo rm_e($donem); ?>">Üretim</a>
         <a class="<?php echo $tab==='stok_hareketleri'?'active':''; ?>" href="?tab=stok_hareketleri&donem=<?php echo rm_e($donem); ?>">Stok Hareketleri</a>
@@ -1553,9 +1553,12 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
     .bom-detail-table{width:100%;border-collapse:collapse;font-size:12px}.bom-detail-table th{background:#eef2f7;color:#0f172a;text-align:left;padding:9px}.bom-detail-table td{border-bottom:1px solid #e5e7eb;padding:9px;vertical-align:top}.bom-detail-table td:last-child{font-weight:900;color:#0f172a;white-space:nowrap}
     .recipe-mode .bom-layout{display:block}
     .recipe-mode .bom-layout>aside{display:none!important}
-    .recipe-product-strip{display:flex;gap:8px;overflow-x:auto;padding:12px;margin-bottom:12px;background:#fff;border:1px solid #e2e8f0;border-radius:16px;box-shadow:0 10px 24px rgba(15,23,42,.04)}
-    .recipe-product-btn{min-width:150px;max-width:210px;border:1px solid #dbe3ee;border-radius:12px;background:#f8fafc;color:#0f172a;text-decoration:none;padding:10px 12px}
-    .recipe-product-btn.active{background:#eff6ff;border-color:#2563eb;box-shadow:0 0 0 1px #bfdbfe inset}
+    .recipe-page-head{display:flex;justify-content:space-between;gap:18px;align-items:center;margin-bottom:14px;padding:18px 20px;background:linear-gradient(135deg,#0f172a,#1d4ed8);color:#fff;border-radius:20px;box-shadow:0 18px 38px rgba(15,23,42,.16)}
+    .recipe-page-head h2{margin:4px 0 0;font-size:24px}.recipe-page-head p{margin:5px 0 0;color:#dbeafe;font-size:12px}.recipe-page-head small{color:#93c5fd;font-weight:950;letter-spacing:.08em;text-transform:uppercase}.recipe-page-stats{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}.recipe-page-stat{min-width:105px;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.1);border-radius:14px;padding:10px 12px}.recipe-page-stat span{display:block;color:#bfdbfe;font-size:10px;font-weight:900;text-transform:uppercase}.recipe-page-stat strong{display:block;margin-top:4px;font-size:16px}
+    .recipe-product-strip{display:flex;gap:10px;overflow-x:auto;padding:14px;margin-bottom:14px;background:#fff;border:1px solid #dbe4ef;border-radius:18px;box-shadow:0 14px 30px rgba(15,23,42,.06)}
+    .recipe-product-btn{min-width:160px;max-width:220px;border:1px solid #dbe3ee;border-radius:14px;background:#f8fafc;color:#0f172a;text-decoration:none;padding:12px 13px;transition:.15s ease}
+    .recipe-product-btn:hover{border-color:#93c5fd;transform:translateY(-1px);box-shadow:0 10px 22px rgba(37,99,235,.08)}
+    .recipe-product-btn.active{background:#0f172a;border-color:#0f172a;color:#fff;box-shadow:0 16px 28px rgba(15,23,42,.2)}
     .recipe-product-btn strong{display:block;font-size:12px;line-height:1.25;white-space:normal}
     .recipe-product-btn .bom-code{font-size:9px}
     .recipe-product-btn .bom-ok{float:none;display:inline-block;margin-top:6px}
@@ -1564,6 +1567,7 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
     .excel-upload{display:inline-flex!important;align-items:center;justify-content:center;min-width:auto!important;border:1px solid #dbe3ee;background:#fff;color:#334155;border-radius:10px;padding:10px 12px;font-size:12px;font-weight:950;cursor:pointer}
     .excel-upload input{display:none}
     .excel-format-box{margin:12px 22px 0;background:#f8fafc;border:1px solid #dbe3ee;border-radius:14px;padding:12px}
+    .excel-format-box summary{cursor:pointer;color:#0f172a;font-size:13px;font-weight:950;list-style:none}.excel-format-box summary::-webkit-details-marker{display:none}
     .excel-format-box h4{margin:0 0 8px;color:#0f172a;font-size:13px}
     .excel-format-table{width:100%;border-collapse:collapse;font-size:11px}
     .excel-format-table th{background:#0f172a;color:#fff;text-align:left;padding:8px}
@@ -1582,6 +1586,9 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
     .recipe-cost-card strong{display:block;margin-top:6px;color:#0f172a;font-size:17px;font-weight:950;font-variant-numeric:tabular-nums}
     .recipe-cost-card.total{background:#0f172a;border-color:#0f172a}.recipe-cost-card.total span{color:#bfdbfe}.recipe-cost-card.total strong{color:#fff}
     .recipe-cost-card small{display:block;margin-top:5px;color:#64748b;font-size:10px;line-height:1.35}
+    .recipe-mode .bom-editor{border:1px solid #dbe4ef;border-radius:20px;box-shadow:0 18px 42px rgba(15,23,42,.08)}
+    .recipe-mode .recipe-bom-head{background:linear-gradient(135deg,#f8fbff,#ffffff);border-bottom:1px solid #dbe4ef}
+    .recipe-mode .rm-table-wrap{background:#fff}.recipe-mode .bom-matrix th{background:#eef4fb;color:#172033}.recipe-mode .bom-matrix tr:hover td{background:#f8fbff}
     .recipe-gider-panel{margin:14px 16px;background:#fff;border:1px solid #dbe3ee;border-radius:16px;padding:14px;box-shadow:0 10px 24px rgba(15,23,42,.04)}
     .recipe-gider-head{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:12px}.recipe-gider-head h3{margin:0;color:#0f172a;font-size:16px}.recipe-gider-head p{margin:3px 0 0;color:#64748b;font-size:11px}
     .recipe-gider-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}.recipe-gider-field label{display:block;margin-bottom:5px;color:#475569;font-size:10px;font-weight:950;text-transform:uppercase}.recipe-gider-field input{width:100%;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:10px;padding:10px;font-weight:900}.recipe-gider-save{align-self:end;border:0;border-radius:10px;background:#2563eb;color:#fff;padding:11px 12px;font-weight:950;cursor:pointer}
@@ -1590,6 +1597,18 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
     @media(max-width:900px){.bom-summary,.pet033-cost-summary{grid-template-columns:1fr}.recipe-actions label{min-width:100%}}
     </style>
     <section class="rm-panel">
+        <div class="recipe-page-head">
+            <div>
+                <small>Reçete ve Ürün Ağacı</small>
+                <h2><?php echo rm_e($selectedProductName ?: 'Ürün seçin'); ?></h2>
+                <p>Malzeme, gider ve fire etkisini tek ekranda takip edin.</p>
+            </div>
+            <div class="recipe-page-stats">
+                <div class="recipe-page-stat"><span>Dönem</span><strong><?php echo rm_e($currentDonem['donem_adi']); ?></strong></div>
+                <div class="recipe-page-stat"><span>Ürün</span><strong><?php echo count($urunler); ?></strong></div>
+                <div class="recipe-page-stat"><span>Koli İçi</span><strong><?php echo number_format((float)$selectedKoliIci,0,',','.'); ?></strong></div>
+            </div>
+        </div>
         <div class="recipe-product-strip">
             <?php foreach($urunler as $u): ?>
             <a class="recipe-product-btn <?php echo (int)$u['id']===$selectedId ? 'active' : ''; ?>" href="?tab=receteler&donem=<?php echo rm_e($donem); ?>&urun_id=<?php echo (int)$u['id']; ?>">
@@ -1637,8 +1656,8 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
                         <button type="submit" class="primary-add" onclick="document.getElementById('bomAction').value='bom_kaydet'">Reçeteyi Kaydet</button>
                     </div>
                 </div>
-                <div class="excel-format-box">
-                    <h4>Excel Yükleme Örnek Formatı</h4>
+                <details class="excel-format-box">
+                    <summary>Excel Yükleme Örnek Formatı</summary>
                     <div class="rm-table-wrap"><table class="excel-format-table">
                         <thead><tr><th>Hammadde / Malzeme</th><th>Alış Fiyatı</th><th>Para Cinsi</th><th>Döviz Kuru</th><th>Bölen</th><th>Kullanım Miktarı</th><th>Birim</th><th>Kolideki Adet</th><th>Fire %</th></tr></thead>
                         <tbody>
@@ -1647,7 +1666,7 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
                             <tr><td>Etiket</td><td>170</td><td>TL</td><td>1</td><td>1000</td><td>1</td><td>adet/adet</td><td>24</td><td>2</td></tr>
                         </tbody>
                     </table></div>
-                </div>
+                </details>
                 <div class="pet033-cost-summary">
                     <div class="pet033-cost-card"><span>Şişe Başı Hammadde</span><strong id="petBottleCost">0,00 TL</strong><small><?php echo number_format((float)$selectedKoliIci,0,',','.'); ?>'e bölünerek şişe payı</small></div>
                     <div class="pet033-cost-card"><span>Koli Maliyeti (Net)</span><strong id="petKoliNet">0,00 TL</strong><small>x <?php echo number_format((float)$selectedKoliIci,0,',','.'); ?> şişe toplamı</small></div>
