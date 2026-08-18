@@ -1668,9 +1668,11 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
     .recipe-gider-panel{margin:14px 16px;background:#fff;border:1px solid #e2e8f0;border-radius:18px;padding:16px;box-shadow:0 10px 24px rgba(15,23,42,.04)}
     .recipe-gider-head{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:12px}.recipe-gider-head h3{margin:0;color:#0f172a;font-size:16px}.recipe-gider-head p{margin:3px 0 0;color:#64748b;font-size:11px}
     .recipe-gider-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}.recipe-gider-field label{display:block;margin-bottom:5px;color:#475569;font-size:10px;font-weight:950;text-transform:uppercase}.recipe-gider-field input{width:100%;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:12px;padding:11px 12px;font-weight:900;background:#f8fafc}.recipe-gider-save{align-self:end;border:0;border-radius:12px;background:#f59e0b;color:#0f172a;padding:12px 14px;font-weight:950;cursor:pointer;box-shadow:0 10px 22px rgba(245,158,11,.22)}
+    .recipe-production-total{display:flex;justify-content:space-between;align-items:center;margin-top:12px;border:1px solid #bfdbfe;background:#eff6ff;border-radius:12px;padding:10px 12px;color:#0f172a;font-weight:950}
+    .recipe-production-total span{color:#1d4ed8;font-size:16px}
     .recipe-production-strip{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:8px;margin-top:12px}
     .recipe-production-strip div{border:1px solid #e2e8f0;background:#f8fafc;border-radius:12px;padding:10px;text-align:center}
-    .recipe-production-strip strong{display:block;color:#0f172a;font-size:12px}.recipe-production-strip span{display:block;margin-top:4px;color:#2563eb;font-weight:950;font-size:12px}.recipe-production-strip em{display:block;margin-top:3px;color:#64748b;font-style:normal;font-size:11px}
+    .recipe-production-strip strong{display:block;color:#0f172a;font-size:12px}.recipe-production-strip em{display:block;margin-top:5px;color:#0f172a;font-style:normal;font-size:13px;font-weight:950}.recipe-production-strip span{display:block;margin-top:3px;color:#2563eb;font-weight:950;font-size:12px}
     @media(max-width:1100px){.pet033-cost-summary,.recipe-cost-band,.recipe-gider-grid,.recipe-flow{grid-template-columns:1fr 1fr}}
     @media(max-width:1100px){.recipe-popup .bom-editor{width:96vw;margin:12px auto;border-radius:16px}}
     @media(max-width:900px){.bom-summary,.pet033-cost-summary{grid-template-columns:1fr}.recipe-actions label{min-width:100%}}
@@ -1762,16 +1764,28 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
                     $stdG760Total = $donem === '2026-06' ? 1344152.66 : $stdG760 * max($stdUretim, 0);
                     $stdG770Total = $donem === '2026-06' ? 6366475.10 : $stdG770 * max($stdUretim, 0);
                     $stdG720Total = $donem === '2026-06' ? 4672230.79 : $stdG720 * max($stdUretim, 0);
-                    $uretimDagilim = [
-                        ['0,33 lt', '0,00%', 0],
-                        ['0,5 lt', '43,91%', 223920],
-                        ['1 lt', '14,89%', 75921],
-                        ['1,5 lt', '17,19%', 87676],
-                        ['5 lt', '0,00%', 0],
-                        ['Cam Şişe', '0,00%', 0],
-                        ['19 lt', '24,00%', 122378],
-                        ['200 cc', '0,00%', 0],
-                    ];
+                    $uretimDagilimMap = ['0,33 lt'=>0,'0,5 lt'=>0,'1 lt'=>0,'1,5 lt'=>0,'5 lt'=>0,'Cam Şişe'=>0,'19 lt'=>0,'200 cc'=>0];
+                    $uretimDagilimStmt = $db->prepare("SELECT urun_adi,koli_miktari FROM recete_uretim WHERE donem=?");
+                    $uretimDagilimStmt->execute([$donem]);
+                    foreach($uretimDagilimStmt->fetchAll() as $ur){
+                        $ad = rm_lower((string)$ur['urun_adi']);
+                        $qty = (float)$ur['koli_miktari'];
+                        if(str_contains($ad,'cam')){ $uretimDagilimMap['Cam Şişe'] += $qty; }
+                        elseif(str_contains($ad,'19')){ $uretimDagilimMap['19 lt'] += $qty; }
+                        elseif(str_contains($ad,'200')){ $uretimDagilimMap['200 cc'] += $qty; }
+                        elseif(str_contains($ad,'1,5')){ $uretimDagilimMap['1,5 lt'] += $qty; }
+                        elseif(str_contains($ad,'0,50') || str_contains($ad,'0,5')){ $uretimDagilimMap['0,5 lt'] += $qty; }
+                        elseif(str_contains($ad,'0,33')){ $uretimDagilimMap['0,33 lt'] += $qty; }
+                        elseif(preg_match('/(^|[^0-9])1\s*l/u', $ad)){ $uretimDagilimMap['1 lt'] += $qty; }
+                        elseif(str_contains($ad,'5 l')){ $uretimDagilimMap['5 lt'] += $qty; }
+                    }
+                    $uretimDagilimToplam = array_sum($uretimDagilimMap);
+                    if($uretimDagilimToplam > 0){ $stdUretim = $uretimDagilimToplam; }
+                    $uretimDagilim = [];
+                    foreach($uretimDagilimMap as $label=>$qty){
+                        $rate = $stdUretim > 0 ? ($qty / $stdUretim * 100) : 0;
+                        $uretimDagilim[] = [$label, $rate, $qty];
+                    }
                 ?>
                 <div class="recipe-gider-panel">
                     <div class="recipe-gider-head">
@@ -1791,9 +1805,10 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
                         <input type="hidden" name="g770" value="<?php echo rm_input_num($stdG770,4); ?>">
                         <input type="hidden" name="g720" value="<?php echo rm_input_num($stdG720,4); ?>">
                     </div>
+                    <div class="recipe-production-total"><strong>Üretim Miktarı Koli Toplamı</strong><span><?php echo number_format($stdUretim,0,',','.'); ?> koli</span></div>
                     <div class="recipe-production-strip">
                         <?php foreach($uretimDagilim as $ud): ?>
-                            <div><strong><?php echo rm_e($ud[0]); ?></strong><span><?php echo rm_e($ud[1]); ?></span><em><?php echo number_format((float)$ud[2],0,',','.'); ?> koli</em></div>
+                            <div><strong><?php echo rm_e($ud[0]); ?></strong><em><?php echo number_format((float)$ud[2],0,',','.'); ?> koli</em><span><?php echo number_format((float)$ud[1],2,',','.'); ?>%</span></div>
                         <?php endforeach; ?>
                     </div>
                 </div>
