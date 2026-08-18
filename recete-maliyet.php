@@ -1589,13 +1589,21 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
     .recipe-mode .bom-editor{border:1px solid #dbe4ef;border-radius:20px;box-shadow:0 18px 42px rgba(15,23,42,.08)}
     .recipe-mode .recipe-bom-head{background:linear-gradient(135deg,#f8fbff,#ffffff);border-bottom:1px solid #dbe4ef}
     .recipe-mode .rm-table-wrap{background:#fff}.recipe-mode .bom-matrix th{background:#eef4fb;color:#172033}.recipe-mode .bom-matrix tr:hover td{background:#f8fbff}
+    .recipe-mode .rm-table-wrap{border-top:1px solid #d7e0eb}
+    .bom-matrix{border-collapse:collapse!important;background:#fff}
+    .bom-matrix th,.bom-matrix td{border-right:1px solid #d7e0eb;border-bottom:1px solid #d7e0eb}
+    .bom-matrix th:last-child,.bom-matrix td:last-child{border-right:0}
+    .bom-matrix tbody tr:nth-child(even) td{background:#fbfdff}
+    .bom-matrix input,.bom-matrix select{background:#fff;border:1px solid #b8c7d9!important;border-radius:8px!important;font-variant-numeric:tabular-nums}
+    .bom-matrix .bom-tl,.bom-matrix .bom-price-view,.bom-matrix .bom-total,.bom-matrix .bom-fire-total{font-variant-numeric:tabular-nums}
+    .bom-matrix td:nth-child(5),.bom-matrix td:nth-child(7),.bom-matrix td:nth-child(11){background:#f8fafc!important}
+    .bom-matrix td:nth-child(13){background:#ecfdf5!important}
     .recipe-flow{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:14px 16px 0}
     .recipe-flow-step{border:1px solid #dbe4ef;background:#fff;border-radius:14px;padding:12px 14px;box-shadow:0 8px 20px rgba(15,23,42,.035)}
     .recipe-flow-step b{display:inline-flex;width:24px;height:24px;align-items:center;justify-content:center;border-radius:999px;background:#1d4ed8;color:#fff;font-size:11px;margin-right:7px}
     .recipe-flow-step strong{color:#0f172a;font-size:12px}.recipe-flow-step span{display:block;margin-top:6px;color:#64748b;font-size:11px;line-height:1.35}
     .bom-matrix th{vertical-align:top;line-height:1.2}.bom-matrix th span{display:block;font-size:10px;font-weight:950}.bom-matrix th small{display:block;margin-top:4px;color:#64748b;font-size:9px;font-weight:800;line-height:1.25}
-    .bom-matrix td:nth-child(5),.bom-matrix td:nth-child(7),.bom-matrix td:nth-child(11),.bom-matrix td:nth-child(13){background:#fbfdff}
-    .bom-matrix td:nth-child(13){background:#f0fdf4}.bom-fire-total{color:#047857}
+    .bom-fire-total{color:#047857}
     .bom-matrix input:focus,.bom-matrix select:focus{outline:2px solid #bfdbfe;border-color:#2563eb}
     .recipe-gider-panel{margin:14px 16px;background:#fff;border:1px solid #dbe3ee;border-radius:16px;padding:14px;box-shadow:0 10px 24px rgba(15,23,42,.04)}
     .recipe-gider-head{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:12px}.recipe-gider-head h3{margin:0;color:#0f172a;font-size:16px}.recipe-gider-head p{margin:3px 0 0;color:#64748b;font-size:11px}
@@ -1747,6 +1755,17 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
         return parseFloat(v)||0;
     }
     function fmt(v,d){ return '₺' + v.toLocaleString('tr-TR',{minimumFractionDigits:d||2,maximumFractionDigits:d||2}); }
+    function fmtNum(v,d){ return (v || 0).toLocaleString('tr-TR',{minimumFractionDigits:d,maximumFractionDigits:d}); }
+    function formatBomInputs(scope){
+        var root = scope || document;
+        var list = [];
+        if(root.matches && root.matches('.bom-alis,.bom-kur,.bom-bolen,.bom-num,.bom-koli,.bom-fire')){ list.push(root); }
+        root.querySelectorAll && root.querySelectorAll('.bom-alis,.bom-kur,.bom-bolen,.bom-num,.bom-koli,.bom-fire').forEach(function(el){ list.push(el); });
+        list.forEach(function(el){
+            var d = el.classList.contains('bom-bolen') ? 0 : (el.classList.contains('bom-koli') || el.classList.contains('bom-fire') ? 2 : 6);
+            el.value = fmtNum(trNum(el.value), d);
+        });
+    }
     function calcBom(){
         var tlSum=0,koliSum=0,fireSum=0, fireWeighted=0;
         document.querySelectorAll('#bomRows tr').forEach(function(row){
@@ -1784,7 +1803,7 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
         if(document.getElementById('recipeHamCost')){ document.getElementById('recipeHamCost').textContent = fmt(fireSum,4); }
         if(document.getElementById('recipeGrandCost')){ document.getElementById('recipeGrandCost').textContent = fmt(fireSum + giderTotal,4); }
     }
-    function addBomRow(){ document.getElementById('bomRows').insertAdjacentHTML('beforeend', document.getElementById('bomTpl').innerHTML); calcBom(); }
+    function addBomRow(){ document.getElementById('bomRows').insertAdjacentHTML('beforeend', document.getElementById('bomTpl').innerHTML); formatBomInputs(document.getElementById('bomRows').lastElementChild); calcBom(); }
     function showBomDetail(btn){
         calcBom();
         var row = btn.closest('tr');
@@ -1816,7 +1835,9 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
         document.getElementById('bomDetailModal').classList.add('show');
     }
     function closeBomDetail(){ document.getElementById('bomDetailModal').classList.remove('show'); }
-    document.addEventListener('input', calcBom); document.addEventListener('DOMContentLoaded', calcBom);
+    document.addEventListener('input', calcBom);
+    document.addEventListener('blur', function(e){ if(e.target.matches('.bom-alis,.bom-kur,.bom-bolen,.bom-num,.bom-koli,.bom-fire')){ formatBomInputs(e.target.parentNode); calcBom(); } }, true);
+    document.addEventListener('DOMContentLoaded', function(){ formatBomInputs(document); calcBom(); });
     (function(){
         var popup=document.getElementById('recipePopup'), box=popup ? popup.querySelector('.bom-editor') : null, head=box ? box.querySelector('.bom-head') : null;
         if(!popup || !box || !head || !popup.classList.contains('recipe-popup')) return;
