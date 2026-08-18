@@ -1793,7 +1793,7 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
                         <button class="recipe-gider-save" type="submit" onclick="document.getElementById('bomAction').value='recete_gider_kaydet'">Giderleri Kaydet</button>
                     </div>
                     <div class="recipe-gider-grid">
-                        <div class="recipe-gider-field"><label>Üretim Miktarı (Koli)</label><input name="gider_toplam_uretim" value="<?php echo number_format($stdUretim,0,',','.'); ?>"></div>
+                        <input type="hidden" name="gider_toplam_uretim" value="<?php echo number_format($stdUretim,0,',','.'); ?>">
                         <div class="recipe-gider-field"><label>730 Toplam Gider</label><input name="g730_total" value="<?php echo number_format($stdG730Total,2,',','.'); ?>"></div>
                         <div class="recipe-gider-field"><label>760 Toplam Gider</label><input name="g760_total" value="<?php echo number_format($stdG760Total,2,',','.'); ?>"></div>
                         <div class="recipe-gider-field"><label>770 Toplam Gider</label><input name="g770_total" value="<?php echo number_format($stdG770Total,2,',','.'); ?>"></div>
