@@ -8,7 +8,7 @@ if(!isset($_SESSION['user_id'])){
 }
 
 function rm_e($value): string { return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8'); }
-function rm_money($value): string { return '₺' . number_format((float)$value, 2, ',', '.'); }
+function rm_money($value): string { return '₺' . number_format((float)$value, 4, ',', '.'); }
 function rm_money4($value): string { return '₺' . number_format((float)$value, 4, ',', '.'); }
 if(!function_exists('str_contains')){
     function str_contains($haystack, $needle){ return $needle === '' || strpos((string)$haystack, (string)$needle) !== false; }
@@ -29,7 +29,7 @@ function rm_num($value): float
     elseif(preg_match('/^-?\d{1,3}(\.\d{3})+$/', $value)){ $value = str_replace('.', '', $value); }
     return (float)$value;
 }
-function rm_input_num($value, int $dec = 6): string
+function rm_input_num($value, int $dec = 4): string
 {
     $v = (float)$value;
     $d = abs($v - round($v)) < 0.000001 ? 0 : $dec;
@@ -1786,7 +1786,7 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
         if(root.matches && root.matches('.bom-alis,.bom-kur,.bom-bolen,.bom-num,.bom-koli,.bom-fire')){ list.push(root); }
         root.querySelectorAll && root.querySelectorAll('.bom-alis,.bom-kur,.bom-bolen,.bom-num,.bom-koli,.bom-fire').forEach(function(el){ list.push(el); });
         list.forEach(function(el){
-            var d = el.classList.contains('bom-bolen') ? 0 : (el.classList.contains('bom-koli') || el.classList.contains('bom-fire') ? 2 : 6);
+            var d = el.classList.contains('bom-bolen') ? 0 : 4;
             el.value = fmtNum(trNum(el.value), d);
         });
     }
@@ -1805,7 +1805,7 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
             var fireli = toplam * (1 + fire / 100);
             tlSum += tl; koliSum += toplam; fireSum += fireli; fireWeighted += toplam * fire;
             if(row.querySelector('.bom-tl')){ row.querySelector('.bom-tl').textContent = fmt(tl,4); }
-            if(row.querySelector('.bom-price-view')){ row.querySelector('.bom-price-view').textContent = fmt(birim,6); }
+            if(row.querySelector('.bom-price-view')){ row.querySelector('.bom-price-view').textContent = fmt(birim,4); }
             if(row.querySelector('.bom-total')){ row.querySelector('.bom-total').textContent = fmt(toplam,4); }
             if(row.querySelector('.bom-fire-total')){ row.querySelector('.bom-fire-total').textContent = fmt(fireli,4); }
         });
@@ -1851,9 +1851,9 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
             '<table class="bom-detail-table"><thead><tr><th>Adım</th><th>Açıklama</th><th>İşlem</th><th>Sonuç</th></tr></thead><tbody>' +
             '<tr><td>1. Hammadde fiyatı</td><td>1 ' + buyUnit + ' malzemenin alış fiyatı</td><td>' + alis.toLocaleString('tr-TR') + ' ' + para + '</td><td>—</td></tr>' +
             '<tr><td>2. TL çevrimi</td><td>Fiyatı güncel kur ile TL’ye çevir</td><td>' + alis.toLocaleString('tr-TR') + ' × ' + kur.toLocaleString('tr-TR') + '</td><td>' + fmt(tl,4) + ' /' + buyUnit + '</td></tr>' +
-            '<tr><td>3. Birim fiyat</td><td>Alış birimini reçete birimine indir</td><td>' + tl.toLocaleString('tr-TR',{minimumFractionDigits:4,maximumFractionDigits:4}) + ' ÷ ' + bolen.toLocaleString('tr-TR') + '</td><td>' + fmt(birim,6) + ' /' + baseUnit + '</td></tr>' +
-            '<tr><td>4. Şişe maliyeti</td><td>Bir şişenin ihtiyacı olan miktar ile çarp</td><td>' + birim.toLocaleString('tr-TR',{minimumFractionDigits:6,maximumFractionDigits:6}) + ' × ' + miktar.toLocaleString('tr-TR') + '</td><td>' + fmt(birim * miktar,4) + ' /şişe</td></tr>' +
-            '<tr><td>5. Koli fiyatı</td><td>Bir koli ' + koli.toLocaleString('tr-TR') + ' adet olduğu için çarp</td><td>' + birim.toLocaleString('tr-TR',{minimumFractionDigits:6,maximumFractionDigits:6}) + ' × ' + miktar.toLocaleString('tr-TR') + ' × ' + koli.toLocaleString('tr-TR') + '</td><td>' + fmt(koliFiyat,4) + ' /koli</td></tr>' +
+            '<tr><td>3. Birim fiyat</td><td>Alış birimini reçete birimine indir</td><td>' + tl.toLocaleString('tr-TR',{minimumFractionDigits:4,maximumFractionDigits:4}) + ' ÷ ' + bolen.toLocaleString('tr-TR') + '</td><td>' + fmt(birim,4) + ' /' + baseUnit + '</td></tr>' +
+            '<tr><td>4. Şişe maliyeti</td><td>Bir şişenin ihtiyacı olan miktar ile çarp</td><td>' + birim.toLocaleString('tr-TR',{minimumFractionDigits:4,maximumFractionDigits:4}) + ' × ' + miktar.toLocaleString('tr-TR') + '</td><td>' + fmt(birim * miktar,4) + ' /şişe</td></tr>' +
+            '<tr><td>5. Koli fiyatı</td><td>Bir koli ' + koli.toLocaleString('tr-TR') + ' adet olduğu için çarp</td><td>' + birim.toLocaleString('tr-TR',{minimumFractionDigits:4,maximumFractionDigits:4}) + ' × ' + miktar.toLocaleString('tr-TR') + ' × ' + koli.toLocaleString('tr-TR') + '</td><td>' + fmt(koliFiyat,4) + ' /koli</td></tr>' +
             '<tr><td>6. Fireli koli fiyatı</td><td>Üretim fire payı eklenir</td><td>' + koliFiyat.toLocaleString('tr-TR',{minimumFractionDigits:4,maximumFractionDigits:4}) + ' × (1 + %' + fire.toLocaleString('tr-TR') + ')</td><td>' + fmt(fireli,4) + ' /koli</td></tr>' +
             '</tbody></table>';
         document.getElementById('bomDetailModal').classList.add('show');
