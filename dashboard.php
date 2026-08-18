@@ -34,6 +34,27 @@ function yuzde($value){
     return number_format((float)$value, 1, ',', '.') . '%';
 }
 
+function tableExists(PDO $db, string $table): bool{
+    try{
+        $q = $db->prepare("SHOW TABLES LIKE ?");
+        $q->execute([$table]);
+        return (bool)$q->fetchColumn();
+    }catch(Throwable $e){
+        return false;
+    }
+}
+
+function scalarValue(PDO $db, string $sql, array $params = [], $default = 0){
+    try{
+        $q = $db->prepare($sql);
+        $q->execute($params);
+        $v = $q->fetchColumn();
+        return $v === false || $v === null ? $default : $v;
+    }catch(Throwable $e){
+        return $default;
+    }
+}
+
 $firmalar = $db->query("
     SELECT DISTINCT cariler.firma_adi
     FROM hakedisler
@@ -206,6 +227,33 @@ $maxFirm = max(array_column($firmChart ?: [['toplam' => 0]], 'toplam'));
 $maxMonth = max(array_column($monthChart ?: [['toplam' => 0]], 'toplam'));
 $maxRoute = max(array_column($routeChart ?: [['adet' => 0]], 'adet'));
 
+$currentCostPeriod = tableExists($db, 'recete_donemler')
+    ? (scalarValue($db, "SELECT donem_adi FROM recete_donemler ORDER BY donem DESC LIMIT 1", [], 'Nisan 2026'))
+    : 'Nisan 2026';
+$currentCostProduction = tableExists($db, 'recete_donemler')
+    ? (float)scalarValue($db, "SELECT toplam_uretim FROM recete_donemler ORDER BY donem DESC LIMIT 1", [], 0)
+    : 0;
+$activeRecipes = tableExists($db, 'recete_bom')
+    ? (int)scalarValue($db, "SELECT COUNT(*) FROM recete_bom WHERE aktif=1", [], 0)
+    : 0;
+$openTasks = tableExists($db, 'gorevler')
+    ? (int)scalarValue($db, "SELECT COUNT(*) FROM gorevler WHERE durum NOT IN ('Tamamlandı','tamamlandi','tamamlandı')", [], 0)
+    : 0;
+$assetCount = tableExists($db, 'demirbas_tanimlari')
+    ? (int)scalarValue($db, "SELECT COUNT(*) FROM demirbas_tanimlari", [], 0)
+    : 0;
+$palletNet = tableExists($db, 'palet_hareketleri')
+    ? (float)scalarValue($db, "SELECT COALESCE(SUM(giden_adet - gelen_adet),0) FROM palet_hareketleri", [], 0)
+    : 0;
+
+$moduleCards = [
+    ['Hakedişler', (int)$summary['hakedis_adet'] . ' kayıt', para($summary['toplam_net']), 'hakedisler.php', 'Net hakediş ve sevkiyat takibi', 'blue'],
+    ['Reçete & Maliyet', number_format($currentCostProduction,0,',','.') . ' koli', $currentCostPeriod, 'recete-maliyet.php', $activeRecipes . ' aktif reçete', 'indigo'],
+    ['Görev Takip', $openTasks . ' açık görev', 'Toplantı ve aksiyon', 'gorev-takip.php', 'Durum ve süre takibi', 'amber'],
+    ['Demirbaş', $assetCount . ' demirbaş', 'Zimmet ve kullanım', 'demirbas-takip.php', 'Tanım ve raporlar', 'emerald'],
+    ['Palet Takip', number_format($palletNet,0,',','.') . ' net', 'Sevk hareketleri', 'palet-takip.php', 'Giden / gelen / kalan', 'violet'],
+];
+
 ?>
 
 <!DOCTYPE html>
@@ -216,299 +264,50 @@ $maxRoute = max(array_column($routeChart ?: [['adet' => 0]], 'adet'));
 <link rel="stylesheet" href="assets/css/style.css?v=20260522-logo-total">
 
 <style>
-.dashboard-hero{
-    display:grid;
-    grid-template-columns:1.3fr .7fr;
-    gap:18px;
-    margin-bottom:18px;
-}
-
-.hero-card,
-.filter-panel,
-.metric-card,
-.chart-card,
-.recent-card{
-    background:#fff;
-    border:1px solid #e7eaf0;
-    border-radius:12px;
-}
-
-.hero-card{
-    padding:24px;
-    background:linear-gradient(135deg,#0f3e68,#166b8f);
-    color:white;
-    overflow:hidden;
-    position:relative;
-}
-
-.hero-card h2{
-    font-size:26px;
-    margin-bottom:8px;
-}
-
-.hero-card p{
-    color:#d9ecf7;
-    max-width:620px;
-}
-
-.hero-number{
-    margin-top:22px;
-    font-size:34px;
-    font-weight:800;
-    letter-spacing:0;
-}
-
-.hero-sub{
-    color:#d9ecf7;
-    margin-top:3px;
-}
-
-.filter-panel{
-    padding:18px;
-}
-
-.filter-panel label{
-    display:block;
-    font-size:12px;
-    font-weight:700;
-    color:#475569;
-    margin-bottom:6px;
-}
-
-.filter-panel select{
-    width:100%;
-    border:1px solid #d7dde8;
-    border-radius:8px;
-    padding:10px;
-    margin-bottom:12px;
-}
-
-.filter-actions{
-    display:flex;
-    gap:8px;
-}
-
-.btn{
-    border:0;
-    border-radius:8px;
-    background:#0f3e68;
-    color:white;
-    padding:10px 13px;
-    text-decoration:none;
-    font-weight:700;
-    cursor:pointer;
-}
-
-.btn-light{
-    background:#eef2f7;
-    color:#334155;
-}
-
-.metrics{
-    display:grid;
-    grid-template-columns:repeat(4, 1fr);
-    gap:12px;
-    margin-bottom:18px;
-}
-
-.metric-card{
-    padding:16px;
-}
-
-.metric-card span{
-    display:block;
-    color:#64748b;
-    font-size:12px;
-    margin-bottom:6px;
-}
-
-.metric-card strong{
-    display:block;
-    font-size:22px;
-    color:#0f172a;
-}
-
-.metric-card small{
-    display:block;
-    margin-top:6px;
-    color:#64748b;
-}
-
-.progress-track{
-    height:8px;
-    background:#e7edf4;
-    border-radius:999px;
-    margin-top:12px;
-    overflow:hidden;
-}
-
-.progress-fill{
-    height:100%;
-    width:var(--w);
-    max-width:100%;
-    border-radius:999px;
-    background:#16a34a;
-}
-
-.charts{
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:14px;
-    margin-bottom:14px;
-}
-
-.chart-card{
-    padding:18px;
-}
-
-.chart-card.wide{
-    grid-column:1 / -1;
-}
-
-.chart-head{
-    display:flex;
-    justify-content:space-between;
-    gap:12px;
-    margin-bottom:14px;
-}
-
-.chart-head h3{
-    font-size:17px;
-}
-
-.chart-head span{
-    color:#64748b;
-    font-size:12px;
-}
-
-.bar-row{
-    display:grid;
-    grid-template-columns:minmax(130px, 210px) 1fr minmax(82px, auto);
-    gap:10px;
-    align-items:center;
-    margin-bottom:10px;
-}
-
-.bar-label{
-    font-size:13px;
-    color:#334155;
-    overflow:hidden;
-    white-space:nowrap;
-    text-overflow:ellipsis;
-}
-
-.bar-track{
-    height:18px;
-    background:#eef2f7;
-    border-radius:999px;
-    overflow:hidden;
-}
-
-.bar-fill{
-    height:100%;
-    width:var(--w);
-    min-width:4px;
-    border-radius:999px;
-    background:linear-gradient(90deg,#0f8a7f,#18a999);
-}
-
-.bar-fill.blue{
-    background:linear-gradient(90deg,#2563eb,#60a5fa);
-}
-
-.bar-fill.orange{
-    background:linear-gradient(90deg,#ea580c,#f59e0b);
-}
-
-.bar-value{
-    text-align:right;
-    font-size:12px;
-    font-weight:700;
-    color:#0f172a;
-}
-
-.contract-row{
-    margin-bottom:13px;
-}
-
-.contract-top{
-    display:flex;
-    justify-content:space-between;
-    gap:10px;
-    font-size:13px;
-    margin-bottom:6px;
-}
-
-.contract-top strong{
-    overflow:hidden;
-    white-space:nowrap;
-    text-overflow:ellipsis;
-}
-
-.recent-card{
-    padding:18px;
-}
-
-.recent-grid{
-    display:grid;
-    grid-template-columns:repeat(3, 1fr);
-    gap:10px;
-}
-
-.recent-item{
-    border:1px solid #e7eaf0;
-    border-radius:10px;
-    padding:12px;
-    background:#fbfcfe;
-}
-
-.recent-item strong{
-    display:block;
-    margin-bottom:5px;
-}
-
-.recent-item span{
-    display:block;
-    color:#64748b;
-    font-size:12px;
-    margin-bottom:3px;
-}
-
-.recent-actions{
-    display:flex;
-    gap:6px;
-    margin-top:9px;
-}
-
-.mini-link{
-    color:#0f3e68;
-    text-decoration:none;
-    font-weight:700;
-    font-size:12px;
-}
-
-@media(max-width:1200px){
-    .metrics,
-    .recent-grid{
-        grid-template-columns:repeat(2, 1fr);
-    }
-}
-
-@media(max-width:900px){
-    .dashboard-hero,
-    .charts{
-        grid-template-columns:1fr;
-    }
-
-    .chart-card.wide{
-        grid-column:auto;
-    }
-
-    .metrics,
-    .recent-grid{
-        grid-template-columns:1fr;
-    }
-}
+.main{background:#f4f7fb;min-height:100vh}
+.dashboard-hero{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(320px,.65fr);gap:18px;margin-bottom:18px}
+.hero-card,.filter-panel,.metric-card,.chart-card,.recent-card,.module-card,.quick-card{background:#fff;border:1px solid #dfe7f2;border-radius:18px;box-shadow:0 12px 30px rgba(15,23,42,.055)}
+.hero-card{padding:30px 32px;background:linear-gradient(120deg,#0f172a 0%,#1e3a8a 56%,#2563eb 100%);color:#fff;overflow:hidden;position:relative}
+.hero-card:after{content:'';position:absolute;right:-80px;top:-90px;width:260px;height:260px;border-radius:999px;background:rgba(255,255,255,.12)}
+.hero-kicker{display:inline-flex;align-items:center;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.10);border-radius:999px;padding:7px 11px;color:#bfdbfe;font-size:11px;font-weight:950;letter-spacing:.06em;text-transform:uppercase}
+.hero-card h2{font-size:34px;line-height:1.05;margin:14px 0 9px;letter-spacing:0}
+.hero-card p{color:#dbeafe;max-width:720px;font-size:14px;line-height:1.55}
+.hero-number{margin-top:24px;font-size:42px;font-weight:950;letter-spacing:-.02em}
+.hero-sub{color:#c7d2fe;margin-top:5px;font-weight:800}
+.hero-mini-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:22px;max-width:760px}
+.hero-mini{border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.09);border-radius:14px;padding:12px}
+.hero-mini span{display:block;color:#bfdbfe;font-size:11px;font-weight:900}.hero-mini strong{display:block;margin-top:5px;font-size:18px;color:#fff}
+.filter-panel{padding:18px;align-self:stretch}
+.filter-title{font-size:16px;font-weight:950;color:#0f172a;margin-bottom:12px}
+.filter-panel label{display:block;font-size:11px;font-weight:950;color:#475569;margin:10px 0 6px;text-transform:uppercase;letter-spacing:.03em}
+.filter-panel select{width:100%;border:1px solid #cbd5e1;border-radius:12px;padding:12px;background:#f8fafc;color:#0f172a;font-weight:800;margin-bottom:10px}
+.filter-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.btn{border:0;border-radius:12px;background:#2563eb;color:white;padding:12px 13px;text-decoration:none;font-weight:950;cursor:pointer;text-align:center;box-shadow:0 10px 20px rgba(37,99,235,.20)}
+.btn-light{background:#eef2f7;color:#334155;box-shadow:none}
+.module-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-bottom:18px}
+.module-card{padding:16px;text-decoration:none;color:#0f172a;min-height:132px;display:flex;flex-direction:column;justify-content:space-between;transition:.15s ease}
+.module-card:hover{transform:translateY(-2px);box-shadow:0 16px 34px rgba(15,23,42,.09)}
+.module-card .module-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.module-icon{width:38px;height:38px;border-radius:13px;display:flex;align-items:center;justify-content:center;background:#eff6ff;color:#2563eb;font-weight:950}
+.module-card h3{font-size:15px;margin:0}.module-card p{font-size:12px;color:#64748b;margin:4px 0 0;line-height:1.35}
+.module-card strong{font-size:20px;letter-spacing:-.01em}.module-card small{display:block;color:#64748b;font-size:11px;margin-top:4px}
+.module-card.indigo .module-icon{background:#eef2ff;color:#4f46e5}.module-card.amber .module-icon{background:#fffbeb;color:#d97706}.module-card.emerald .module-icon{background:#ecfdf5;color:#059669}.module-card.violet .module-icon{background:#f5f3ff;color:#7c3aed}
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+.metric-card{padding:17px}
+.metric-card span{display:block;color:#64748b;font-size:11px;font-weight:950;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px}
+.metric-card strong{display:block;font-size:24px;color:#0f172a;letter-spacing:-.015em}
+.metric-card small{display:block;margin-top:7px;color:#64748b;font-size:12px}
+.progress-track{height:9px;background:#e7edf4;border-radius:999px;margin-top:13px;overflow:hidden}.progress-fill{height:100%;width:var(--w);max-width:100%;border-radius:999px;background:linear-gradient(90deg,#10b981,#22c55e)}
+.dashboard-content{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(360px,.75fr);gap:14px;align-items:start}
+.charts{display:grid;grid-template-columns:1fr 1fr;gap:14px}.chart-card{padding:18px}.chart-card.wide{grid-column:1/-1}
+.chart-head{display:flex;justify-content:space-between;gap:12px;margin-bottom:15px;align-items:flex-start}.chart-head h3{font-size:17px;margin:0;color:#0f172a}.chart-head span{color:#64748b;font-size:12px;font-weight:800}
+.bar-row{display:grid;grid-template-columns:minmax(120px,190px) 1fr minmax(78px,auto);gap:10px;align-items:center;margin-bottom:10px}
+.bar-label{font-size:13px;color:#334155;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.bar-track{height:16px;background:#eef2f7;border-radius:999px;overflow:hidden}.bar-fill{height:100%;width:var(--w);min-width:4px;border-radius:999px;background:linear-gradient(90deg,#14b8a6,#22c55e)}.bar-fill.blue{background:linear-gradient(90deg,#2563eb,#60a5fa)}.bar-fill.orange{background:linear-gradient(90deg,#f97316,#fbbf24)}.bar-value{text-align:right;font-size:12px;font-weight:900;color:#0f172a}
+.contract-row{margin-bottom:13px}.contract-top{display:flex;justify-content:space-between;gap:10px;font-size:13px;margin-bottom:7px}.contract-top strong{overflow:hidden;white-space:nowrap;text-overflow:ellipsis;color:#0f172a}.contract-top span{color:#475569;font-weight:800}
+.side-stack{display:grid;gap:14px}.quick-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.quick-card{padding:14px;text-decoration:none;color:#0f172a}.quick-card strong{display:block;font-size:14px}.quick-card span{display:block;color:#64748b;font-size:12px;margin-top:4px}
+.recent-card{padding:18px}.recent-grid{display:grid;grid-template-columns:1fr;gap:10px}.recent-item{border:1px solid #e7eaf0;border-radius:14px;padding:13px;background:#fbfcfe}.recent-item strong{display:block;margin-bottom:5px;color:#0f172a}.recent-item span{display:block;color:#64748b;font-size:12px;margin-bottom:3px}.recent-actions{display:flex;gap:8px;margin-top:10px}.mini-link{color:#2563eb;background:#eff6ff;border-radius:999px;padding:6px 10px;text-decoration:none;font-weight:950;font-size:12px}
+@media(max-width:1280px){.module-grid{grid-template-columns:repeat(3,1fr)}.dashboard-content{grid-template-columns:1fr}.recent-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:900px){.dashboard-hero,.charts{grid-template-columns:1fr}.module-grid,.metrics,.quick-grid,.recent-grid{grid-template-columns:1fr}.hero-mini-grid{grid-template-columns:1fr}.hero-card h2{font-size:28px}.hero-number{font-size:32px}.chart-card.wide{grid-column:auto}}
 </style>
 </head>
 <body>
@@ -518,13 +317,20 @@ $maxRoute = max(array_column($routeChart ?: [['adet' => 0]], 'adet'));
 <div class="main">
     <div class="dashboard-hero">
         <div class="hero-card">
-            <h2>Seğmen Hakediş Dashboard</h2>
-            <p>Firma, sözleşme, sevkiyat ve kümülatif hakediş performansını tek ekranda izleyin.</p>
+            <span class="hero-kicker">Seğmen Su Operasyon Merkezi</span>
+            <h2>Seğmen Hakediş ve Maliyet Kontrol Paneli</h2>
+            <p>Hakediş, reçete-maliyet, görev, demirbaş ve palet süreçlerini tek ekranda takip edin. Kritik göstergeler ve hızlı erişimler yeni modüllere göre güncellendi.</p>
             <div class="hero-number"><?php echo para($summary['toplam_net']); ?></div>
             <div class="hero-sub">Toplam net hakediş</div>
+            <div class="hero-mini-grid">
+                <div class="hero-mini"><span>Sevkiyat</span><strong><?php echo number_format((int)$summary['sevkiyat_adet'],0,',','.'); ?></strong></div>
+                <div class="hero-mini"><span>Sözleşme</span><strong><?php echo (int)$summary['sozlesme_adet']; ?></strong></div>
+                <div class="hero-mini"><span>Üretim Dönemi</span><strong><?php echo htmlspecialchars((string)$currentCostPeriod); ?></strong></div>
+            </div>
         </div>
 
         <form class="filter-panel" method="GET">
+            <div class="filter-title">Hakediş Filtresi</div>
             <label>Firma</label>
             <select name="firma">
                 <option value="">Tüm firmalar</option>
@@ -552,6 +358,24 @@ $maxRoute = max(array_column($routeChart ?: [['adet' => 0]], 'adet'));
         </form>
     </div>
 
+    <div class="module-grid">
+        <?php foreach($moduleCards as $i => $card): ?>
+            <a class="module-card <?php echo htmlspecialchars($card[5]); ?>" href="<?php echo htmlspecialchars($card[3]); ?>">
+                <div class="module-top">
+                    <div>
+                        <h3><?php echo htmlspecialchars($card[0]); ?></h3>
+                        <p><?php echo htmlspecialchars($card[4]); ?></p>
+                    </div>
+                    <div class="module-icon"><?php echo $i + 1; ?></div>
+                </div>
+                <div>
+                    <strong><?php echo htmlspecialchars($card[1]); ?></strong>
+                    <small><?php echo htmlspecialchars($card[2]); ?></small>
+                </div>
+            </a>
+        <?php endforeach; ?>
+    </div>
+
     <div class="metrics">
         <div class="metric-card">
             <span>KDV Hariç Hakediş</span>
@@ -575,90 +399,105 @@ $maxRoute = max(array_column($routeChart ?: [['adet' => 0]], 'adet'));
         </div>
     </div>
 
-    <div class="charts">
-        <div class="chart-card">
-            <div class="chart-head">
-                <h3>Firma Bazlı Hakediş</h3>
-                <span>KDV hariç</span>
-            </div>
-            <?php foreach($firmChart as $row): ?>
-                <?php $width = $maxFirm > 0 ? ((float)$row['toplam'] / $maxFirm) * 100 : 0; ?>
-                <div class="bar-row">
-                    <div class="bar-label" title="<?php echo htmlspecialchars($row['label']); ?>"><?php echo htmlspecialchars($row['label']); ?></div>
-                    <div class="bar-track"><div class="bar-fill" style="--w:<?php echo $width; ?>%"></div></div>
-                    <div class="bar-value"><?php echo kisaPara($row['toplam']); ?></div>
+    <div class="dashboard-content">
+        <div class="charts">
+            <div class="chart-card">
+                <div class="chart-head">
+                    <h3>Firma Bazlı Hakediş</h3>
+                    <span>KDV hariç</span>
                 </div>
-            <?php endforeach; ?>
-        </div>
-
-        <div class="chart-card">
-            <div class="chart-head">
-                <h3>Dönem Bazlı Hakediş</h3>
-                <span>Aylık dağılım</span>
-            </div>
-            <?php foreach($monthChart as $row): ?>
-                <?php $width = $maxMonth > 0 ? ((float)$row['toplam'] / $maxMonth) * 100 : 0; ?>
-                <div class="bar-row">
-                    <div class="bar-label"><?php echo htmlspecialchars($row['label']); ?></div>
-                    <div class="bar-track"><div class="bar-fill blue" style="--w:<?php echo $width; ?>%"></div></div>
-                    <div class="bar-value"><?php echo kisaPara($row['toplam']); ?></div>
-                </div>
-            <?php endforeach; ?>
-        </div>
-
-        <div class="chart-card wide">
-            <div class="chart-head">
-                <h3>Sözleşme Kullanım Durumu</h3>
-                <span>Gerçekleşen / sözleşme tutarı</span>
-            </div>
-            <?php foreach($contractChart as $row): ?>
-                <?php
-                    $rate = (float)$row['sozlesme_tutari'] > 0 ? ((float)$row['toplam'] / (float)$row['sozlesme_tutari']) * 100 : 0;
-                ?>
-                <div class="contract-row">
-                    <div class="contract-top">
-                        <strong title="<?php echo htmlspecialchars($row['label']); ?>"><?php echo htmlspecialchars($row['label']); ?></strong>
-                        <span><?php echo para($row['toplam']); ?> / <?php echo para($row['sozlesme_tutari']); ?> (<?php echo yuzde($rate); ?>)</span>
+                <?php foreach($firmChart as $row): ?>
+                    <?php $width = $maxFirm > 0 ? ((float)$row['toplam'] / $maxFirm) * 100 : 0; ?>
+                    <div class="bar-row">
+                        <div class="bar-label" title="<?php echo htmlspecialchars($row['label']); ?>"><?php echo htmlspecialchars($row['label']); ?></div>
+                        <div class="bar-track"><div class="bar-fill" style="--w:<?php echo $width; ?>%"></div></div>
+                        <div class="bar-value"><?php echo kisaPara($row['toplam']); ?></div>
                     </div>
-                    <div class="progress-track"><div class="progress-fill" style="--w:<?php echo min(100, max(0, $rate)); ?>%"></div></div>
-                </div>
-            <?php endforeach; ?>
-        </div>
-
-        <div class="chart-card wide">
-            <div class="chart-head">
-                <h3>Güzergah Yoğunluğu</h3>
-                <span>Sevkiyat adedi</span>
+                <?php endforeach; ?>
             </div>
-            <?php foreach($routeChart as $row): ?>
-                <?php $width = $maxRoute > 0 ? ((float)$row['adet'] / $maxRoute) * 100 : 0; ?>
-                <div class="bar-row">
-                    <div class="bar-label" title="<?php echo htmlspecialchars($row['label']); ?>"><?php echo htmlspecialchars($row['label']); ?></div>
-                    <div class="bar-track"><div class="bar-fill orange" style="--w:<?php echo $width; ?>%"></div></div>
-                    <div class="bar-value"><?php echo (int)$row['adet']; ?> sefer</div>
-                </div>
-            <?php endforeach; ?>
-        </div>
-    </div>
 
-    <div class="recent-card">
-        <div class="chart-head">
-            <h3>Son Hakedişler</h3>
-            <span>Detay ve raporlara hızlı erişim</span>
-        </div>
-        <div class="recent-grid">
-            <?php foreach($recent as $row): ?>
-                <div class="recent-item">
-                    <strong><?php echo htmlspecialchars($row['firma_adi']); ?></strong>
-                    <span><?php echo htmlspecialchars($row['sozlesme_no']); ?> / <?php echo htmlspecialchars($row['donem']); ?></span>
-                    <span><?php echo (int)$row['sevkiyat_adet']; ?> sevkiyat</span>
-                    <strong><?php echo para($row['net_tutar']); ?></strong>
-                    <div class="recent-actions">
-                        <a class="mini-link" href="hakedis-detay.php?hakedis_id=<?php echo $row['id']; ?>">Detay</a>
-                        <a class="mini-link" href="hakedis-raporu.php?hakedis_id=<?php echo $row['id']; ?>">Rapor</a>
-                    </div>
+            <div class="chart-card">
+                <div class="chart-head">
+                    <h3>Dönem Bazlı Hakediş</h3>
+                    <span>Aylık dağılım</span>
                 </div>
-            <?php endforeach; ?>
+                <?php foreach($monthChart as $row): ?>
+                    <?php $width = $maxMonth > 0 ? ((float)$row['toplam'] / $maxMonth) * 100 : 0; ?>
+                    <div class="bar-row">
+                        <div class="bar-label"><?php echo htmlspecialchars($row['label']); ?></div>
+                        <div class="bar-track"><div class="bar-fill blue" style="--w:<?php echo $width; ?>%"></div></div>
+                        <div class="bar-value"><?php echo kisaPara($row['toplam']); ?></div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+
+            <div class="chart-card wide">
+                <div class="chart-head">
+                    <h3>Sözleşme Kullanım Durumu</h3>
+                    <span>Gerçekleşen / sözleşme tutarı</span>
+                </div>
+                <?php foreach($contractChart as $row): ?>
+                    <?php $rate = (float)$row['sozlesme_tutari'] > 0 ? ((float)$row['toplam'] / (float)$row['sozlesme_tutari']) * 100 : 0; ?>
+                    <div class="contract-row">
+                        <div class="contract-top">
+                            <strong title="<?php echo htmlspecialchars($row['label']); ?>"><?php echo htmlspecialchars($row['label']); ?></strong>
+                            <span><?php echo para($row['toplam']); ?> / <?php echo para($row['sozlesme_tutari']); ?> (<?php echo yuzde($rate); ?>)</span>
+                        </div>
+                        <div class="progress-track"><div class="progress-fill" style="--w:<?php echo min(100, max(0, $rate)); ?>%"></div></div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+
+            <div class="chart-card wide">
+                <div class="chart-head">
+                    <h3>Güzergah Yoğunluğu</h3>
+                    <span>Sevkiyat adedi</span>
+                </div>
+                <?php foreach($routeChart as $row): ?>
+                    <?php $width = $maxRoute > 0 ? ((float)$row['adet'] / $maxRoute) * 100 : 0; ?>
+                    <div class="bar-row">
+                        <div class="bar-label" title="<?php echo htmlspecialchars($row['label']); ?>"><?php echo htmlspecialchars($row['label']); ?></div>
+                        <div class="bar-track"><div class="bar-fill orange" style="--w:<?php echo $width; ?>%"></div></div>
+                        <div class="bar-value"><?php echo (int)$row['adet']; ?> sefer</div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        </div>
+
+        <div class="side-stack">
+            <div class="recent-card">
+                <div class="chart-head">
+                    <h3>Son Hakedişler</h3>
+                    <span>Hızlı erişim</span>
+                </div>
+                <div class="recent-grid">
+                    <?php foreach($recent as $row): ?>
+                        <div class="recent-item">
+                            <strong><?php echo htmlspecialchars((string)$row['firma_adi']); ?></strong>
+                            <span><?php echo htmlspecialchars((string)$row['sozlesme_no']); ?> / <?php echo htmlspecialchars((string)$row['donem']); ?></span>
+                            <span><?php echo (int)$row['sevkiyat_adet']; ?> sevkiyat</span>
+                            <strong><?php echo para($row['net_tutar']); ?></strong>
+                            <div class="recent-actions">
+                                <a class="mini-link" href="hakedis-detay.php?hakedis_id=<?php echo $row['id']; ?>">Detay</a>
+                                <a class="mini-link" href="hakedis-raporu.php?hakedis_id=<?php echo $row['id']; ?>">Rapor</a>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+
+            <div class="chart-card">
+                <div class="chart-head">
+                    <h3>Hızlı İşlemler</h3>
+                    <span>Modül kısayolları</span>
+                </div>
+                <div class="quick-grid">
+                    <a class="quick-card" href="excel-eslestir.php"><strong>Excel Aktarım</strong><span>Hakediş dosyası yükle</span></a>
+                    <a class="quick-card" href="nokta-yonetimi.php"><strong>Nokta Yönetimi</strong><span>Güzergah ve revizyon</span></a>
+                    <a class="quick-card" href="recete-maliyet.php?tab=receteler"><strong>Reçeteler</strong><span>BOM ve maliyet</span></a>
+                    <a class="quick-card" href="gorev-takip.php"><strong>Görev Ata</strong><span>Toplantı ve aksiyon</span></a>
+                </div>
+            </div>
         </div>
     </div>
 </div>
