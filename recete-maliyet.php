@@ -934,8 +934,8 @@ try {
             }
             rm_sync_bom_to_maliyet($db, $receteId, $urunId, $donem);
             $selectedId = $urunId;
-            $tab = 'ozet';
-            $message = 'Reçete kaydedildi. Maliyet özeti açıldı.';
+            $tab = 'receteler';
+            $message = 'Reçete kaydedildi.';
         }
     }
 } catch(Throwable $e){ $error = $e->getMessage(); }
@@ -1651,13 +1651,13 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
     .bom-matrix th:last-child,.bom-matrix td:last-child{border-right:0}
     .bom-matrix tbody tr:nth-child(even) td{background:#fbfdff}
     .bom-matrix input,.bom-matrix select{background:#fff;border:1px solid #b8c7d9!important;border-radius:8px!important;font-variant-numeric:tabular-nums}
-    .bom-matrix th:first-child,.bom-matrix td:first-child{width:185px;min-width:185px}
-    .bom-matrix td:first-child select{text-align:left}
-    .bom-matrix td:nth-child(2) input,.bom-matrix td:nth-child(4) input,.bom-matrix td:nth-child(6) input,.bom-matrix td:nth-child(8) input,.bom-matrix td:nth-child(10) input,.bom-matrix td:nth-child(12) input{text-align:right}
-    .bom-matrix td:nth-child(5),.bom-matrix td:nth-child(7),.bom-matrix td:nth-child(11),.bom-matrix td:nth-child(13){text-align:right}
+    .bom-matrix th:nth-child(2),.bom-matrix td:nth-child(2){width:230px;min-width:230px}
+    .bom-matrix td:nth-child(2) select{text-align:left}
+    .bom-matrix td:nth-child(3) input,.bom-matrix td:nth-child(5) input,.bom-matrix td:nth-child(7) input,.bom-matrix td:nth-child(9) input,.bom-matrix td:nth-child(11) input,.bom-matrix td:nth-child(13) input{text-align:right}
+    .bom-matrix td:nth-child(6),.bom-matrix td:nth-child(8),.bom-matrix td:nth-child(12),.bom-matrix td:nth-child(14){text-align:right}
     .bom-matrix .bom-tl,.bom-matrix .bom-price-view,.bom-matrix .bom-total,.bom-matrix .bom-fire-total{font-variant-numeric:tabular-nums}
-    .bom-matrix td:nth-child(5),.bom-matrix td:nth-child(7),.bom-matrix td:nth-child(11){background:#f8fafc!important}
-    .bom-matrix td:nth-child(13){background:#ecfdf5!important}
+    .bom-matrix td:nth-child(6),.bom-matrix td:nth-child(8),.bom-matrix td:nth-child(12){background:#f8fafc!important}
+    .bom-matrix td:nth-child(14){background:#ecfdf5!important}
     .recipe-flow{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:14px 16px 0}
     .recipe-flow-step{border:1px solid #e2e8f0;background:#fff;border-radius:16px;padding:12px 14px;box-shadow:0 8px 20px rgba(15,23,42,.035)}
     .recipe-flow-step b{display:inline-flex;width:24px;height:24px;align-items:center;justify-content:center;border-radius:999px;background:#f59e0b;color:#0f172a;font-size:11px;margin-right:7px}
