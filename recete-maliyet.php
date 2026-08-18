@@ -1589,10 +1589,18 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
     .recipe-mode .bom-editor{border:1px solid #dbe4ef;border-radius:20px;box-shadow:0 18px 42px rgba(15,23,42,.08)}
     .recipe-mode .recipe-bom-head{background:linear-gradient(135deg,#f8fbff,#ffffff);border-bottom:1px solid #dbe4ef}
     .recipe-mode .rm-table-wrap{background:#fff}.recipe-mode .bom-matrix th{background:#eef4fb;color:#172033}.recipe-mode .bom-matrix tr:hover td{background:#f8fbff}
+    .recipe-flow{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:14px 16px 0}
+    .recipe-flow-step{border:1px solid #dbe4ef;background:#fff;border-radius:14px;padding:12px 14px;box-shadow:0 8px 20px rgba(15,23,42,.035)}
+    .recipe-flow-step b{display:inline-flex;width:24px;height:24px;align-items:center;justify-content:center;border-radius:999px;background:#1d4ed8;color:#fff;font-size:11px;margin-right:7px}
+    .recipe-flow-step strong{color:#0f172a;font-size:12px}.recipe-flow-step span{display:block;margin-top:6px;color:#64748b;font-size:11px;line-height:1.35}
+    .bom-matrix th{vertical-align:top;line-height:1.2}.bom-matrix th span{display:block;font-size:10px;font-weight:950}.bom-matrix th small{display:block;margin-top:4px;color:#64748b;font-size:9px;font-weight:800;line-height:1.25}
+    .bom-matrix td:nth-child(5),.bom-matrix td:nth-child(7),.bom-matrix td:nth-child(11),.bom-matrix td:nth-child(13){background:#fbfdff}
+    .bom-matrix td:nth-child(13){background:#f0fdf4}.bom-fire-total{color:#047857}
+    .bom-matrix input:focus,.bom-matrix select:focus{outline:2px solid #bfdbfe;border-color:#2563eb}
     .recipe-gider-panel{margin:14px 16px;background:#fff;border:1px solid #dbe3ee;border-radius:16px;padding:14px;box-shadow:0 10px 24px rgba(15,23,42,.04)}
     .recipe-gider-head{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:12px}.recipe-gider-head h3{margin:0;color:#0f172a;font-size:16px}.recipe-gider-head p{margin:3px 0 0;color:#64748b;font-size:11px}
     .recipe-gider-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}.recipe-gider-field label{display:block;margin-bottom:5px;color:#475569;font-size:10px;font-weight:950;text-transform:uppercase}.recipe-gider-field input{width:100%;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:10px;padding:10px;font-weight:900}.recipe-gider-save{align-self:end;border:0;border-radius:10px;background:#2563eb;color:#fff;padding:11px 12px;font-weight:950;cursor:pointer}
-    @media(max-width:1100px){.pet033-cost-summary,.recipe-cost-band,.recipe-gider-grid{grid-template-columns:1fr 1fr}}
+    @media(max-width:1100px){.pet033-cost-summary,.recipe-cost-band,.recipe-gider-grid,.recipe-flow{grid-template-columns:1fr 1fr}}
     @media(max-width:1100px){.recipe-popup .bom-editor{width:96vw;margin:12px auto;border-radius:16px}}
     @media(max-width:900px){.bom-summary,.pet033-cost-summary{grid-template-columns:1fr}.recipe-actions label{min-width:100%}}
     </style>
@@ -1696,7 +1704,13 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
                     <div class="recipe-cost-card"><span>İşçilik Gideri</span><strong><?php echo rm_money4($stdG720); ?></strong><small>Koli başı gider payı</small></div>
                     <div class="recipe-cost-card total"><span>Koli Başına Toplam</span><strong id="recipeGrandCost">₺0,0000</strong><small>Hammadde + gider payları</small></div>
                 </div>
-                <div class="rm-table-wrap"><table class="bom-table bom-matrix"><thead><tr><th>Hammadde / Malzeme</th><th>Alış Fiyatı</th><th>Para Cinsi</th><th>Döviz Kuru</th><th>TL'ye Çevrilmiş</th><th>Bölen</th><th>Birim Fiyat TL</th><th>Kullanım Miktarı</th><th>Birim</th><th>Kolideki Adet</th><th>Koli Fiyatı</th><th>Fire %</th><th>Fireli Koli</th><th>İşlem</th></tr></thead><tbody id="bomRows">
+                <div class="recipe-flow">
+                    <div class="recipe-flow-step"><strong><b>1</b> Fiyatı Gir</strong><span>Malzemenin fatura/alış fiyatı ve para cinsi yazılır.</span></div>
+                    <div class="recipe-flow-step"><strong><b>2</b> TL'ye Çevir</strong><span>Dövizli fiyat, girilen kurla otomatik TL tutara çevrilir.</span></div>
+                    <div class="recipe-flow-step"><strong><b>3</b> Birimleştir</strong><span>Bölen ile kg, ton veya paket fiyatı adet/gr maliyetine iner.</span></div>
+                    <div class="recipe-flow-step"><strong><b>4</b> Koliye Yansıt</strong><span>Kullanım, koli adedi ve fire eklenerek koli maliyeti çıkar.</span></div>
+                </div>
+                <div class="rm-table-wrap"><table class="bom-table bom-matrix"><thead><tr><th><span>Malzeme</span><small>Reçetede kullanılan kalem</small></th><th><span>Alış Fiyatı</span><small>Fatura veya liste fiyatı</small></th><th><span>Para</span><small>TL / USD / EUR</small></th><th><span>Kur</span><small>Döviz ise TL kuru</small></th><th><span>TL Tutar</span><small>Alış fiyatı x kur</small></th><th><span>Bölen</span><small>Kg/ton/paket çevirimi</small></th><th><span>Birim TL</span><small>1 adet veya 1 gr maliyet</small></th><th><span>Kullanım</span><small>Bir ürün için miktar</small></th><th><span>Birim</span><small>gr/adet, adet/adet...</small></th><th><span>Koli Adedi</span><small>Kolideki ürün sayısı</small></th><th><span>Koli Fiyatı</span><small>Fire öncesi toplam</small></th><th><span>Fire %</span><small>Zayiat oranı</small></th><th><span>Fireli Koli</span><small>Nihai hammadde maliyeti</small></th><th><span>İşlem</span><small>Detay / sil</small></th></tr></thead><tbody id="bomRows">
                     <?php foreach($bomKalemleri as $b): ?>
                     <?php $alisFiyati = (float)($b['alis_fiyati'] ?? 0); if($alisFiyati == 0 && (float)($b['birim_fiyat'] ?? 0) > 0){ $alisFiyati = (float)$b['birim_fiyat']; } ?>
                     <tr>
