@@ -1566,28 +1566,31 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
     .template-btn.dark{background:#0f172a;border-color:#0f172a;color:#fff}
     .excel-upload{display:inline-flex!important;align-items:center;justify-content:center;min-width:auto!important;border:1px solid #dbe3ee;background:#fff;color:#334155;border-radius:10px;padding:10px 12px;font-size:12px;font-weight:950;cursor:pointer}
     .excel-upload input{display:none}
-    .excel-format-box{margin:12px 22px 0;background:#f8fafc;border:1px solid #dbe3ee;border-radius:14px;padding:12px}
+    .excel-format-box{margin:12px 16px 0;background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:10px 14px;box-shadow:0 8px 20px rgba(15,23,42,.035)}
     .excel-format-box summary{cursor:pointer;color:#0f172a;font-size:13px;font-weight:950;list-style:none}.excel-format-box summary::-webkit-details-marker{display:none}
     .excel-format-box h4{margin:0 0 8px;color:#0f172a;font-size:13px}
     .excel-format-table{width:100%;border-collapse:collapse;font-size:11px}
     .excel-format-table th{background:#0f172a;color:#fff;text-align:left;padding:8px}
     .excel-format-table td{border:1px solid #e2e8f0;padding:8px;background:#fff}
-    .pet033-cost-summary{display:grid;grid-template-columns:1.1fr 1fr 1fr 1.1fr;gap:16px;padding:16px;background:#fff;border-bottom:1px solid #e5e7eb}
-    .pet033-cost-card{border:1px solid #dbe3ee;border-radius:14px;padding:16px 18px;background:#f8fafc}
+    .pet033-cost-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;padding:14px 16px;background:#f8fafc;border-bottom:1px solid #e5e7eb}
+    .pet033-cost-card{border:1px solid #e2e8f0;border-radius:18px;padding:15px 16px;background:#fff;box-shadow:0 10px 22px rgba(15,23,42,.035);transition:.15s ease}
+    .pet033-cost-card:hover{box-shadow:0 14px 26px rgba(15,23,42,.07);transform:translateY(-1px)}
     .pet033-cost-card span{display:block;color:#64748b;font-size:11px;font-weight:950;text-transform:uppercase}
     .pet033-cost-card strong{display:block;margin-top:8px;color:#0f172a;font-size:24px;letter-spacing:.02em}
     .pet033-cost-card small{display:block;margin-top:5px;color:#64748b;font-size:11px}
-    .pet033-cost-card.fire{background:#fffbeb;border-color:#facc15}.pet033-cost-card.fire strong{color:#c2410c}
-    .pet033-cost-card.total{background:#059669;border-color:#059669;box-shadow:0 16px 30px rgba(5,150,105,.2)}
-    .pet033-cost-card.total span,.pet033-cost-card.total small{color:#d1fae5}.pet033-cost-card.total strong{color:#fff}
-    .recipe-cost-band{display:grid;grid-template-columns:1.1fr repeat(4,.85fr) 1.15fr;gap:10px;padding:14px 16px;background:#f8fafc;border-bottom:1px solid #e5e7eb}
-    .recipe-cost-card{min-width:0;border:1px solid #dbe3ee;border-radius:13px;background:#fff;padding:12px}
+    .pet033-cost-card.fire{background:#fff8e1;border-color:#f59e0b}.pet033-cost-card.fire strong{color:#c2410c}
+    .pet033-cost-card.total{background:linear-gradient(135deg,#0f172a,#1e1b4b);border-color:#0f172a;box-shadow:0 16px 30px rgba(15,23,42,.22)}
+    .pet033-cost-card.total span,.pet033-cost-card.total small{color:#fde68a}.pet033-cost-card.total strong{color:#fff}
+    .recipe-cost-band{display:grid;grid-template-columns:1.15fr repeat(4,.85fr) 1.15fr;gap:10px;padding:14px 16px;background:#fff;border-bottom:1px solid #e5e7eb}
+    .recipe-cost-card{min-width:0;border:1px solid #e2e8f0;border-radius:16px;background:#fff;padding:12px 13px;box-shadow:0 8px 18px rgba(15,23,42,.035)}
     .recipe-cost-card span{display:block;color:#64748b;font-size:10px;font-weight:950;text-transform:uppercase;letter-spacing:.03em}
     .recipe-cost-card strong{display:block;margin-top:6px;color:#0f172a;font-size:17px;font-weight:950;font-variant-numeric:tabular-nums}
-    .recipe-cost-card.total{background:#0f172a;border-color:#0f172a}.recipe-cost-card.total span{color:#bfdbfe}.recipe-cost-card.total strong{color:#fff}
+    .recipe-cost-card.total{background:linear-gradient(135deg,#0f172a,#1e1b4b);border-color:#0f172a}.recipe-cost-card.total span{color:#fde68a}.recipe-cost-card.total strong{color:#fff}
     .recipe-cost-card small{display:block;margin-top:5px;color:#64748b;font-size:10px;line-height:1.35}
     .recipe-mode .bom-editor{border:1px solid #dbe4ef;border-radius:20px;box-shadow:0 18px 42px rgba(15,23,42,.08)}
-    .recipe-mode .recipe-bom-head{background:linear-gradient(135deg,#f8fbff,#ffffff);border-bottom:1px solid #dbe4ef}
+    .recipe-mode .recipe-bom-head{background:linear-gradient(135deg,#0f172a,#1e1b4b);border-bottom:1px solid #0f172a;color:#fff}
+    .recipe-mode .recipe-bom-head .bom-title{color:#fff}.recipe-mode .recipe-bom-head .muted{color:#cbd5e1}.recipe-mode .recipe-bom-head .rm-pill{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);color:#fde68a}
+    .recipe-mode .recipe-bom-head .recipe-actions label{color:#e2e8f0}.recipe-mode .recipe-bom-head .recipe-actions input{background:rgba(255,255,255,.96)}
     .recipe-mode .rm-table-wrap{background:#fff}.recipe-mode .bom-matrix th{background:#eef4fb;color:#172033}.recipe-mode .bom-matrix tr:hover td{background:#f8fbff}
     .recipe-mode .rm-table-wrap{border-top:1px solid #d7e0eb}
     .bom-matrix{border-collapse:collapse!important;background:#fff}
@@ -1595,19 +1598,23 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
     .bom-matrix th:last-child,.bom-matrix td:last-child{border-right:0}
     .bom-matrix tbody tr:nth-child(even) td{background:#fbfdff}
     .bom-matrix input,.bom-matrix select{background:#fff;border:1px solid #b8c7d9!important;border-radius:8px!important;font-variant-numeric:tabular-nums}
+    .bom-matrix th:first-child,.bom-matrix td:first-child{width:185px;min-width:185px}
+    .bom-matrix td:first-child select{text-align:left}
+    .bom-matrix td:nth-child(2) input,.bom-matrix td:nth-child(4) input,.bom-matrix td:nth-child(6) input,.bom-matrix td:nth-child(8) input,.bom-matrix td:nth-child(10) input,.bom-matrix td:nth-child(12) input{text-align:right}
+    .bom-matrix td:nth-child(5),.bom-matrix td:nth-child(7),.bom-matrix td:nth-child(11),.bom-matrix td:nth-child(13){text-align:right}
     .bom-matrix .bom-tl,.bom-matrix .bom-price-view,.bom-matrix .bom-total,.bom-matrix .bom-fire-total{font-variant-numeric:tabular-nums}
     .bom-matrix td:nth-child(5),.bom-matrix td:nth-child(7),.bom-matrix td:nth-child(11){background:#f8fafc!important}
     .bom-matrix td:nth-child(13){background:#ecfdf5!important}
     .recipe-flow{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:14px 16px 0}
-    .recipe-flow-step{border:1px solid #dbe4ef;background:#fff;border-radius:14px;padding:12px 14px;box-shadow:0 8px 20px rgba(15,23,42,.035)}
-    .recipe-flow-step b{display:inline-flex;width:24px;height:24px;align-items:center;justify-content:center;border-radius:999px;background:#1d4ed8;color:#fff;font-size:11px;margin-right:7px}
+    .recipe-flow-step{border:1px solid #e2e8f0;background:#fff;border-radius:16px;padding:12px 14px;box-shadow:0 8px 20px rgba(15,23,42,.035)}
+    .recipe-flow-step b{display:inline-flex;width:24px;height:24px;align-items:center;justify-content:center;border-radius:999px;background:#f59e0b;color:#0f172a;font-size:11px;margin-right:7px}
     .recipe-flow-step strong{color:#0f172a;font-size:12px}.recipe-flow-step span{display:block;margin-top:6px;color:#64748b;font-size:11px;line-height:1.35}
     .bom-matrix th{vertical-align:top;line-height:1.2}.bom-matrix th span{display:block;font-size:10px;font-weight:950}.bom-matrix th small{display:block;margin-top:4px;color:#64748b;font-size:9px;font-weight:800;line-height:1.25}
     .bom-fire-total{color:#047857}
     .bom-matrix input:focus,.bom-matrix select:focus{outline:2px solid #bfdbfe;border-color:#2563eb}
-    .recipe-gider-panel{margin:14px 16px;background:#fff;border:1px solid #dbe3ee;border-radius:16px;padding:14px;box-shadow:0 10px 24px rgba(15,23,42,.04)}
+    .recipe-gider-panel{margin:14px 16px;background:#fff;border:1px solid #e2e8f0;border-radius:18px;padding:16px;box-shadow:0 10px 24px rgba(15,23,42,.04)}
     .recipe-gider-head{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:12px}.recipe-gider-head h3{margin:0;color:#0f172a;font-size:16px}.recipe-gider-head p{margin:3px 0 0;color:#64748b;font-size:11px}
-    .recipe-gider-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}.recipe-gider-field label{display:block;margin-bottom:5px;color:#475569;font-size:10px;font-weight:950;text-transform:uppercase}.recipe-gider-field input{width:100%;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:10px;padding:10px;font-weight:900}.recipe-gider-save{align-self:end;border:0;border-radius:10px;background:#2563eb;color:#fff;padding:11px 12px;font-weight:950;cursor:pointer}
+    .recipe-gider-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}.recipe-gider-field label{display:block;margin-bottom:5px;color:#475569;font-size:10px;font-weight:950;text-transform:uppercase}.recipe-gider-field input{width:100%;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:12px;padding:11px 12px;font-weight:900;background:#f8fafc}.recipe-gider-save{align-self:end;border:0;border-radius:12px;background:#f59e0b;color:#0f172a;padding:12px 14px;font-weight:950;cursor:pointer;box-shadow:0 10px 22px rgba(245,158,11,.22)}
     @media(max-width:1100px){.pet033-cost-summary,.recipe-cost-band,.recipe-gider-grid,.recipe-flow{grid-template-columns:1fr 1fr}}
     @media(max-width:1100px){.recipe-popup .bom-editor{width:96vw;margin:12px auto;border-radius:16px}}
     @media(max-width:900px){.bom-summary,.pet033-cost-summary{grid-template-columns:1fr}.recipe-actions label{min-width:100%}}
