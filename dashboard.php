@@ -261,7 +261,7 @@ $moduleCards = [
 <head>
 <meta charset="UTF-8">
 <title>Dashboard</title>
-<link rel="stylesheet" href="assets/css/style.css?v=20260522-logo-total">
+<link rel="stylesheet" href="assets/css/style.css?v=20260819-sidebar-v3">
 
 <style>
 .main{background:#f4f7fb;min-height:100vh}
