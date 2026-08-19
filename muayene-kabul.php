@@ -84,7 +84,7 @@ $donemBitis = $ozet['son_sevkiyat_tarihi'] ?: $hakedis['bitis_tarihi'];
 <head>
 <meta charset="UTF-8">
 <title>Muayene ve Kabul Tutanağı</title>
-<link rel="stylesheet" href="assets/css/style.css">
+<link rel="stylesheet" href="assets/css/style.css?v=20260819-sidebar-v3">
 
 <style>
 body{

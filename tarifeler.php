@@ -311,7 +311,7 @@ foreach($rows as $row){
 <head>
 <meta charset="UTF-8">
 <title>Tarife Yönetimi</title>
-<link rel="stylesheet" href="assets/css/style.css">
+<link rel="stylesheet" href="assets/css/style.css?v=20260819-sidebar-v3">
 <style>
 .topbar{
     display:flex;

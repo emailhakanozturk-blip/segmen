@@ -125,7 +125,7 @@ $kategoriDegeri = (string)($editing['kategori'] ?? '');
 <head>
 <meta charset="UTF-8">
 <title>Tanımlar</title>
-<link rel="stylesheet" href="assets/css/style.css">
+<link rel="stylesheet" href="assets/css/style.css?v=20260819-sidebar-v3">
 <style>
 .page-grid{display:grid;grid-template-columns:1fr;gap:18px;}
 .panel{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:18px;box-shadow:0 8px 22px rgba(15,23,42,.04);}

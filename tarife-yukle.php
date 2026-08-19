@@ -212,7 +212,7 @@ if(isset($_FILES['excel'])){
 <head>
 <meta charset="UTF-8">
 <title>Excel Tarife Aktarım</title>
-<link rel="stylesheet" href="assets/css/style.css">
+<link rel="stylesheet" href="assets/css/style.css?v=20260819-sidebar-v3">
 <style>
 .upload-box{
     background:white;

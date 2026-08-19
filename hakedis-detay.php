@@ -271,7 +271,7 @@ if(isset($_GET['excel'])){
 <head>
 <meta charset="UTF-8">
 <title>Hakedi&#351; Detay</title>
-<link rel="stylesheet" href="assets/css/style.css">
+<link rel="stylesheet" href="assets/css/style.css?v=20260819-sidebar-v3">
 
 <style>
 .detail-header{

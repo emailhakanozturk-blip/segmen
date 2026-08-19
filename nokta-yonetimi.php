@@ -803,7 +803,7 @@ $mukerrerler = array_values(array_filter($mukerrerler, function($row) use ($cari
 <head>
 <meta charset="UTF-8">
 <title>Nokta Yönetimi</title>
-<link rel="stylesheet" href="assets/css/style.css">
+<link rel="stylesheet" href="assets/css/style.css?v=20260819-sidebar-v3">
 <style>
 .main{
     max-width:calc(100vw - 260px);

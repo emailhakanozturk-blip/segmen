@@ -267,7 +267,7 @@ $hareketler = $db->query("SELECT * FROM palet_hareketleri ORDER BY tarih DESC, i
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Palet Takip</title>
-    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/style.css?v=20260819-sidebar-v3">
     <style>
         .palet-tabs{display:grid;grid-template-columns:repeat(6,minmax(120px,1fr));gap:10px;margin-bottom:18px}
         .palet-tab{padding:13px 15px;border:1px solid #dce2ea;border-radius:8px;background:#fff;color:#1f2937;text-decoration:none;font-weight:800;font-size:13px}

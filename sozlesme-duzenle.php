@@ -105,7 +105,7 @@ if($_POST){
 
 <title>Sözleşme Düzenle</title>
 
-<link rel="stylesheet" href="assets/css/style.css">
+<link rel="stylesheet" href="assets/css/style.css?v=20260819-sidebar-v3">
 
 <style>
 

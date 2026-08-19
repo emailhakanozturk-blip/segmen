@@ -69,7 +69,7 @@ $hakedisler = $query->fetchAll(PDO::FETCH_ASSOC);
 
 <title>Hakedişler</title>
 
-<link rel="stylesheet" href="assets/css/style.css?v=20260522-logo-total">
+<link rel="stylesheet" href="assets/css/style.css?v=20260819-sidebar-v3">
 
 <style>
 

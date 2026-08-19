@@ -54,7 +54,7 @@ $islemler = $db->query("
 <head>
 <meta charset="UTF-8">
 <title>Log Kayıtları</title>
-<link rel="stylesheet" href="assets/css/style.css">
+<link rel="stylesheet" href="assets/css/style.css?v=20260819-sidebar-v3">
 <style>
 .panel{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:16px;box-shadow:0 8px 22px rgba(15,23,42,.04);}
 .filters{display:grid;grid-template-columns:1.2fr 1fr 1fr auto auto;gap:10px;align-items:end;margin-bottom:14px;}
