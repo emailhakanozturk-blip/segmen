@@ -27,34 +27,6 @@ body{
     z-index:10;
 }
 
-.brand{
-    display:flex;
-    flex-direction:column;
-    align-items:flex-start;
-    gap:5px;
-    padding:5px 12px 20px;
-    margin:0 0 3px;
-    color:#3b3d53;
-    text-decoration:none;
-    border-bottom:0;
-}
-
-.brand-name{
-    font-size:17px;
-    font-weight:800;
-    line-height:1;
-    letter-spacing:-.03em;
-}
-
-.brand-description{
-    font-size:10px;
-    font-weight:700;
-    line-height:1.4;
-    letter-spacing:.1em;
-    text-transform:uppercase;
-    color:#9495a7;
-}
-
 .menu{
     flex:1;
     min-height:0;
@@ -64,34 +36,34 @@ body{
     scrollbar-color:#cbd5e1 transparent;
 }
 
-.menu-group{ margin:0 0 20px; }
-.menu-group:last-child{ margin-bottom:2px; }
-
-.menu-label{
-    padding:0 12px;
-    margin:0 0 7px;
-    color:#9697a7;
-    font-size:12px;
-    font-weight:700;
-    letter-spacing:0;
-    text-transform:none;
-}
-
 .menu a,
 .logout-link{
-    display:block;
+    display:flex;
+    align-items:center;
+    gap:12px;
     width:100%;
-    min-height:39px;
+    min-height:42px;
     padding:10px 12px;
     color:#646577;
     text-decoration:none;
     font-size:12px;
     font-weight:700;
     border:1px solid transparent;
-    border-radius:5px;
+    border-radius:8px;
     margin-bottom:3px;
-    text-align:left;
     transition:background .18s ease,color .18s ease,box-shadow .18s ease;
+}
+
+.menu a svg,
+.logout-link svg{
+    width:18px;
+    height:18px;
+    flex:0 0 18px;
+    fill:none;
+    stroke:currentColor;
+    stroke-width:1.8;
+    stroke-linecap:round;
+    stroke-linejoin:round;
 }
 
 .menu a:hover{
@@ -111,19 +83,13 @@ body{
     padding:14px 2px 0;
 }
 
-.footer-label{
-    display:block;
-    padding:0 12px;
-    margin-bottom:7px;
-    color:#9697a7;
-    font-size:10px;
-    font-weight:800;
-    letter-spacing:.1em;
-    text-transform:uppercase;
+.logout-link{
+    color:#dc2626;
+    background:#fff5f5;
+    border-color:#fee2e2;
+    margin:0;
 }
-
-.logout-link{ color:#696778; margin:0; }
-.logout-link:hover{ color:#396cf2; background:#f1f5ff; }
+.logout-link:hover{ color:#b91c1c; background:#fee2e2; }
 
 .main{
     margin-left:282px;
@@ -160,8 +126,6 @@ body{
         padding:14px;
     }
 
-    .brand{ padding:3px 5px 8px; margin-bottom:0; }
-
     .menu{
         display:flex;
         gap:6px;
@@ -169,9 +133,6 @@ body{
         overflow-y:hidden;
         padding-bottom:4px;
     }
-
-    .menu-group{ display:contents; }
-    .menu-label{ display:none; }
 
     .menu a{
         white-space:nowrap;
