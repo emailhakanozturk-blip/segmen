@@ -13,14 +13,15 @@ body{
 
 .sidebar{
     width:258px;
-    height:100vh;
+    height:calc(100vh - 32px);
     background:#ffffff;
     position:fixed;
-    inset:0 auto 0 0;
+    inset:16px auto 16px 16px;
     color:#14213d;
-    padding:22px 13px 16px;
-    border-right:1px solid #e6ebf2;
-    box-shadow:8px 0 32px rgba(32,53,84,.04);
+    padding:18px 10px 14px;
+    border:1px solid #e7e9f5;
+    border-radius:14px;
+    box-shadow:0 12px 28px rgba(57,70,106,.10);
     display:flex;
     flex-direction:column;
     z-index:10;
@@ -30,47 +31,63 @@ body{
     display:flex;
     flex-direction:column;
     align-items:flex-start;
-    gap:7px;
-    padding:7px 12px 22px;
-    margin:0 0 12px;
-    color:#16213a;
+    gap:4px;
+    padding:8px 12px 15px;
+    margin:0;
+    color:#3b3d53;
     text-decoration:none;
-    border-bottom:1px solid #edf1f6;
+    border-bottom:0;
 }
 
 .brand-name{
-    font-size:20px;
-    font-weight:750;
+    font-size:16px;
+    font-weight:800;
     line-height:1;
-    letter-spacing:-.025em;
+    letter-spacing:-.03em;
 }
 
 .brand-description{
-    font-size:11px;
-    font-weight:650;
+    font-size:9px;
+    font-weight:700;
     line-height:1.4;
     letter-spacing:.1em;
     text-transform:uppercase;
-    color:#78869c;
+    color:#9495a7;
 }
+
+.menu-search{ padding:6px 5px 14px; }
+.menu-search input{
+    width:100%;
+    height:38px;
+    border:0;
+    outline:0;
+    border-radius:8px;
+    padding:0 12px;
+    background:#f5f3ff;
+    color:#3b3d53;
+    font:600 12px inherit;
+}
+.menu-search input::placeholder{ color:#a5a2ba; }
+.menu-search input:focus{ box-shadow:0 0 0 3px rgba(106,88,246,.13); }
+.sr-only{ position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
 
 .menu{
     flex:1;
     min-height:0;
     overflow-y:auto;
-    padding:4px 2px 14px;
+    padding:3px 2px 12px;
     scrollbar-width:thin;
     scrollbar-color:#cbd5e1 transparent;
 }
 
-.menu-group{ margin:0 0 21px; }
+.menu-group{ margin:0 0 17px; }
 .menu-group:last-child{ margin-bottom:2px; }
 
 .menu-label{
-    padding:0 11px;
-    margin:0 0 8px;
-    color:#94a0b2;
-    font-size:10px;
+    padding:0 10px;
+    margin:0 0 5px;
+    color:#aaaabd;
+    font-size:9px;
     font-weight:800;
     letter-spacing:.1em;
     text-transform:uppercase;
@@ -80,52 +97,52 @@ body{
 .logout-link{
     display:flex;
     align-items:center;
-    min-height:42px;
-    padding:10px 13px;
-    color:#506078;
+    min-height:37px;
+    padding:9px 12px;
+    color:#5d5d70;
     text-decoration:none;
-    font-size:13px;
-    font-weight:650;
+    font-size:12px;
+    font-weight:700;
     border:1px solid transparent;
-    border-radius:10px;
+    border-radius:7px;
     margin-bottom:2px;
     transition:background .18s ease,color .18s ease,box-shadow .18s ease,transform .18s ease;
 }
 
 .menu a:hover{
-    background:#f1f5fa;
-    color:#0f766e;
+    background:#f4f2ff;
+    color:#6050ed;
     transform:translateX(2px);
 }
 
 .menu a.is-active{
     color:#ffffff;
-    background:linear-gradient(135deg,#148378 0%,#0f6d67 100%);
-    border-color:#148378;
-    box-shadow:0 7px 14px rgba(15,118,110,.2);
+    background:linear-gradient(135deg,#7768ff 0%,#5f4cf2 100%);
+    border-color:#7768ff;
+    box-shadow:0 6px 12px rgba(96,76,242,.24);
 }
 
 .sidebar-footer{
-    border-top:1px solid #edf1f6;
-    padding:15px 2px 0;
+    border-top:1px solid #ececf3;
+    padding:12px 2px 0;
 }
 
 .footer-label{
     display:block;
     padding:0 11px;
     margin-bottom:7px;
-    color:#94a0b2;
-    font-size:10px;
+    color:#aaaabd;
+    font-size:9px;
     font-weight:800;
     letter-spacing:.1em;
     text-transform:uppercase;
 }
 
-.logout-link{ color:#b45309; margin:0; }
-.logout-link:hover{ color:#9a3412; background:#fff7ed; }
+.logout-link{ color:#696778; margin:0; }
+.logout-link:hover{ color:#5f4cf2; background:#f4f2ff; }
 
 .main{
-    margin-left:258px;
+    margin-left:290px;
     padding:30px;
 }
 
@@ -153,12 +170,14 @@ body{
         width:100%;
         height:auto;
         min-height:0;
-        border-right:0;
-        border-bottom:1px solid #e7eaf0;
+        inset:auto;
+        border:1px solid #e7e9f5;
+        border-radius:0;
         padding:14px;
     }
 
-    .brand{ padding:3px 5px 13px; margin-bottom:4px; }
+    .brand{ padding:3px 5px 8px; margin-bottom:0; }
+    .menu-search{ display:none; }
 
     .menu{
         display:flex;
