@@ -1,0 +1,34 @@
+*{margin:0;padding:0;box-sizing:border-box}
+
+body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f5f7fa;font-size:14px;color:#18202f}
+
+.sidebar{
+    position:fixed;inset:16px auto 16px 16px;width:270px;height:calc(100vh - 32px);
+    display:flex;flex-direction:column;padding:18px 14px 14px;background:#fff;border:1px solid #e7ebf1;
+    border-radius:16px;box-shadow:0 10px 26px rgba(31,45,70,.08);color:#17233c;z-index:10;
+}
+
+.sidebar-brand{height:34px;padding:1px 6px 12px;display:flex;align-items:center}
+.brand-mark{width:25px;height:25px;display:block;position:relative;border-radius:7px;background:#3d73eb;overflow:hidden;transform:rotate(-6deg)}
+.brand-mark i,.brand-mark b{position:absolute;display:block;background:#fff;border-radius:3px;transform:rotate(42deg)}
+.brand-mark i{width:15px;height:5px;left:4px;top:6px}.brand-mark b{width:10px;height:5px;left:10px;top:13px;opacity:.82}
+
+.profile-card{display:flex;align-items:center;gap:10px;margin:3px 3px 15px;padding:11px;background:#fafbfd;border:1px solid #edf0f5;border-radius:11px}
+.profile-avatar{width:32px;height:32px;display:grid;place-items:center;flex:0 0 32px;border-radius:50%;background:#e8f0ff;color:#3b70e8;font-size:12px;font-weight:800}
+.profile-details{min-width:0;display:flex;flex-direction:column;gap:2px}.profile-details strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:#26344e}.profile-details small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px;color:#8993a5}
+
+.menu{flex:1;min-height:0;overflow-y:auto;padding:0 3px 10px;scrollbar-width:thin;scrollbar-color:#d4dbe7 transparent}
+.menu a,.footer-action,.logout-link{display:flex;align-items:center;gap:11px;min-height:40px;padding:9px 10px;margin-bottom:3px;border:1px solid transparent;border-radius:9px;color:#657084;text-decoration:none;font-size:13px;font-weight:650;transition:background .18s ease,color .18s ease,box-shadow .18s ease}
+.menu a svg,.footer-action svg,.logout-link svg{width:18px;height:18px;flex:0 0 18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.menu a:hover,.footer-action:hover{background:#f2f6ff;color:#3e70e9}.menu a.is-active{background:#eaf2ff;border-color:#e0ebff;color:#376be5;box-shadow:0 2px 6px rgba(55,107,229,.05)}
+
+.sidebar-footer{padding:12px 3px 0;border-top:1px solid #edf0f4}
+.storage-card{padding:11px;margin:0 0 10px;background:#f8faff;border:1px solid #e8eef9;border-radius:10px}.storage-card>div{display:flex;justify-content:space-between;gap:8px;margin-bottom:8px;font-size:10px}.storage-card strong{color:#41506a;font-weight:750}.storage-card span{color:#8b96a9}.storage-card i{display:block;height:5px;overflow:hidden;background:#e4ebf8;border-radius:99px}.storage-card b{display:block;width:64%;height:100%;background:#4778ea;border-radius:inherit}
+.footer-action{margin-bottom:2px}.logout-link{margin:0;color:#d75a5a;background:#fff8f8;border-color:#fee7e7}.logout-link:hover{color:#c43e3e;background:#fff0f0}
+
+.main{margin-left:302px;padding:30px}.topbar{background:#fff;padding:22px 26px;border-radius:12px;border:1px solid #e7eaf0;box-shadow:none;margin-bottom:25px}.topbar h2{font-size:24px}.topbar p{font-size:14px;color:#555}
+
+@media(max-width:900px){
+    .sidebar{position:relative;inset:auto;width:100%;height:auto;min-height:0;border-radius:0;border-right:0;border-left:0;padding:14px;box-shadow:none}
+    .sidebar-brand,.profile-card,.storage-card{display:none}.menu{display:flex;gap:6px;overflow-x:auto;overflow-y:hidden;padding:0}.menu a{white-space:nowrap;margin:0}.sidebar-footer{display:flex;gap:6px;padding:8px 0 0}.footer-action,.logout-link{white-space:nowrap;margin:0}.main{margin-left:0;padding:18px}
+}
