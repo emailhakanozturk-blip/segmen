@@ -1932,18 +1932,26 @@ $selectedNd = $selected ? ($ndByProduct[$selected['urun_adi']] ?? ['nakliye_tl_k
     function deleteSelectedBomRows(){
         var selected = document.querySelectorAll('#bomRows .bom-select-row:checked');
         if(selected.length === 0){ alert('Silmek için en az bir satır seçin.'); return; }
-        if(!confirm(selected.length + ' satır silinsin mi?')){ return; }
+        if(!confirm(selected.length + ' satır silinip reçete kaydedilsin mi?')){ return; }
         selected.forEach(function(cb){ cb.closest('tr').remove(); });
         refreshBomSelectAll();
         calcBom();
+        submitBomAfterDelete();
     }
     function deleteAllBomRows(){
         var rows = document.querySelectorAll('#bomRows tr');
         if(rows.length === 0){ return; }
-        if(!confirm('Tüm reçete satırları silinsin mi?')){ return; }
+        if(!confirm('Tüm reçete satırları silinip reçete kaydedilsin mi?')){ return; }
         rows.forEach(function(row){ row.remove(); });
         refreshBomSelectAll();
         calcBom();
+        submitBomAfterDelete();
+    }
+    function submitBomAfterDelete(){
+        var action = document.getElementById('bomAction');
+        var form = document.getElementById('bomForm');
+        if(action){ action.value = 'bom_kaydet'; }
+        if(form){ form.requestSubmit ? form.requestSubmit() : form.submit(); }
     }
     function updateBomCount(){
         var count = document.querySelectorAll('#bomRows tr').length;
