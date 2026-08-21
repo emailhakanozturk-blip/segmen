@@ -727,13 +727,12 @@ if($requestedDonem !== ''){
     try {
         $latestDonem = (string)$db->query("
             SELECT donem FROM (
-                SELECT donem, MAX(COALESCE(son_hesaplama, '1000-01-01')) tarih FROM recete_donemler WHERE toplam_uretim > 0 OR son_hesaplama IS NOT NULL GROUP BY donem
-                UNION ALL SELECT donem, MAX(COALESCE(created_at, '1000-01-01')) tarih FROM recete_bom GROUP BY donem
-                UNION ALL SELECT donem, MAX('1000-01-01') tarih FROM maliyet_receteler GROUP BY donem
-                UNION ALL SELECT donem, MAX('1000-01-01') tarih FROM recete_uretim WHERE koli_miktari > 0 GROUP BY donem
+                SELECT donem FROM recete_donemler WHERE toplam_uretim > 0
+                UNION SELECT donem FROM recete_bom
+                UNION SELECT donem FROM maliyet_receteler
+                UNION SELECT donem FROM recete_uretim WHERE koli_miktari > 0
             ) x
-            GROUP BY donem
-            ORDER BY MAX(tarih) DESC, donem DESC
+            ORDER BY donem DESC
             LIMIT 1
         ")->fetchColumn();
     } catch(Throwable $e) {}
