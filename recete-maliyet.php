@@ -719,7 +719,26 @@ foreach($excelNisanProducts as $p){
 
 $tab = (string)($_GET['tab'] ?? 'ozet');
 if(!in_array($tab, ['ozet','urunler','hammaddeler','fiyatlar','receteler','uretim','nakliye','stok_hareketleri'], true)){ $tab = 'ozet'; }
-$donem = (string)($_GET['donem'] ?? '2026-04');
+$requestedDonem = trim((string)($_GET['donem'] ?? ''));
+if($requestedDonem !== ''){
+    $donem = $requestedDonem;
+} else {
+    $latestDonem = '';
+    try {
+        $latestDonem = (string)$db->query("
+            SELECT donem FROM (
+                SELECT donem, MAX(COALESCE(son_hesaplama, '1000-01-01')) tarih FROM recete_donemler WHERE toplam_uretim > 0 OR son_hesaplama IS NOT NULL GROUP BY donem
+                UNION ALL SELECT donem, MAX(COALESCE(created_at, '1000-01-01')) tarih FROM recete_bom GROUP BY donem
+                UNION ALL SELECT donem, MAX('1000-01-01') tarih FROM maliyet_receteler GROUP BY donem
+                UNION ALL SELECT donem, MAX('1000-01-01') tarih FROM recete_uretim WHERE koli_miktari > 0 GROUP BY donem
+            ) x
+            GROUP BY donem
+            ORDER BY MAX(tarih) DESC, donem DESC
+            LIMIT 1
+        ")->fetchColumn();
+    } catch(Throwable $e) {}
+    $donem = $latestDonem !== '' ? $latestDonem : '2026-04';
+}
 $selectedId = (int)($_POST['urun_id'] ?? ($_GET['urun_id'] ?? 0));
 $message = '';
 $error = '';
